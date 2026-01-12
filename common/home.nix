@@ -23,6 +23,19 @@ in
       MOZ_ENABLE_WAYLAND = "1";
     };
 
+    xdg.userDirs = {
+      enable = true;
+      createDirectories = true;
+      desktop = "$HOME";
+      documents = "$HOME";
+      download = "$HOME/downloads";
+      music = "$HOME";
+      pictures = "$HOME";
+      publicShare = "$HOME";
+      templates = "$HOME";
+      videos = "$HOME";
+    };
+
     programs.bash = {
       enable = true;
       shellAliases = {
@@ -133,6 +146,7 @@ in
       keepassxc
       imagemagick
       foot
+      libreoffice
 
       (pkgs.python3.withPackages (ps: with ps; [
 	pywal

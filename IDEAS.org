@@ -1,0 +1,15 @@
+* Tinkering Ideas
+
+** Work modes
+Scripts for different tasks that require different window layouts or programs. They would open all necessary programs and arrange them in the optimal way.
+
+*** Browser (0.6) emacs (0.3) for note-taking
+
+** Instant resize
+I will never need ctrl+r to restore window size nor shift+r to resize a window vertically. might as well bind it to 0.3, 0.5 and 0.6
+
+** Zathura vs. Emacs pdf-tools 
+
+*** Zathura
+
+*** pdf-tools

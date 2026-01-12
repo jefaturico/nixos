@@ -6,6 +6,13 @@
 
   networking.hostName = "galileo";
 
+  boot.extraModprobeConfig = ''
+    options hid_apple swap_opt_cmd=1
+  '';
+
+  hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true;
+
   services.xserver.videoDrivers = ["nvidia"];
   hardware.nvidia = {
     modesetting.enable = true;

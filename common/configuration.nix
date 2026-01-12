@@ -18,6 +18,10 @@
     settings = {
       animation = "matrix";
       restore = true;
+      save = false;
+      load = false;
+      show_version = false;
+      show_help = false;
     };
   };
 
@@ -43,17 +47,12 @@
     enable = true;
     user = "jefaturico";
     dataDir = "/home/jefaturico";
-    settings = {
-      devices = {
-        "Galileo" = { id = "ID-FOR-GALILEO"; };
-        "Ekman" = { id = "ID-FOR-EKMAN"; };
-      };
-      folders."nixos" = {
-        path = "/home/jefaturico/nixos";
-        devices = [ "Galileo" "Ekman" ]; 
-      };
-    };
+    openDefaultPorts = true;
   };
+
+  systemd.tmpfiles.rules = [
+    "d /tmp/downloads 0755 yourusername users - -"
+  ];
 
   environment.systemPackages = with pkgs; [
     vim wget git curl htop alacritty
@@ -62,6 +61,14 @@
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
   ];
+
+  services.openssh = {
+    enable = true;
+    settings.PasswordAuthentication = false;
+    settings.KbdInteractiveAuthentication = false;
+  };
+
+  networking.firewall.allowedTCPPorts = [ 22 ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   system.stateVersion = "25.11";
