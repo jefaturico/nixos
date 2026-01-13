@@ -2,9 +2,13 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.networkmanager.enable = true;
   time.timeZone = "Europe/Madrid";
   i18n.defaultLocale = "en_US.UTF-8";
+
+  networking = {
+    networkmanager.enable = true;
+    firewall.allowedTCPPorts = [ 22 ];
+  };
 
   console = {
     font = "Lat2-Terminus16";
@@ -13,15 +17,33 @@
 
   programs.niri.enable = true;
 
-  services.displayManager.ly = {
-    enable = true;
-    settings = {
-      animation = "matrix";
-      restore = true;
-      save = false;
-      load = false;
-      show_version = false;
-      show_help = false;
+  services = {
+    displayManager.ly = {
+      enable = true;
+      settings = {
+        animation = "matrix";
+        restore = true;
+        save = false;
+        load = false;
+      };
+    };
+
+    pipewire = {
+      enable = true;
+      pulse.enable = true;
+    };
+
+    syncthing = {
+      enable = true;
+      user = "jefaturico";
+      dataDir = "/home/jefaturico";
+      openDefaultPorts = true;
+    };
+
+    openssh = {
+      enable = true;
+      settings.PasswordAuthentication = false;
+      settings.KbdInteractiveAuthentication = false;
     };
   };
 
@@ -31,45 +53,20 @@
     config.common.default = [ "gnome" "gtk" ];
   };
 
-  services.pipewire = {
-    enable = true;
-    pulse.enable = true;
-  };
-
-  nixpkgs.config.allowUnfree = true;
-
   users.users.jefaturico = {
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" "render" ];
   };
 
-  services.syncthing = {
-    enable = true;
-    user = "jefaturico";
-    dataDir = "/home/jefaturico";
-    openDefaultPorts = true;
-  };
-
-  systemd.tmpfiles.rules = [
-    "d /tmp/downloads 0755 yourusername users - -"
-  ];
-
   environment.systemPackages = with pkgs; [
-    vim wget git curl htop alacritty
+    vim wget git curl htop
   ];
 
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
   ];
 
-  services.openssh = {
-    enable = true;
-    settings.PasswordAuthentication = false;
-    settings.KbdInteractiveAuthentication = false;
-  };
-
-  networking.firewall.allowedTCPPorts = [ 22 ];
-
+  nixpkgs.config.allowUnfree = true;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   system.stateVersion = "25.11";
 }

@@ -48,10 +48,6 @@
     openDefaultPorts = true;
   };
 
-  systemd.tmpfiles.rules = [
-    "d /tmp/downloads 0755 yourusername users - -"
-  ];
-
   environment.systemPackages = with pkgs; [
     vim wget git curl htop alacritty
   ];
