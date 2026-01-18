@@ -16,17 +16,19 @@
   fileSystems."/" =
     { device = "/dev/disk/by-uuid/fbd1e66b-d181-4227-be0d-c8c1890ef74e";
       fsType = "ext4";
+      options = [ "noatime" ];
     };
 
   fileSystems."/mnt/data" =
     { device = "/dev/disk/by-uuid/e13eb5af-e843-4121-b327-dcdc55b24114";
       fsType = "ext4";
+      options = [ "noatime" ];
     };
 
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/F016-8AFA";
       fsType = "vfat";
-      options = [ "fmask=0022" "dmask=0022" ];
+      options = [ "fmask=0022" "dmask=0022" "noatime" ];
     };
 
   swapDevices = [

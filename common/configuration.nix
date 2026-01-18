@@ -1,4 +1,5 @@
 { inputs, pkgs, ... }: {
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
@@ -10,12 +11,18 @@
     firewall.allowedTCPPorts = [ 22 ];
   };
 
+  services.xserver.xkb = {
+    layout = "es";
+  };
+
   console = {
     font = "Lat2-Terminus16";
     keyMap = "es";
   };
 
-  programs.niri.enable = true;
+  programs.river-classic = {
+    enable = true;
+  };
 
   services = {
     displayManager.ly = {
@@ -23,10 +30,11 @@
       settings = {
         animation = "matrix";
         restore = true;
-        save = false;
-        load = false;
+        session_log = "null";
       };
     };
+
+    dbus.enable = true;
 
     pipewire = {
       enable = true;
@@ -47,11 +55,20 @@
     };
   };
 
-  xdg.portal = {
-    enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
-    config.common.default = [ "gnome" "gtk" ];
+xdg.portal = {
+  enable = true;
+  extraPortals = [ 
+    pkgs.xdg-desktop-portal-gtk 
+    pkgs.xdg-desktop-portal-wlr
+  ];
+  config = {
+    common.default = [ "gtk" ];
+    river = {
+      "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+      "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+    };
   };
+};
 
   users.users.jefaturico = {
     isNormalUser = true;
@@ -67,6 +84,20 @@
   ];
 
   nixpkgs.config.allowUnfree = true;
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings = {
+    experimental-features = [ "nix-command" "flakes" ];
+    auto-optimise-store = true;
+  };
+  
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
+
+  zramSwap.enable = true;
+  services.fstrim.enable = true;
+  boot.kernel.sysctl = { "vm.swappiness" = 10;};
+
   system.stateVersion = "25.11";
 }
