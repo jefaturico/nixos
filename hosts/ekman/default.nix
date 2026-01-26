@@ -6,8 +6,8 @@
 
   networking.hostName = "ekman";
 
-  services.tlp.enable = true; 
-  services.thermald.enable = true; 
-  
+  services.tlp.enable = true;
+  services.thermald.enable = true;
+
   hardware.graphics.enable = true;
 }

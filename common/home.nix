@@ -6,6 +6,8 @@
 }:
 
 {
+  imports = [ ./scripts.nix ];
+
   home = {
     username = "jefaturico";
     homeDirectory = "/home/jefaturico";
@@ -25,9 +27,11 @@
       GTK_CSD = "0";
       XDG_SESSION_TYPE = "wayland";
       XDG_CURRENT_DESKTOP = "river";
+      NIXOS_OZONE_WL = "1";
+      PATH = "$HOME/.local/bin:$PATH";
     };
 
-    file.".config/wal/templates/fuzzel.ini".text = ''
+    file.".config/wal/templates/colors-fuzzel.ini".text = ''
       [colors]
       background={background.strip}ee
       text={foreground.strip}ff
@@ -39,6 +43,65 @@
       selection={color8.strip}ff
       selection-text={background.strip}ff
     '';
+
+    file.".config/wal/templates/colors-task.theme".text = ''
+      color.priorities.H=bold {color1}
+      color.priorities.M={color2}
+      color.priorities.L={color3}
+      color.project.none={color4}
+      color.tagged.all={color5}
+      color.due={color1}
+      color.overdue=bold {color1}
+      color.active=black on {color2}
+      color.scheduled={color6}
+      color.calendar.today={color7}
+    '';
+
+    file.".config/wal/templates/colors-foot.ini".text = ''
+      [colors]
+      foreground={foreground.strip}
+      background={background.strip}
+      regular0={color0.strip}
+      regular1={color1.strip}
+      regular2={color2.strip}
+      regular3={color3.strip}
+      regular4={color4.strip}
+      regular5={color5.strip}
+      regular6={color6.strip}
+      regular7={color7.strip}
+      bright0={color8.strip}
+      bright1={color9.strip}
+      bright2={color10.strip}
+      bright3={color11.strip}
+      bright4={color12.strip}
+      bright5={color13.strip}
+      bright6={color14.strip}
+      bright7={color15.strip}
+    '';
+
+    file.".config/helix/languages.toml".text = ''
+      [[language]]
+      name = "markdown"
+      language-servers = ["markdown-oxide"]
+      formatter = { command = "prettier", args = ["--parser", "markdown", "--prose-wrap", "never"] }
+      text-width = 80
+      auto-format = true
+      soft-wrap = { enable = true, wrap-at-text-width = true }
+
+      [language-server.markdown-oxide]
+      command = "markdown-oxide"
+
+    '';
+
+    file.".config/moxide/settings.toml".text = ''
+      heading_completions = false
+      title_headings = false
+      link_filenames_only = true
+    '';
+
+
+
+
   };
 
   xdg = {
@@ -66,6 +129,11 @@
         "text/plain" = [ "nvim.desktop" ];
         "text/markdown" = [ "nvim.desktop" ];
         "application/x-shellscript" = [ "nvim.desktop" ];
+        "text/html" = "helium.desktop";
+        "x-scheme-handler/http" = "helium.desktop";
+        "x-scheme-handler/https" = "helium.desktop";
+        "x-scheme-handler/about" = "helium.desktop";
+        "x-scheme-handler/unknown" = "helium.desktop";
       };
     };
   };
@@ -107,9 +175,12 @@
       sessionVariables = {
         EDITOR = "hx";
         TERM = "foot";
+        BROWSER = "helium";
+        DEFAULT_BROWSER = "helium";
       };
 
       initExtra = /* bash */ ''
+                export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
                 eval "$(zoxide init bash)"
 
                 (cat ~/.cache/wal/sequences &)
@@ -119,7 +190,6 @@
                 fi
 
                 bind "set completion-ignore-case on"
-                bind "set show-all-if-ambiguous on"
 
                 PS1='\[\e[34m\]\w\[\e[0m\] \[\e[32m\]λ\[\e[0m\] '
 
@@ -130,7 +200,6 @@
                 shopt -s dirspell
                 shopt -s globstar
                 shopt -s histappend
-                shopt -s nocaseglob
 
                 HISTCONTROL=ignoreboth:erasedups
                 HISTSIZE=10000
@@ -146,15 +215,52 @@
       '';
     };
 
+    newsboat = {
+      enable = true;
+      autoReload = true;
+      reloadThreads = 8;
+      urls = [
+        {
+          url = "https://phys.org/rss-feed/earth-news/earth-sciences/";
+          title = "Phys.org - Earth Sciences";
+        }
+        {
+          url = "https://phys.org/rss-feed/earth-news/environment/";
+          title = "Phys.org - Environment";
+        }
+        {
+          url = "https://phys.org/rss-feed/breaking/";
+          title = "Phys.org - Breaking News";
+        }
+      ];
+      extraConfig = ''
+        browser "open-focus"
+
+        color background          default  default
+        color listnormal          color15  default
+        color listfocus           color0   color15 bold
+        color listnormal_unread   color15  default
+        color listfocus_unread    color0   color15 bold
+        color info                color0   color4  bold
+        color article             color15  default
+
+        bind-key j down
+        bind-key k up
+        bind-key h quit
+        bind-key l open
+      '';
+    };
+
     foot = {
       enable = true;
       settings = {
         main = {
           font = "JetBrainsMono Nerd Font:size=16";
           pad = "24x24 center-when-maximized-and-fullscreen";
+          include = "~/.cache/wal/colors-foot.ini";
         };
         colors = {
-          alpha = if osConfig.networking.hostName == "galileo" then "0.98" else "0.8";
+          alpha = if osConfig.networking.hostName == "galileo" then "0.97" else "0.8";
         };
       };
     };
@@ -164,16 +270,15 @@
       settings = {
         main = {
           font = "JetBrainsMono Nerd Font:size=12";
-          prompt-font = "JetBrainsMono Nerd Font:weight=bold:size=12";
           prompt = "\"λ \"";
           icons-enabled = "no";
-          list-executables-in-path = "no";
+          list-executables-in-path = "yes";
           lines = 5;
           width = 40;
           horizontal-pad = 20;
           vertical-pad = 15;
           inner-pad = 5;
-          include = "~/.cache/wal/fuzzel.ini";
+          include = "~/.cache/wal/colors-fuzzel.ini";
         };
         border = {
           width = 0;
@@ -219,6 +324,7 @@
             wrap-indicator = "";
           };
         };
+
         theme = "base16_transparent";
         keys.normal = {
           space.f = "file_picker";
@@ -237,18 +343,23 @@
       package = pkgs.taskwarrior2;
       config = {
         data.location = "~/.local/share/task";
-        news.version = "99.9.9";
+        news.version = "3.9.9";
+        news.auto = false;
         confirmation = false;
         allow.empty.filter = true;
         bulk = 0;
         nag = "";
-        verbose = "blank,header,footnote";
+        verbose = "blank,footnote";
         "default.command" = "ready";
         "project.indent" = "on";
         "summary.all.projects" = "on";
         "annotations" = "none";
+        "report.notes.columns" = "entry,description";
+        "report.notes.labels" = "Date,Annotation";
+        "report.notes.sort" = "entry+";
+        "report.notes.filter" = "status:pending";
         "report.next.columns" =
-          "id,start,entry.age,deps,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description.count,urgency";
+          "id,start,entry.age,depends,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description.count,urgency";
         "report.next.labels" = "ID,Active,Age,Deps,P,Project,Tag,Recur,S,Due,Until,Description,Urg";
         "report.ready.columns" = "id,start,scheduled,project,description.count";
         "report.ready.labels" = "ID,Active,Sched,Project,Description";
@@ -278,137 +389,160 @@
     zathura = {
       enable = true;
       package = pkgs.zathura.override {
-        plugins = [ pkgs.zathuraPkgs.zathura_pdf_mupdf ];
+        plugins = [
+          pkgs.zathuraPkgs.zathura_pdf_mupdf
+        ];
       };
       options = {
-        database = "null";
         render-loading = "false";
-        selection-clipboard = "clipboard";
         guioptions = "none";
-        statusbar-h-padding = 0;
-        statusbar-v-padding = 0;
         page-cache-size = 512;
-        window-title-basename = "true";
-        default-bg = "rgba(0,0,0,${if osConfig.networking.hostName == "galileo" then "0.98" else "0.8"})";
-        recolor = true;
-        recolor-lightcolor = "rgba(0,0,0,0)";
         continuous-hist-save = true;
       };
+    };
+
+    fzf = {
+      enable = true;
     };
   };
 
   wayland.windowManager.river = {
     enable = true;
     extraConfig = /* bash */ ''
-            #!/bin/sh
+      #!/bin/sh
 
-            dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=river
+      dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=river
 
-            riverctl background-color 0x000000
+      systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+      systemctl --user start aurora.target graphical-session.target      riverctl background-color 0x000000
 
-            if [ -f "$HOME/.cache/wal/colors.sh" ]; then
-                . "$HOME/.cache/wal/colors.sh"
+      if [ -f "$HOME/.cache/wal/colors.sh" ]; then
+          . "$HOME/.cache/wal/colors.sh"
 
-                FOCUSED="0x''${color4#\#}ff"
+          FOCUSED="0x''${color1#\#}ff"
+          UNFOCUSED="0x00000000"
+      fi
 
-                UNFOCUSED="0x000000${if osConfig.networking.hostName == "galileo" then "fa" else "cc"}"
-            fi
+      if [ -f "$HOME/.wbg" ]; then
+          sh "$HOME/.wbg" &
+          wal --saturate 0.2 -Rtneq -b 000000 &
+      fi
 
-            if [ -f "$HOME/.wbg" ]; then
-                sh "$HOME/.wbg" &
-                FULL_PATH=$(grep -o '/home/[^" ]* ' "$HOME/.wbg")
-                wal --saturate 0.2 -n -q -b 000000 -i "$FULL_PATH" &
-            fi
+      scratchTag=$((1 << 20))
+      stickyTag=$((1 << 10))
 
-            wideriver \
-                --layout left \
-                --layout-alt monocle \
-                --stack even \
-                --count-master 1 \
-                --ratio-master 0.6 \
-                --count-wide-left 0 \
-                --ratio-wide 0.35 \
-                --smart-gaps \
-                --inner-gaps 6 \
-                --outer-gaps 6 \
-                --border-width 3 \
-                --border-width-monocle 0 \
-                --border-width-smart-gaps 0 \
-                --border-color-focused "''${FOCUSED:-0x555555ff}" \
-                --border-color-unfocused "''${UNFOCUSED:-0x111111ff}" \
-                --log-threshold error &
+      wideriver \
+          --layout left \
+          --layout-alt monocle \
+          --stack even \
+          --count-master 1 \
+          --ratio-master 0.6 \
+          --count-wide-left 0 \
+          --ratio-wide 0.35 \
+          --smart-gaps \
+          --inner-gaps 6 \
+          --outer-gaps 6 \
+          --border-width 3 \
+          --border-width-monocle 0 \
+          --border-width-smart-gaps 0 \
+          --border-color-focused "''${FOCUSED:-0x555555ff}" \
+          --border-color-unfocused "''${UNFOCUSED:-0x111111ff}" \
+          --log-threshold error &
 
-            riverctl default-layout wideriver
+      riverctl default-layout wideriver
 
-            riverctl keyboard-layout -options "ctrl:nocaps" es
-            riverctl set-repeat 50 200
-            riverctl focus-follows-cursor normal
+      riverctl keyboard-layout -options "ctrl:nocaps" es
+      riverctl set-repeat 50 200
+      riverctl focus-follows-cursor normal
 
-            riverctl map normal Mod4 J     focus-view next
-            riverctl map normal Mod4 K     focus-view previous
-            riverctl map normal Mod4 Space zoom
+      riverctl input pointer-1267-12397-ELAN2202:00_04F3:306D_Touchpad natural-scroll enabled
+      riverctl input pointer-1267-12397-ELAN2202:00_04F3:306D_Touchpad tap enabled
 
-            riverctl map normal Mod4+Shift H send-layout-cmd wideriver "--layout left"
-            riverctl map normal Mod4+Shift L send-layout-cmd wideriver "--layout right"
-            riverctl map normal Mod4+Shift J send-layout-cmd wideriver "--layout bottom"
-            riverctl map normal Mod4+Shift K send-layout-cmd wideriver "--layout top"
-            riverctl map normal Mod4 M       send-layout-cmd wideriver "--layout monocle"
+      riverctl input pointer-2-14-ETPS/2_Elantech_Touchpad natural-scroll enabled
+      riverctl input pointer-2-14-ETPS/2_Elantech_Touchpad tap enabled
+      riverctl input pointer-2-14-ETPS/2_Elantech_Touchpad pointer-accel 0.4
 
-            riverctl map normal Mod4 L       send-layout-cmd wideriver "--ratio +0.1"
-            riverctl map normal Mod4+Shift 0 send-layout-cmd wideriver "--ratio 0.5"
-            riverctl map normal Mod4 H       send-layout-cmd wideriver "--ratio -0.1"
+      riverctl map normal Mod4 J     focus-view next
+      riverctl map normal Mod4 K     focus-view previous
+      riverctl map normal Mod4 Space zoom
 
-            riverctl map normal Mod4 plus  send-layout-cmd wideriver "--count +1"
-            riverctl map normal Mod4       period send-layout-cmd wideriver "--count 1"
-            riverctl map normal Mod4       minus send-layout-cmd wideriver "--count -1"
+      riverctl map normal Mod4+Shift H send-layout-cmd wideriver "--layout left"
+      riverctl map normal Mod4+Shift L send-layout-cmd wideriver "--layout right"
+      riverctl map normal Mod4+Shift J send-layout-cmd wideriver "--layout bottom"
+      riverctl map normal Mod4+Shift K send-layout-cmd wideriver "--layout top"
+      riverctl map normal Mod4 M       send-layout-cmd wideriver "--layout monocle"
 
-            riverctl map-pointer normal Mod4 BTN_LEFT   move-view
-            riverctl map-pointer normal Mod4 BTN_RIGHT  resize-view
-            riverctl map-pointer normal Mod4 BTN_MIDDLE toggle-float
-            riverctl map normal Mod4+Shift space toggle-float
+      riverctl map normal Mod4 L       send-layout-cmd wideriver "--ratio +0.1"
+      riverctl map normal Mod4+Shift 0 send-layout-cmd wideriver "--ratio 0.5"
+      riverctl map normal Mod4 H       send-layout-cmd wideriver "--ratio -0.1"
 
-            riverctl map normal Mod4 Escape spawn "riverctl close"
-            riverctl map normal Mod4 Return spawn "footclient"
-            riverctl map normal Mod4+Shift Return spawn "footclient -a 'floater'"
-            riverctl map normal Mod4 P      spawn fuzzel
+      riverctl map normal Mod4 plus   send-layout-cmd wideriver "--count +1"
+      riverctl map normal Mod4 period send-layout-cmd wideriver "--count 1"
+      riverctl map normal Mod4 minus  send-layout-cmd wideriver "--count -1"
 
-            riverctl map normal Mod4+Shift Escape exit
+      riverctl map-pointer normal Mod4 BTN_LEFT   move-view
+      riverctl map-pointer normal Mod4 BTN_RIGHT  resize-view
+      riverctl map-pointer normal Mod4 BTN_MIDDLE toggle-float
+      riverctl map normal Mod4+Shift Space toggle-float
 
-            riverctl map normal Mod4 B       spawn "$HOME/nixos/utils/shell/river-setbg.sh"
-            riverctl map normal Mod4+Shift B spawn "$HOME/nixos/utils/shell/river-setbg.sh -r"
+      riverctl map normal Mod4 Q       spawn "riverctl close"
+      riverctl map normal Mod4 Return       spawn "footclient"
+      riverctl map normal Mod4 P            spawn fuzzel
 
-            riverctl map normal Mod4 D spawn "$HOME/nixos/utils/shell/wpdf-find.sh"
+      riverctl map normal Mod4+Shift Escape exit
 
-            riverctl map -repeat normal None XF86AudioRaiseVolume spawn "wpctl set-volume @DEFAULT_AUDIO_SINK@ 10%+"
-            riverctl map -repeat normal None XF86AudioLowerVolume spawn "wpctl set-volume @DEFAULT_AUDIO_SINK@ 10%-"
-            riverctl map         normal None XF86AudioMute        spawn "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+      riverctl map normal Mod4 B       spawn "river-setbg"
+      riverctl map normal Mod4+Shift B spawn "river-setbg -r"
 
-            riverctl map -repeat normal None XF86MonBrightnessUp   spawn "brightnessctl set +20%"
-            riverctl map -repeat normal None XF86MonBrightnessDown spawn "brightnessctl set 20%-"
+      riverctl map normal Mod4 D spawn "wdoc-find"
+      riverctl map normal Mod4 W spawn "fuzzel-bookmarks"
+      riverctl map normal Mod4+Shift W spawn "fuzzel-bookmarks --add"
 
-            riverctl map normal Mod4 R spawn "pkill wideriver && ~/.config/river/init"
+      riverctl map normal Mod4 I spawn "systeminfo"
+      riverctl map normal Mod4 T spawn "task-fuzzel"
+      riverctl map normal Mod4+Shift N spawn "capture-thought"
+      riverctl map normal Mod4 N spawn "shonke"
+      riverctl map normal Mod4 E spawn "footclient -e hx ."
 
-            riverctl map normal Mod4 1         spawn "$HOME/nixos/utils/shell/river-lof.sh zen zen 1"
-            riverctl map normal Mod4+Shift 1   set-view-tags 1
-            riverctl map normal Mod4+Control 1 toggle-focused-tags 1
+      riverctl map -repeat normal None XF86AudioRaiseVolume spawn "wpctl set-volume @DEFAULT_AUDIO_SINK@ 10%+"
+      riverctl map -repeat normal None XF86AudioLowerVolume spawn "wpctl set-volume @DEFAULT_AUDIO_SINK@ 10%-"
+      riverctl map         normal None XF86AudioMute        spawn "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
 
-            for i in $(seq 2 9); do
-                tags=$((1 << (i - 1)))
-                riverctl map normal Mod4 $i         set-focused-tags $tags
-                riverctl map normal Mod4+Shift $i   set-view-tags $tags
-                riverctl map normal Mod4+Control $i toggle-focused-tags $tags
-            done
+      riverctl map -repeat normal None XF86MonBrightnessUp   spawn "brightnessctl set +10%"
+      riverctl map -repeat normal None XF86MonBrightnessDown spawn "brightnessctl set 10%-"
 
-            riverctl hide-cursor timeout 5000
-            riverctl hide-cursor when-typing enabled
+      riverctl map normal Mod4 R spawn "pkill wideriver && ~/.config/river/init"
 
-            riverctl rule-add -app-id "zen"         tags 1
-            riverctl rule-add -app-id "floater"     float
-            riverctl rule-add -app-id "*"           ssd
+      riverctl map normal Mod4 1         spawn "river-lof helium helium 1 $stickyTag"
+      riverctl map normal Mod4+Shift 1   set-view-tags 1
+      riverctl map normal Mod4+Control 1 toggle-focused-tags 1
 
-            riverctl set-focused-tags 2
+      for i in $(seq 2 9); do
+          tags=$((1 << (i - 1)))
+          riverctl map normal Mod4 $i         set-focused-tags $((tags | stickyTag))
+          riverctl map normal Mod4+Shift $i   set-view-tags $tags
+          riverctl map normal Mod4+Control $i toggle-focused-tags $tags
+      done
 
-            [ -x "$(pgrep foot)" ] || foot --server
+      riverctl map normal Mod4 Backspace spawn "river-toggle-scratch $scratchTag scratchpad"
+      riverctl spawn-tagmask $((((1 << 32) - 1) ^ scratchTag))
+
+      riverctl map normal Super+Shift Backspace toggle-view-tags $stickyTag
+      riverctl spawn-tagmask $((((1 << 32) - 1) ^ stickyTag))
+
+      riverctl hide-cursor timeout 5000
+      riverctl hide-cursor when-typing enabled
+
+      riverctl rule-add -app-id "zen"     tags 1
+      riverctl rule-add -app-id "helium"     tags 1
+      riverctl rule-add -app-id "scratchpad" tags $scratchTag
+      riverctl rule-add -app-id "scratchpad" float
+      riverctl rule-add -app-id "*"       ssd
+
+      riverctl set-focused-tags 2
+
+      pgrep -x foot > /dev/null || foot --server
+      lswt | grep -q "scratchpad" || footclient -a "scratchpad"
     '';
   };
 
@@ -423,7 +557,7 @@
         border-size = 0;
         padding = "10";
         margin = "10";
-        default-timeout = 3000;
+        default-timeout = 2000;
       };
     };
 
@@ -445,41 +579,73 @@
     };
   };
 
+  systemd.user.services.mako = {
+    Service = {
+      Restart = "always";
+      ExecStartPre = "${pkgs.procps}/bin/pkill -x mako || true";
+    };
+  };
+
   home.packages = with pkgs; [
     anki
+    antigravity
     bat
     brightnessctl
-    cmake
     fd
-
-    fzf
-    gcc
+    fff
+    ffmpeg
     gimp
+    (pkgs.appimageTools.wrapType2 {
+      pname = "helium";
+      version = "0.8.1.1";
+      src = pkgs.fetchurl {
+        url = "https://github.com/imputnet/helium-linux/releases/download/0.8.1.1/helium-0.8.1.1-x86_64.AppImage";
+        sha256 = "sha256-n1wn80h9O7GpZz4AygNSKMcilX8lr6fJkiQBBPPQXok=";
+      };
+      extraPkgs = pkgs: [ pkgs.libsecret ];
+    })
+    (pkgs.makeDesktopItem {
+      name = "helium";
+      desktopName = "Helium";
+      genericName = "Web Browser";
+      exec = "helium %U";
+      icon = "helium";
+      categories = [
+        "Network"
+        "WebBrowser"
+      ];
+      mimeTypes = [
+        "text/html"
+        "x-scheme-handler/http"
+        "x-scheme-handler/https"
+      ];
+    })
     imagemagick
     imv
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     kdePackages.kdenlive
     keepassxc
+    obsidian
     libnotify
     libreoffice
-    libtool
-    markdown-oxide
+    lswt
     mpv
+    nixd
     nixfmt
     obs-studio
     pandoc
+
+    markdown-oxide
+    nodePackages.prettier
     pwvucontrol
     ripgrep
-    stylua
-    fff
-    ffmpeg
-    antigravity
+    uget
     wbg
     wideriver
-    wl-clipboard
     wireplumber
+    wl-clipboard
+    wlrctl
     xwayland
-    nixd
     zoxide
 
     (pkgs.python3.withPackages (
