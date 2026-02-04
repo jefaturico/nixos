@@ -24,63 +24,33 @@ let
 in
 {
   home.packages = with pkgs; [
-    (writeShellScriptBin "river-lof" ''
-      # launch-or-focus.sh
-      # Usage: launch-or-focus.sh <APP_PATTERN> <COMMAND> <WORKSPACE_INDEX>
+    (writeShellScriptBin "dwl-session" ''
+      # dwl-session
+      # Wraps dwl execution with startup tasks
 
-      if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-          echo "Usage: $(basename "$0") <APP_PATTERN> <COMMAND> <WORKSPACE_INDEX>"
-          exit 1
-      fi
+      # 1. Environment
+      export XDG_CURRENT_DESKTOP=wlroots
+      export XDG_SESSION_TYPE=wayland
+      dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 
-      APP_PATTERN="$1"
-      CMD="$2"
-      WS_INDEX="$3"
-      EXTRA_MASK="''${4:-0}"
+      # 2. Key components
+      systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+      systemctl --user start graphical-session.target
 
-      # 1. Switch workspace immediately for responsiveness
-      # Calculate the tag bitmask (1 << (WS_INDEX - 1)) | EXTRA_MASK
-      riverctl set-focused-tags $(( (1 << (WS_INDEX - 1)) | EXTRA_MASK ))
+      # 3. Exec Dwl (log to file for debug)
+      # Run wallpaper script using -s flag to ensure Wayland socket is ready
+      STARTUP=""
+      [ -f "$HOME/.wbg" ] && STARTUP="-s $HOME/.wbg"
 
-      # 2. Check if running & Focus (The wlrctl way)
-      # wlrctl window focus returns 0 if it found and focused a window matching the ID or title.
-      if wlrctl window focus "$APP_PATTERN"; then
-          exit 0
-      fi
-
-      # 3. Startup Check (Spam Protection)
-      # If wlrctl didn't find it, it might be starting up.
-      # We use pgrep -f for flexibility.
-      # We explicitly exclude THIS script's PID ($$) to prevent self-match.
-      if pgrep -f "$APP_PATTERN" | grep -v -q "^$$\$"; then
-          exit 0
-      fi
-
-      # 4. Spam protection lock (Double layer)
-      LOCK_FILE="/tmp/river_lof_''${WS_INDEX}.lock"
-      exec 200>"$LOCK_FILE"
-
-      # Try to acquire lock (non-blocking)
-      if ! flock -n 200; then
-          exit 0
-      fi
-
-      # Double-check (race condition)
-      if pgrep -f "$APP_PATTERN" | grep -v -q "^$$\$"; then
-          exit 0
-      fi
-
-      # 4. Launch
-      # setsid to detach.
-      setsid "$CMD" >/dev/null 2>&1 &
-
-      # Keep lock held briefly to cover startup time
-      sleep 0.5
+      exec dwl $STARTUP > /tmp/dwl.log 2>&1
     '')
 
-    (writeShellScriptBin "river-setbg" ''
+
+    (writeShellScriptBin "wlsetbg" ''
       # wsetbg.sh - Optimized & Smart Wallpaper Setter
       # Usage: wsetbg.sh [-r]
+
+      export LC_ALL=C
 
       WALL_DIR="$HOME/images/wallpapers"
       STARTUP_SCRIPT="$HOME/.wbg"
@@ -93,21 +63,16 @@ in
 
       # 1. Fast retrieval of current wallpaper
       if [[ -f "$STARTUP_SCRIPT" ]]; then
-          CURRENT_WALL=$(grep -o '"[^"]*"' "$STARTUP_SCRIPT" 2>/dev/null | tr -d '"')
+          CURRENT_WALL=$(${pkgs.gnugrep}/bin/grep -o '"[^"]*"' "$STARTUP_SCRIPT" 2>/dev/null | ${pkgs.coreutils}/bin/tr -d '"')
       fi
 
       get_smart_random_wallpaper() {
-          # Pipe absolute paths from fd to awk script
-          # Awk replacement for Python: significantly faster startup (<5ms vs ~50ms).
-          # Logic: Weight = (NOW - LastSeen)^2. Unseen files have massive weight.
-          fd --type f --absolute-path . "$WALL_DIR" | \
-          awk -v hist_file="$HISTORY_FILE" -v current_wall="$CURRENT_WALL" -v NOW="$(date +%s)" '
+          ${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" | \
+          ${pkgs.gawk}/bin/awk -v hist_file="$HISTORY_FILE" -v current_wall="$CURRENT_WALL" '
           BEGIN {
               srand();
               # Load history: map path -> timestamp
               while ((getline line < hist_file) > 0) {
-                  # History format: timestamp path
-                  # We use only the first space as separator to handle spaces in paths
                   match(line, /^[0-9]+ /);
                   if (RLENGTH > 0) {
                       ts = substr(line, 1, RLENGTH-1);
@@ -122,50 +87,54 @@ in
               path = $0;
               if (path == "" || path == current_wall) next;
 
-              last_seen = (path in history) ? history[path] : 0;
-
-              # Weight calculation
-              # Unseen files (last_seen=0) -> delta = NOW -> weight = huge.
-              delta = NOW - last_seen;
-              weight = delta * delta;
-
-              candidates[count] = path;
-              weights[count] = weight;
-              total_weight += weight;
-              count++;
+              if (!(path in history)) {
+                  # Tier 1: Unseen
+                  unseen[u_count++] = path;
+              } else {
+                  # Tier 2: Seen
+                  seen[path] = history[path];
+                  s_count++;
+              }
           }
 
           END {
-              if (count == 0) exit 1;
-
-              # Weighted Random Selection
-              r = rand() * total_weight;
-              running_sum = 0;
-
-              for (i = 0; i < count; i++) {
-                  running_sum += weights[i];
-                  if (r <= running_sum) {
-                      print candidates[i];
-                      exit 0;
-                  }
+              # Tier 1: Pick Unseen if any
+              if (u_count > 0) {
+                  print unseen[int(rand() * u_count)];
+                  exit 0;
               }
-              # Fallback
-              print candidates[count-1];
+
+              if (s_count == 0) exit 1;
+
+              # Tier 2: Pick from Oldest 20%
+              # Use gawk sorted traversal
+              PROCINFO["sorted_in"] = "@val_num_asc";
+
+              cutoff = int(s_count * 0.2) + 1;
+              if (cutoff < 1) cutoff = 1;
+
+              k = 0;
+              for (p in seen) {
+                  candidates[k++] = p;
+                  if (k >= cutoff) break;
+              }
+              
+              # Pick random from candidates
+              print candidates[int(rand() * k)];
           }
           '
       }
 
       if [[ "$1" == "-r" ]]; then
           FULL_PATH=$(get_smart_random_wallpaper)
-          # Fallback to simple random if smart selector failed (e.g. no python or empty list)
+          # Fallback
           if [[ -z "$FULL_PATH" ]]; then
-              FULL_PATH=$(fd --type f --absolute-path . "$WALL_DIR" | shuf -n 1)
+              FULL_PATH=$(${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" | ${pkgs.coreutils}/bin/shuf -n 1)
           fi
       else
           # Interactive Mode
           cd "$WALL_DIR" || exit 1
-          # Use relative paths for better UI
-          CHOICE=$(fd --type f | fuzzel -d -p "Select Wallpaper: ")
+          CHOICE=$(${pkgs.fd}/bin/fd --type f | ${pkgs.fuzzel}/bin/fuzzel -d -p "Select Wallpaper: ")
           [[ -z "$CHOICE" ]] && exit 0
           FULL_PATH="$WALL_DIR/$CHOICE"
       fi
@@ -176,31 +145,29 @@ in
       pkill wbg
       wbg "$FULL_PATH" > /dev/null 2>&1 &
 
-
-
-      # 3. Update History (Append only for speed)
+      # 3. Update History (Append)
+      # We append now, compact later
       echo "$(date +%s) $FULL_PATH" >> "$HISTORY_FILE"
 
-      # 4. Persist startup script
+      # 4. Background Maintenance (Compaction)
+      # Compact history: Keep only latest timestamp per file
+      (
+          if [ -f "$HISTORY_FILE" ]; then
+              TMP_HIST="/tmp/wsetbg_history_$$"
+              # tac + awk !seen is typically fast enough for ~1000 lines
+              tac "$HISTORY_FILE" | awk '!seen[$2]++' | tac > "$TMP_HIST"
+              mv "$TMP_HIST" "$HISTORY_FILE"
+          fi
+      ) &
+
+      # 5. Persist startup script
       {
           echo "#!/usr/bin/env bash"
           echo "wbg \"$FULL_PATH\" &"
       } > "$STARTUP_SCRIPT"
       chmod +x "$STARTUP_SCRIPT"
 
-      # 5. Background Heavy Tasks
-      (
-          # Generate colors using standard wal backend
-          wal -n -q -b 000000 -i "$FULL_PATH"
 
-          # Static logic
-          if [ -f "$HOME/.cache/wal/colors.sh" ]; then
-              . "$HOME/.cache/wal/colors.sh"
-
-              riverctl border-color-focused "0x''${color4#\#}ff"
-              riverctl border-color-unfocused "0x00000000"
-          fi
-      ) &
 
       exit 0
     '')
@@ -213,7 +180,7 @@ in
       # 2. Sort by Zathura history (bookmarks.sqlite) because filesystem is noatime.
       # 3. Select with fuzzel and open with zathura.
       fd --type f -e pdf -e epub --follow --absolute-path . ~/college ~/library ~/downloads 2>/dev/null | \
-      python3 -c "
+      ${pkgs.python3}/bin/python3 -c "
       import sys, sqlite3, os
 
       # 1. Read all input first (robustness)
@@ -258,10 +225,12 @@ in
       for f in files:
           print(f)
       " | \
-      fuzzel -d -p "Select Document: " -w 100 | \
+      fuzzel -d --no-sort -p "Select Document: " -w 100 | \
       {
           if read -r file; then
-              setsid zathura "$file" >/dev/null 2>&1 &
+              if [ -n "$file" ]; then
+                  setsid zathura "$file" >/dev/null 2>&1 &
+              fi
           fi
       }
       exit 0
@@ -336,405 +305,24 @@ in
 
       setsid xdg-open "$URL" >/dev/null 2>&1 &
 
-      # 3. Simple Focus: Switch to Workspace 1
-      # User requested to just switch to workspace 1 where browser typically lives.
-      riverctl set-focused-tags 1
+      # 3. Simple Focus: Switch to Workspace 1 (Browser)
+      # dwl: We assume browser is on Tag 10.
+      # Since we can't switch/tag from script easily, we just ensure browser is launched.
+      # User might need to switch to Tag 10 manually if it's already running elsewere.
+      # Or we could use wlrctl? No, wlrctl can't switch dwl tags yet (protocol limitation).
+
     '')
 
-    (writeShellScriptBin "river-toggle-scratch" ''
-      # river-toggle-scratch
-      # Usage: river-toggle-scratch <TAG_MASK> <APP_ID>
 
-      TAG_MASK=$1
-      APP_ID="''${2:-scratchpad}"
 
-      if [ -z "$TAG_MASK" ]; then
-          exit 1
-      fi
 
-      # Toggle-and-Chase Logic
-      # We always toggle the tag mask.
-      # 1. If it was hidden, it becomes visible -> We loop to steal focus.
-      # 2. If it was visible, it becomes hidden -> We loop to focus (fails harmlessly), effectively hiding it.
 
-      riverctl toggle-focused-tags $TAG_MASK
 
-      # Try to focus the window if it became visible.
-      # We assume if wlrctl succeeds, we are done.
-      # If it fails repeatedly, we assume it's hidden.
-      # Lower sleep time for snappiness.
-      for i in {1..20}; do
-         if wlrctl window focus "$APP_ID"; then
-             exit 0
-         fi
-         sleep 0.05
-      done
-    '')
-    (writeShellScriptBin "shonke" ''
-      # shonke - Zettelkasten Selector
-      # Usage: shonke
 
-      NOTES_DIR="$HOME/zettelkasten"
-      MAIN_DIR="$NOTES_DIR/main"
 
-      # Ensure main directory exists
-      mkdir -p "$MAIN_DIR"
 
-      # cd to NOTES_DIR to make paths relative
-      cd "$NOTES_DIR" || exit 1
 
-      # Find files, pipe to fuzzel
-      SELECTION=$(fd --type f --extension md | fuzzel -d -p "Zettel: " -w 50)
 
-      if [ -z "$SELECTION" ]; then
-          exit 0
-      fi
-
-      if [ -f "$SELECTION" ]; then
-          # Open existing note
-          exec footclient -D "$NOTES_DIR" -e hx "$SELECTION"
-      else
-          # Create new note in main directory
-          exec footclient -D "$MAIN_DIR" -e hx "$SELECTION.md"
-      fi
-    '')
-
-    (writeShellScriptBin "task-fuzzel" ''
-      # task-fuzzel.sh - Fuzzel interface for Taskwarrior
-      # Usage: task-fuzzel
-
-      set -euo pipefail
-
-      # Configuration
-      TERMINAL="footclient"
-      FUZZEL_ARGS=(-d -w 50)
-
-      # Helper: Prompt for input using fuzzel dmenu mode
-      get_input() {
-          echo "" | fuzzel "''${FUZZEL_ARGS[@]}" -p "$1" --lines 0 | head -n1 || true
-      }
-
-      # Helper: Notify
-      notify() {
-          notify-send "Taskwarrior" "$1"
-      }
-
-      # 1. Add Task
-      add_task() {
-          INPUT=$(get_input "Add Task: ")
-          if [ -n "$INPUT" ]; then
-              # shellcheck disable=SC2086
-              if task rc.hooks=off add $INPUT; then
-                  notify "Task added: $INPUT"
-              else
-                  notify "Failed to add task"
-              fi
-          fi
-      }
-
-      # 2. Browse & Action
-      browse_tasks() {
-          FILTER="$1"
-
-          while true; do
-              # Fetch data as JSON
-              EXPORT_DATA=$(task rc.verbose=nothing rc.hooks=off $FILTER export 2>/dev/null)
-
-              if [ -z "$EXPORT_DATA" ] || [ "$EXPORT_DATA" == "[]" ]; then
-                   notify "No tasks found."
-                   return
-              fi
-
-              # Parse JSON with Python
-              # Note: Indentation of python code must match base indent to be stripped correctly by Nix
-              PARSED_LIST=$(echo "$EXPORT_DATA" | python3 -c "
-      import sys, json
-
-      try:
-          data = json.load(sys.stdin)
-          # Sort by urgency (descending)
-          data.sort(key=lambda x: x.get('urgency', 0), reverse=True)
-
-          for t in data:
-              uuid = t.get('uuid', ''')
-              desc = t.get('description', ''')
-              proj = t.get('project', ''')
-
-              if proj:
-                  proj = f'[{proj}] '
-
-              display = f'{proj}{desc}'
-              display = display.replace('\n', ' ')
-
-              print(f'{uuid} {display}')
-      except:
-          pass
-      ")
-
-              if [ -z "$PARSED_LIST" ]; then
-                  notify "No tasks parsed."
-                  return
-              fi
-
-              declare -a UUIDS
-              declare -a DISPLAY_LINES
-
-              # Reset arrays
-              UUIDS=()
-              DISPLAY_LINES=()
-
-              while IFS= read -r line; do
-                  UUIDS+=("''${line%% *}")
-                  DISPLAY_LINES+=("''${line#* }")
-              done <<< "$PARSED_LIST"
-
-              # Dynamic line count
-              COUNT=''${#DISPLAY_LINES[@]}
-              [ "$COUNT" -gt 30 ] && COUNT=30
-
-              # Show Task List
-              # If Esc pressed (exit code != 0), return to Main Menu
-              if ! CHOICE_INDEX=$(printf "%s\n" "''${DISPLAY_LINES[@]}" | fuzzel "''${FUZZEL_ARGS[@]}" --dmenu --index -l "$COUNT" -p "Select Task: "); then
-                  return
-              fi
-
-              if [ -z "$CHOICE_INDEX" ]; then return; fi
-
-              SELECTED_UUID="''${UUIDS[$CHOICE_INDEX]}"
-              SELECTED_DESC="''${DISPLAY_LINES[$CHOICE_INDEX]}"
-
-              # Truncate description for prompt (max 20 chars)
-              if [ ''${#SELECTED_DESC} -gt 20 ]; then
-                   PROMPT_DESC="''${SELECTED_DESC:0:20}..."
-              else
-                   PROMPT_DESC="$SELECTED_DESC"
-              fi
-
-              # Action Loop
-              while true; do
-                  if ! ACTION=$(printf "Done\nModify\nAnnotate\nInfo\nDelete" | fuzzel "''${FUZZEL_ARGS[@]}" -d -l 5 -p "Action [$PROMPT_DESC]: "); then
-                      # Esc on Action Menu -> Back to Task List
-                      break
-                  fi
-
-                  case "$ACTION" in
-                      "Done")
-                          task rc.hooks=off "$SELECTED_UUID" done
-                          notify "Task marked completed."
-                          break # Back to list
-                          ;;
-                      "Modify")
-                          MOD=$(get_input "Modify [$PROMPT_DESC]: ")
-                          if [ -n "$MOD" ]; then
-                              # shellcheck disable=SC2086
-                              task rc.hooks=off "$SELECTED_UUID" modify $MOD
-                              notify "Task modified."
-                              break # Back to list
-                          fi
-                          # If cancelled/empty, stay in Action Menu
-                          ;;
-                      "Annotate")
-                          ANN=$(get_input "Annotate [$PROMPT_DESC]: ")
-                          if [ -n "$ANN" ]; then
-                              # shellcheck disable=SC2086
-                              task rc.hooks=off "$SELECTED_UUID" annotate $ANN
-                              notify "Task annotated."
-                              break # Back to list
-                          fi
-                          # If cancelled/empty, stay in Action Menu
-                          ;;
-                      "Delete")
-                          if CONFIRM=$(printf "No\nYes" | fuzzel "''${FUZZEL_ARGS[@]}" -d -l 2 -p "Delete [$PROMPT_DESC]? "); then
-                              if [ "$CONFIRM" == "Yes" ]; then
-                                  task rc.hooks=off rc.confirmation=no "$SELECTED_UUID" delete
-                                  notify "Task deleted."
-                                  break # Back to list
-                              fi
-                          fi
-                          # If No or Esc, continue loop (back to Action Menu)
-                          ;;
-                      "Info")
-                          # Custom Info Display
-
-                          # Fetch JSON for specific task
-                          # Using a temp file to avoid shell expansion issues with echo
-                          TMP_JSON="/tmp/task-info-$$.json"
-                          task rc.hooks=off rc.verbose=nothing "$SELECTED_UUID" export > "$TMP_JSON" 2>/dev/null
-
-                          # Debug: Check if file empty
-                          if [ ! -s "$TMP_JSON" ]; then
-                              notify "Error: No data fetched for task."
-                              rm -f "$TMP_JSON"
-                              continue
-                          fi
-
-                          # Parse and format with Python
-                          # Reading from file instead of echo pipe
-                          INFO_TEXT=$(python3 -c "
-      import sys, json, datetime, textwrap
-
-      def fmt_date(iso_str):
-          if not iso_str: return '''
-          try:
-              dt = datetime.datetime.strptime(iso_str, '%Y%m%dT%H%M%SZ')
-              return dt.strftime('%Y-%m-%d %H:%M')
-          except Exception as e:
-              return iso_str
-
-      try:
-          with open('$TMP_JSON', 'r') as f:
-              data = json.load(f)
-
-          if not data:
-              print('No data in JSON')
-              sys.exit(0)
-
-          t = data[0]
-
-          lines = []
-
-          def add_wrapped(label, text, indent='  '):
-              if not text: return
-              full_text = f'{label}: {text}' if label else text
-              wrapped = textwrap.wrap(full_text, width=45)
-              for i, line in enumerate(wrapped):
-                  if i > 0 and label:
-                      lines.append(f'{indent}{line}')
-                  else:
-                      lines.append(line)
-
-          desc = t.get('description', '(No description)')
-          add_wrapped('Task', desc)
-
-          proj = t.get('project')
-          if proj:
-              lines.append(f'Project: {proj}')
-
-          due = t.get('due')
-          if due:
-              lines.append(f'Due: {fmt_date(due)}')
-
-          sched = t.get('scheduled')
-          if sched:
-              lines.append(f'Scheduled: {fmt_date(sched)}')
-
-          annots = t.get('annotations', [])
-          if annots:
-              lines.append('Annotations:')
-              for a in annots:
-                  txt = a.get('description', ''')
-                  # wrap annotation text
-                  wrapped_annot = textwrap.wrap(txt, width=45)
-                  for i, line in enumerate(wrapped_annot):
-                      if i == 0:
-                          lines.append(f'  - {line}')
-                      else:
-                          lines.append(f'    {line}')
-
-          print('\n'.join(lines))
-      except Exception as e:
-          print(f'Error parsing task info: {e}')
-      ")
-                          rm -f "$TMP_JSON"
-
-                          if [ -n "$INFO_TEXT" ]; then
-                              # Calculate line count (max 20)
-                              LINE_COUNT=$(echo "$INFO_TEXT" | wc -l)
-                              [ "$LINE_COUNT" -gt 20 ] && LINE_COUNT=20
-
-                              # Display via fuzzel (ignore exit code)
-                              echo "$INFO_TEXT" | fuzzel "''${FUZZEL_ARGS[@]}" -l "$LINE_COUNT" -p "Info [$PROMPT_DESC]: " >/dev/null 2>&1 || true
-                          else
-                              notify "Error: Failed to parse info."
-                          fi
-                          # Continue Action loop (Show Action Menu again)
-                          ;;
-                  esac
-              done
-          done
-      }
-
-      # Main Menu
-      while true; do
-          MENU="Add Task\nReady Tasks\nAll Tasks\nOpen Terminal"
-          # Count lines in MENU (4 fixed)
-          if ! SELECTION=$(echo -e "$MENU" | fuzzel "''${FUZZEL_ARGS[@]}" -d -l 4 -p "Taskwarrior: "); then
-              # Exit script on Esc from Main Menu
-              exit 0
-          fi
-
-          case "$SELECTION" in
-              "Add Task")
-                  add_task
-                  ;;
-              "Ready Tasks")
-                  browse_tasks "status:pending +READY"
-                  ;;
-              "All Tasks")
-                  browse_tasks "status:pending"
-                  ;;
-              "Open Terminal")
-                  setsid "$TERMINAL" sh -c "task ready; exec $SHELL" >/dev/null 2>&1 &
-                  ;;
-          esac
-      done
-    '')
-
-    (writeShellScriptBin "systeminfo" ''
-      # systeminfo - Fast System Status
-      # Usage: systeminfo
-
-      # 1. Date & Time
-      TIME=$(date +%I:%M\ %p)
-
-      # 2. Battery (Smart Detection)
-      # Find first BAT directory
-      BAT_DIR=$(find /sys/class/power_supply -name "BAT*" -print -quit)
-
-      if [ -n "$BAT_DIR" ]; then
-          CAP=$(cat "$BAT_DIR/capacity")
-          STATUS=$(cat "$BAT_DIR/status")
-          BODY="Battery: $CAP% ($STATUS)"
-      else
-          BODY=""
-      fi
-
-      notify-send -r 5555 -u normal "It's $TIME" "$BODY"
-    '')
-    (writeShellScriptBin "capture-thought" ''
-       # capture-thought
-       # Usage: capture-thought
-
-       INBOX_FILE="$HOME/zettelkasten/inbox.md"
-       mkdir -p "$(dirname "$INBOX_FILE")"
-       [ ! -f "$INBOX_FILE" ] && touch "$INBOX_FILE"
-
-       # Prompt for thought
-       THOUGHT=$(echo "" | fuzzel -d -p "Capture a thought: " -w 60 --lines 0 | head -n1)
-
-       if [ -n "$THOUGHT" ]; then
-           TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
-           echo "" >> "$INBOX_FILE"
-           echo "- [$TIMESTAMP] $THOUGHT" >> "$INBOX_FILE"
-           notify-send "Thought Captured" "$THOUGHT"
-       fi
-    '')
-
-    (writeShellScriptBin "open-focus" ''
-      # open-focus
-      # Usage: open-focus <URL>
-      
-      URL="$1"
-      if [ -z "$URL" ]; then
-          exit 1
-      fi
-
-      setsid xdg-open "$URL" >/dev/null 2>&1 &
-      # Wait a tiny bit for the window to potentially exist/register if it wasn't open
-      # But mostly we just want to focus the existing instance.
-      sleep 0.2
-      wlrctl window focus helium
-    '')
   ] ++ lib.optionals (osConfig.networking.hostName == "ekman") [
     batteryCheck
   ];

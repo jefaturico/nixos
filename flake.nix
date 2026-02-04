@@ -32,7 +32,7 @@
           system = "x86_64-linux"; 
           specialArgs = { inherit inputs; }; 
           modules = [
-            ./hosts/galileo/default.nix
+            ./hosts/galileo/software.nix
             home-manager.nixosModules.home-manager 
             homeManagerConf
           ];
@@ -43,7 +43,7 @@
           system = "x86_64-linux"; 
           specialArgs = { inherit inputs; };
           modules = [
-            ./hosts/ekman/default.nix
+            ./hosts/ekman/software.nix
             home-manager.nixosModules.home-manager
             homeManagerConf
           ];

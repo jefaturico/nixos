@@ -34,6 +34,21 @@
       };
     };
 
+    displayManager.sessionPackages = [
+      (pkgs.runCommand "dwl-session" {
+        passthru.providedSessions = [ "dwl" ];
+      } ''
+        mkdir -p $out/share/wayland-sessions
+        cat <<EOF > $out/share/wayland-sessions/dwl.desktop
+        [Desktop Entry]
+        Name=dwl
+        Comment=Dynamic Window Manager for Wayland
+        Exec=dwl-session
+        Type=Application
+        EOF
+      '')
+    ];
+
     dbus.enable = true;
 
     pipewire = {

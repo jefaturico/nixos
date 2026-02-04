@@ -1,0 +1,70 @@
+building the system configuration...
+warning: Git tree '/home/jefaturico/nixos' is dirty
+these 11 derivations will be built:
+  /nix/store/v6l01c38amb8ld7jdny413b1vj2rpgz5-dwl-0.7.drv
+  /nix/store/f0nhy488sm5nhhj4qzwlnirh9154g83h-home-manager-path.drv
+  /nix/store/178v9xf4zx061lzr686pjfs5gmg576bf-user-environment.drv
+  /nix/store/4dgmdkf4rc6nyfzpljacc9wlb6hi7h8f-hm_fontconfigconf.d10hmfonts.conf.drv
+  /nix/store/7kv5czlg0adpfqc1jn3mr1g5iajrkw7v-home-manager-files.drv
+  /nix/store/marjy1sqxmzjfl4b86kzbdyvyz3zkmay-home-manager-generation.drv
+  /nix/store/80x8508skmp33brz2zhfwp6xmxb4npfv-unit-home-manager-jefaturico.service.drv
+  /nix/store/f6px83b7j1y2g3qs6rl2q43n319lzw33-etc-profile.drv
+  /nix/store/g43a7c00dsk15gacq0q1fykz8md0i9ki-system-units.drv
+  /nix/store/dh1rp4mcl6pz21nyqs6fd6fhi9mfdnhp-etc.drv
+  /nix/store/ghm6jrwqhlpxzq3v5kqyw3bvl1n0ndl5-nixos-system-ekman-25.11.20260117.72ac591.drv
+building '/nix/store/f6px83b7j1y2g3qs6rl2q43n319lzw33-etc-profile.drv'...
+building '/nix/store/v6l01c38amb8ld7jdny413b1vj2rpgz5-dwl-0.7.drv'...
+error: Cannot build '/nix/store/v6l01c38amb8ld7jdny413b1vj2rpgz5-dwl-0.7.drv'.
+       Reason: builder failed with exit code 2.
+       Output paths:
+         /nix/store/s353ggw1bcm0bc1n7rwpkmwsn4xjd1wk-dwl-0.7-man
+         /nix/store/v77iwvr3mrg7xki8pz9sjrrfhw9xw7xc-dwl-0.7
+       Last 25 log lines:
+       > dwl.c:150:19: note: 'arg' declared here
+       >   150 |         const Arg arg;
+       >       |                   ^~~
+       > dwl.c:2949:1: warning: 'view' defined but not used [-Wunused-function]
+       >  2949 | view(const Arg *arg)
+       >       | ^~~~
+       > dwl.c:2757:1: warning: 'toggleview' defined but not used [-Wunused-function]
+       >  2757 | toggleview(const Arg *arg)
+       >       | ^~~~~~~~~~
+       > dwl.c:2743:1: warning: 'toggletag' defined but not used [-Wunused-function]
+       >  2743 | toggletag(const Arg *arg)
+       >       | ^~~~~~~~~
+       > dwl.c:2684:1: warning: 'tagmon' defined but not used [-Wunused-function]
+       >  2684 | tagmon(const Arg *arg)
+       >       | ^~~~~~
+       > dwl.c:2671:1: warning: 'tag' defined but not used [-Wunused-function]
+       >  2671 | tag(const Arg *arg)
+       >       | ^~~
+       > dwl.c:1415:1: warning: 'focusmon' defined but not used [-Wunused-function]
+       >  1415 | focusmon(const Arg *arg)
+       >       | ^~~~~~~~
+       > dwl.c:653:1: warning: 'chvt' defined but not used [-Wunused-function]
+       >   653 | chvt(const Arg *arg)
+       >       | ^~~~
+       > make: *** [Makefile:78: dwl.o] Error 1
+       For full logs, run:
+         nix log /nix/store/v6l01c38amb8ld7jdny413b1vj2rpgz5-dwl-0.7.drv
+error: Cannot build '/nix/store/f0nhy488sm5nhhj4qzwlnirh9154g83h-home-manager-path.drv'.
+       Reason: 1 dependency failed.
+       Output paths:
+         /nix/store/ls9lw374nynj5fic2299277f5y4sabj8-home-manager-path
+error: Cannot build '/nix/store/marjy1sqxmzjfl4b86kzbdyvyz3zkmay-home-manager-generation.drv'.
+       Reason: 1 dependency failed.
+       Output paths:
+         /nix/store/ca9j4n7yphdla1w9y4r6p9i3c63ia5h8-home-manager-generation
+error: Cannot build '/nix/store/178v9xf4zx061lzr686pjfs5gmg576bf-user-environment.drv'.
+       Reason: 1 dependency failed.
+       Output paths:
+         /nix/store/h177x4h3lix59fpzlrj0d2ic2rswy0qx-user-environment
+error: Cannot build '/nix/store/dh1rp4mcl6pz21nyqs6fd6fhi9mfdnhp-etc.drv'.
+       Reason: 1 dependency failed.
+       Output paths:
+         /nix/store/l8l4gs16ipwsgijgv6kdnrzk0nggc4f8-etc
+error: Cannot build '/nix/store/ghm6jrwqhlpxzq3v5kqyw3bvl1n0ndl5-nixos-system-ekman-25.11.20260117.72ac591.drv'.
+       Reason: 1 dependency failed.
+       Output paths:
+         /nix/store/l3ir577pnqd15409mbvasp4vf77kdic9-nixos-system-ekman-25.11.20260117.72ac591
+Command 'nix --extra-experimental-features 'nix-command flakes' build --print-out-paths '.#nixosConfigurations."ekman".config.system.build.toplevel'' returned non-zero exit status 1.

@@ -22,7 +22,7 @@
   fileSystems."/mnt/data" =
     { device = "/dev/disk/by-uuid/e13eb5af-e843-4121-b327-dcdc55b24114";
       fsType = "ext4";
-      options = [ "noatime" ];
+      options = [ "defaults" "nofail" "noatime" ];
     };
 
   fileSystems."/boot" =
