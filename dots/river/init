@@ -11,8 +11,8 @@ riverctl border-width 0
 rivertile -view-padding 0 -outer-padding 0 &
 riverctl default-layout rivertile
 
-riverctl keyboard-layout -options "compose:menu,ctrl:nocaps" -variant colemak_dh_iso us
-echo "colemak_dh_iso" > /tmp/river-layout-state
+riverctl keyboard-layout -options "compose:menu,ctrl:nocaps" es
+
 riverctl set-repeat 50 200
 riverctl focus-follows-cursor normal
 
@@ -62,7 +62,7 @@ riverctl map -repeat normal None XF86MonBrightnessUp   spawn "brightnessctl set 
 riverctl map -repeat normal None XF86MonBrightnessDown spawn "brightnessctl set 10%-"
 
 riverctl map normal Mod4 R spawn "sh -c 'pkill rivertile; ~/.config/river/init'"
-riverctl map normal Mod4+Shift K spawn "keyboard-layout-switcher"
+
 
 # Keys 1-9 -> Tags 1-9
 for i in {1..9}; do

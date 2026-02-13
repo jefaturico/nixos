@@ -11,6 +11,9 @@
       url = "github:youwen5/zen-browser-flake"; 
       inputs.nixpkgs.follows = "nixpkgs"; 
     };
+
+    nix-flatpak.url = "github:gmodena/nix-flatpak";
+
   };
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs: 
@@ -34,7 +37,9 @@
           modules = [
             ./hosts/galileo/software.nix
             home-manager.nixosModules.home-manager 
+            inputs.nix-flatpak.nixosModules.nix-flatpak
             homeManagerConf
+
           ];
         };
 
@@ -45,7 +50,9 @@
           modules = [
             ./hosts/ekman/software.nix
             home-manager.nixosModules.home-manager
+            inputs.nix-flatpak.nixosModules.nix-flatpak
             homeManagerConf
+
           ];
         };
       };

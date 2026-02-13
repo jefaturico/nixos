@@ -45,40 +45,14 @@ in
   };
 
   home.packages = with pkgs; [
-    anki
     antigravity
     bat
     brightnessctl
-    emacs-lsp-booster # LSP performance optimization for Emacs
+    calibre
     fd
     fff
     ffmpeg
     gimp
-    (pkgs.appimageTools.wrapType2 {
-      pname = "helium";
-      version = "0.8.1.1";
-      src = pkgs.fetchurl {
-        url = "https://github.com/imputnet/helium-linux/releases/download/0.8.1.1/helium-0.8.1.1-x86_64.AppImage";
-        sha256 = "sha256-n1wn80h9O7GpZz4AygNSKMcilX8lr6fJkiQBBPPQXok=";
-      };
-      extraPkgs = pkgs: [ pkgs.libsecret ];
-    })
-    (pkgs.makeDesktopItem {
-      name = "helium";
-      desktopName = "Helium";
-      genericName = "Web Browser";
-      exec = "helium %U";
-      icon = "helium";
-      categories = [
-        "Network"
-        "WebBrowser"
-      ];
-      mimeTypes = [
-        "text/html"
-        "x-scheme-handler/http"
-        "x-scheme-handler/https"
-      ];
-    })
     imagemagick
     imv
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
@@ -91,8 +65,8 @@ in
     pandoc
     gsettings-desktop-schemas
     pwvucontrol
+    helix
     ripgrep
-    river-classic
     uget
     wbg
     wireplumber

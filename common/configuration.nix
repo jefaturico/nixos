@@ -7,8 +7,8 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   networking = {
-    networkmanager.enable = true;
-    firewall.allowedTCPPorts = [ 22 ];
+   networkmanager.enable = true;
+     firewall.allowedTCPPorts = [ 22 ];
   };
 
   services.xserver.xkb = {
@@ -49,7 +49,25 @@
       '')
     ];
 
+    udisks2.enable = true;
+
     dbus.enable = true;
+
+    flatpak = {
+      enable = true;
+      packages = [
+        "com.stremio.Stremio"
+        "org.jamovi.jamovi"
+      ];
+      remotes = [{
+        name = "flathub";
+        location = "https://flathub.org/repo/flathub.flatpakrepo";
+      }];
+      update.auto = {
+        enable = true;
+        onCalendar = "daily";
+      };
+    };
 
     pipewire = {
       enable = true;
@@ -69,6 +87,8 @@
       settings.KbdInteractiveAuthentication = false;
     };
   };
+
+
 
 xdg.portal = {
   enable = true;

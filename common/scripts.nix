@@ -179,7 +179,7 @@ in
       # 1. Use fd to search specific directories.
       # 2. Sort by Zathura history (bookmarks.sqlite) because filesystem is noatime.
       # 3. Select with fuzzel and open with zathura.
-      fd --type f -e pdf -e epub --follow --absolute-path . ~/college ~/library ~/downloads 2>/dev/null | \
+      fd --type f -e pdf -e epub --follow --absolute-path . ~/college ~/library ~/downloads ~/workbench 2>/dev/null | \
       ${pkgs.python3}/bin/python3 -c "
       import sys, sqlite3, os
 

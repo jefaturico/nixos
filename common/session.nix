@@ -17,6 +17,7 @@
       XDG_CURRENT_DESKTOP = "wlroots";
       NIXOS_OZONE_WL = "1";
       PATH = "$HOME/.local/bin:$PATH";
+      XDG_DATA_DIRS = "$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS";
     };
   };
 
