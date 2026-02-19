@@ -1,0 +1,25 @@
+[language-server.nil]
+command = "nil"
+
+[language-server.markdown-oxide]
+command = "markdown-oxide"
+
+[language-server.texlab]
+command = "texlab"
+
+[[language]]
+name = "nix"
+auto-format = true
+formatter = { command = "nixfmt" }
+language-servers = [ "nil" ]
+
+[[language]]
+name = "markdown"
+language-servers = [ "markdown-oxide" ]
+rulers = []
+soft-wrap = { enable = true, wrap-at-text-width = true, wrap-indicator = "" }
+text-width = 80
+
+[[language]]
+name = "latex"
+language-servers = [ "texlab" ]

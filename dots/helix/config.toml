@@ -1,0 +1,20 @@
+theme = "base16_transparent"
+
+[editor]
+line-number = "relative"
+mouse = true
+color-modes = true
+auto-pairs = false
+
+[editor.cursor-shape]
+normal = "block"
+insert = "bar"
+select = "block"
+
+[editor.lsp]
+display-messages = true
+display-inlay-hints = true
+
+[editor.file-picker]
+hidden = true
+git-ignore = false

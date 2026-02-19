@@ -74,9 +74,27 @@ in
     wlrctl
     xwayland
     zoxide
-    (dwl.overrideAttrs (old: {
+    (stdenv.mkDerivation {
+      name = "dwl-custom";
       src = ../dots/dwl;
-    }))
+      nativeBuildInputs = [ pkg-config wayland-scanner ];
+      buildInputs = [ 
+        libinput wayland wlroots 
+        libxkbcommon pixman
+        xorg.libxcb xorg.xcbutilwm 
+        xwayland
+      ];
+      enableParallelBuilding = true;
+      
+      preBuild = ''
+        cp ${../dots/dwl/config.h} config.h
+        cp ${../dots/dwl/config.mk} config.mk
+      '';
+      
+      installPhase = ''
+        make PREFIX=$out install
+      '';
+    })
   ];
 
 }
