@@ -35,47 +35,17 @@
       '';
     };
 
-    emacs = {
-      enable = true;
-      package = pkgs.emacs-pgtk;
-      extraPackages =
-        epkgs: with epkgs; [
-          vterm
-          pdf-tools
-          org-roam
-          org-roam-ui
-          treesit-auto
-          vertico
-          marginalia
-          consult
-          orderless
-          corfu
-          cape
-          which-key
-          all-the-icons
-          doom-modeline
-          visual-fill-column
-          undo-fu
-          evil
-          evil-collection
-          evil-org
-          gcmh
-          alert
-          elfeed
-          auctex
-        ];
-    };
-
     foot = {
       enable = true;
       settings = {
         main = {
           font = "JetBrainsMono Nerd Font:size=16";
           pad = "24x24 center-when-maximized-and-fullscreen";
+          include = "~/.cache/wal/colors-foot.ini";
 
         };
         colors = {
-          alpha = if osConfig.networking.hostName == "galileo" then "0.97" else "0.8";
+          alpha = if osConfig.networking.hostName == "galileo" then "0.98" else "0.8";
         };
       };
     };
@@ -93,18 +63,9 @@
           horizontal-pad = 20;
           vertical-pad = 15;
           inner-pad = 5;
+          include = "~/.cache/wal/colors-fuzzel.ini";
+        };
 
-        };
-        colors = {
-          background = "ffffffff";
-          text = "000000ff";
-          match = "0031a9ff";
-          selection = "c0deffff";
-          selection-text = "000000ff";
-          selection-match = "0031a9ff";
-          border = "000000ff";
-          prompt = "005f5fff";
-        };
         border = {
           width = 1;
           radius = 0;
@@ -141,16 +102,7 @@
         guioptions = "none";
         page-cache-size = 512;
         continuous-hist-save = true;
-      };
-
-      mappings = {
-        n = "scroll down";
-        p = "scroll up";
-        N = "navigate next";
-        P = "navigate previous";
-        "<C-n>" = "navigate next";
-        "<C-p>" = "navigate previous";
-        "<C-s>" = "toggle_statusbar";
+        selection-clipboard = "clipboard";
       };
     };
 

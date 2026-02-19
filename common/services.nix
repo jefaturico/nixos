@@ -6,20 +6,21 @@
       enable = true;
       settings = {
         font = "JetBrainsMono Nerd Font Mono 12";
-        background-color = "#ffffffff";
-        text-color = "#000000ff";
-        border-color = "#000000ff";
+        background-color = "#000000ff";
+        text-color = "#ffffffff";
+        border-color = "#ffffffff";
         border-size = 1;
         padding = "10";
         margin = "10";
         default-timeout = 2000;
-        format = "<span foreground=\"#005f5f\"><b>%s</b></span>\\n%b";
+        format = "<b>%s</b>\\n%b";
+        include = "~/.cache/wal/colors-mako";
       };
       extraConfig = ''
         [urgency=high]
         default-timeout=0
         ignore-timeout=1
-        text-color=#a60000
+        text-color=#ff0000
       '';
     };
 
@@ -39,20 +40,16 @@
         };
       };
     };
-
-    emacs = {
-      enable = true;
-      package = config.programs.emacs.finalPackage;
-      client.enable = true;
-      defaultEditor = true;
-    };
   };
-
   systemd.user.services.mako = {
     Service = {
       Restart = "always";
       ExecStart = "${pkgs.mako}/bin/mako";
-      ExecStartPre = "-${pkgs.procps}/bin/pkill -x mako";
+      ExecStartPre = "${pkgs.writeShellScript "mako-pre" ''
+        mkdir -p "$HOME/.cache/wal"
+        touch "$HOME/.cache/wal/colors-mako"
+        ${pkgs.procps}/bin/pkill -x mako || true
+      ''}";
     };
   };
 }
