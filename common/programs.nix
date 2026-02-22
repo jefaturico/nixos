@@ -1,6 +1,54 @@
 { pkgs, osConfig, ... }:
+
+let
+  dwl-custom = pkgs.stdenv.mkDerivation {
+    name = "dwl-custom";
+    src = ../dots/dwl;
+    nativeBuildInputs = with pkgs; [
+      pkg-config
+      wayland-scanner
+    ];
+    buildInputs = with pkgs; [
+      libinput
+      wayland
+      wlroots
+      wayland-protocols
+      libxkbcommon
+      pixman
+      xorg.libxcb
+      xorg.xcbutilwm
+      xwayland
+    ];
+    enableParallelBuilding = true;
+
+    preBuild = ''
+      cp ${../dots/dwl/config.h} config.h
+      cp ${../dots/dwl/config.mk} config.mk
+
+      echo "Checking for wlroots pkg-config..."
+      if pkg-config --exists wlroots; then
+        echo "Using wlroots.pc"
+        substituteInPlace config.mk --replace "wlroots-0.19" "wlroots"
+      elif pkg-config --exists wlroots-0.19; then
+        echo "Using wlroots-0.19.pc"
+      else
+        echo "Error: wlroots pkg-config not found!"
+        pkg-config --list-all | grep wlroots
+        exit 1
+      fi
+    '';
+
+    installPhase = ''
+      make PREFIX=$out install
+    '';
+  };
+in
 {
+  home.packages = [ dwl-custom ];
+
   programs = {
+
+
 
     bash = {
       enable = true;
@@ -8,8 +56,8 @@
       sessionVariables = {
 
         TERM = "foot";
-        BROWSER = "helium";
-        DEFAULT_BROWSER = "helium";
+        BROWSER = "qutebrowser";
+        DEFAULT_BROWSER = "qutebrowser";
       };
 
       initExtra = /* bash */ ''

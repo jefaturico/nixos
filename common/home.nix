@@ -95,7 +95,8 @@ in
     gimp
     imagemagick
     imv
-    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+    qutebrowser
+    brave
     keepassxc
     libnotify
     libreoffice
@@ -120,47 +121,7 @@ in
     wlrctl
     xwayland
     zoxide
-    (stdenv.mkDerivation {
-      name = "dwl-custom";
-      src = ../dots/dwl;
-      nativeBuildInputs = [
-        pkg-config
-        wayland-scanner
-      ];
-      buildInputs = [
-        libinput
-        wayland
-        wlroots
-        wayland-protocols
-        libxkbcommon
-        pixman
-        xorg.libxcb
-        xorg.xcbutilwm
-        xwayland
-      ];
-      enableParallelBuilding = true;
 
-      preBuild = ''
-        cp ${../dots/dwl/config.h} config.h
-        cp ${../dots/dwl/config.mk} config.mk
-
-        echo "Checking for wlroots pkg-config..."
-        if pkg-config --exists wlroots; then
-          echo "Using wlroots.pc"
-          substituteInPlace config.mk --replace "wlroots-0.19" "wlroots"
-        elif pkg-config --exists wlroots-0.19; then
-          echo "Using wlroots-0.19.pc"
-        else
-          echo "Error: wlroots pkg-config not found!"
-          pkg-config --list-all | grep wlroots
-          exit 1
-        fi
-      '';
-
-      installPhase = ''
-        make PREFIX=$out install
-      '';
-    })
   ];
 
 }

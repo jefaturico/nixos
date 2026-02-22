@@ -45,11 +45,11 @@
         "text/plain" = [ "nvim.desktop" ];
         "text/markdown" = [ "nvim.desktop" ];
         "application/x-shellscript" = [ "nvim.desktop" ];
-        "text/html" = "helium.desktop";
-        "x-scheme-handler/http" = "helium.desktop";
-        "x-scheme-handler/https" = "helium.desktop";
-        "x-scheme-handler/about" = "helium.desktop";
-        "x-scheme-handler/unknown" = "helium.desktop";
+        "text/html" = "org.qutebrowser.qutebrowser.desktop";
+        "x-scheme-handler/http" = "org.qutebrowser.qutebrowser.desktop";
+        "x-scheme-handler/https" = "org.qutebrowser.qutebrowser.desktop";
+        "x-scheme-handler/about" = "org.qutebrowser.qutebrowser.desktop";
+        "x-scheme-handler/unknown" = "org.qutebrowser.qutebrowser.desktop";
       };
     };
   };

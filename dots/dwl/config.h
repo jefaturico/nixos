@@ -23,7 +23,7 @@ static int log_level = WLR_ERROR;
 
 static const Rule rules[] = {
 	/* app_id             title       tags mask     isfloating   monitor */
-	{ "zen",  NULL,       1 << 9,       0,           -1 }, 
+	{ "qutebrowser",  NULL,       1 << 9,       0,           -1 }, 
 };
 
 /* layout(s) */
@@ -95,8 +95,8 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 /* commands */
 static const char *termcmd[] = { "foot", NULL };
 static const char *menucmd[] = { "fuzzel", NULL };
-static const char *wwwcmd[] = { "zen", NULL };
-static const char *zkcmd[] = { "hx", "'/home/jefaturico/zettelkasten'", NULL };
+static const char *wwwcmd[] = { "qutebrowser", NULL };
+static const char *zkcmd[] = { "foot", "-D", "/home/jefaturico/zettelkasten", "-e", "hx", ".", NULL };
 static const char *doccmd[] = { "wdoc-find", NULL };
 static const char *infocmd[] = { "systeminfo", NULL };
 static const char *brightnessup[] = { "brightnessctl", "set", "10%+", NULL };
@@ -104,6 +104,22 @@ static const char *brightnessdown[] = { "brightnessctl", "set", "10%-", NULL };
 static const char *volumeup[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+", NULL };
 static const char *volumedown[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-", NULL };
 static const char *volumemute[] = { "wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle", NULL };
+
+static void togglefloating_chk(const Arg *arg)
+{
+	Client *c = focustop(selmon);
+	if (!c || c->isfullscreen)
+		return;
+	togglefloating(arg);
+	if (c->isfloating) {
+		float ww = selmon->m.width * 0.5f;
+		float wh = selmon->m.height * 0.6f;
+		int wx = selmon->m.x + (selmon->m.width - ww) / 2;
+		int wy = selmon->m.y + (selmon->m.height - wh) / 2;
+		resize(c, (struct wlr_box){.x = wx, .y = wy, .width = (int)ww, .height = (int)wh}, 1, 1);
+		arrange(selmon);
+	}
+}
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: 2 -> at, etc. */
@@ -114,6 +130,7 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_b,      spawn,            {.v = wwwcmd} },
 	{ MODKEY,                    XKB_KEY_d,      spawn,            {.v = doccmd} },
 	{ MODKEY,                    XKB_KEY_i,      spawn,            {.v = infocmd} },
+	{ MODKEY,                    XKB_KEY_n,      spawn,            {.v = zkcmd} },
 	
     { 0,                         XKB_KEY_XF86MonBrightnessUp,   spawn, {.v = brightnessup} },
     { 0,                         XKB_KEY_XF86MonBrightnessDown, spawn, {.v = brightnessdown} },
@@ -127,7 +144,8 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_equal,        incnmaster,       {.i = 1} },
 	{ MODKEY,                    XKB_KEY_h,           setmfact,         {.f = -0.1f} },
 	{ MODKEY,                    XKB_KEY_l,           setmfact,         {.f = +0.1f} },
-	{ MODKEY,                    XKB_KEY_space,      zoom,             {0} },
+	{ MODKEY|WLR_MODIFIER_CTRL,  XKB_KEY_space,       togglefloating_chk, {0} },
+	{ MODKEY,                    XKB_KEY_space,       zoom, {0} },
 	{ MODKEY,                    XKB_KEY_Tab,         view,             {0} },
 	{ MODKEY,                    XKB_KEY_q,           killclient,       {0} },
 	{ MODKEY,                    XKB_KEY_t,           setlayout,        {.v = &layouts[0]} },
