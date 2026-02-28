@@ -31,6 +31,10 @@ in
         title_headings = false
         link_filenames_only = true
       '';
+      ".latexmkrc".text = ''
+        $pdf_previewer = 'zathura';
+        $pdf_update_method = 0;
+      '';
     }
     // (
       builtins.listToAttrs (
@@ -42,86 +46,134 @@ in
         }) (builtins.attrNames symlinks)
       )
       // {
-        ".config/wal/templates/colors-foot.ini".text = ''
+        ".config/wallust/templates/colors-foot.ini".text = ''
           [colors]
-          foreground={foreground.strip}
-          background={background.strip}
-          regular0={color0.strip}
-          regular1={color1.strip}
-          regular2={color2.strip}
-          regular3={color3.strip}
-          regular4={color4.strip}
-          regular5={color5.strip}
-          regular6={color6.strip}
-          regular7={color7.strip}
-          bright0={color8.strip}
-          bright1={color9.strip}
-          bright2={color10.strip}
-          bright3={color11.strip}
-          bright4={color12.strip}
-          bright5={color13.strip}
-          bright6={color14.strip}
-          bright7={color15.strip}
+          foreground={{foreground | strip}}
+          background={{background | strip}}
+          regular0={{color0 | strip}}
+          regular1={{color1 | strip}}
+          regular2={{color2 | strip}}
+          regular3={{color3 | strip}}
+          regular4={{color4 | strip}}
+          regular5={{color5 | strip}}
+          regular6={{color6 | strip}}
+          regular7={{color7 | strip}}
+          bright0={{color8 | strip}}
+          bright1={{color9 | strip}}
+          bright2={{color10 | strip}}
+          bright3={{color11 | strip}}
+          bright4={{color12 | strip}}
+          bright5={{color13 | strip}}
+          bright6={{color14 | strip}}
+          bright7={{color15 | strip}}
         '';
-        ".config/wal/templates/colors-fuzzel.ini".text = ''
+        ".config/wallust/templates/colors-fuzzel.ini".text = ''
           [colors]
-          background={background.strip}ff
-          text={foreground.strip}ff
-          match={color1.strip}ff
-          selection={color2.strip}ff
-          selection-text={background.strip}ff
-          selection-match={color1.strip}ff
-          border={color3.strip}ff
-          prompt={color4.strip}ff
+          background={{background | strip}}ff
+          text={{foreground | strip}}ff
+          match={{color1 | strip}}ff
+          selection={{color2 | strip}}ff
+          selection-text={{background | strip}}ff
+          selection-match={{color1 | strip}}ff
+          border={{color3 | strip}}ff
+          prompt={{color4 | strip}}ff
         '';
-        ".config/wal/templates/colors-mako".text = ''
-          background-color={background}ff
-          text-color={foreground}ff
-          border-color={color3}ff
+        ".config/wallust/templates/colors-mako".text = ''
+          background-color={{background}}ff
+          text-color={{foreground}}ff
+          border-color={{color3}}ff
+        '';
+        ".config/wallust/templates/colors-obsidian.css".text = ''
+          .theme-dark {
+            --background-primary: {{background}} !important;
+            --background-primary-alt: {{color0 | lighten(0.05)}} !important;
+            --background-secondary: {{color0 | lighten(0.03)}} !important;
+            --background-secondary-alt: {{color0 | lighten(0.06)}} !important;
+            --background-modifier-border: {{color8}}44 !important;
+            --text-normal: {{foreground}} !important;
+            --text-muted: {{color7}} !important;
+            --text-faint: {{color8}} !important;
+            --text-accent: {{color4}} !important;
+            --text-accent-hover: {{color12}} !important;
+            --interactive-normal: {{color0 | lighten(0.05)}} !important;
+            --interactive-hover: {{color0 | lighten(0.1)}} !important;
+            --interactive-accent: {{color4}} !important;
+            --interactive-accent-hover: {{color12}} !important;
+            --text-selection: {{color2}}44 !important;
+            --text-highlight-bg: {{color3}}33 !important;
+            --titlebar-background: {{background}} !important;
+            --titlebar-background-focused: {{background}} !important;
+            --tab-text-color-focused-active: {{foreground}} !important;
+          }
+        '';
+        ".config/wallust/wallust.toml".text = ''
+          backend = "fastresize"
+          check_contrast = true
+
+          [templates]
+          foot = { template = 'colors-foot.ini', target = '~/.cache/wallust/colors-foot.ini' }
+          fuzzel = { template = 'colors-fuzzel.ini', target = '~/.cache/wallust/colors-fuzzel.ini' }
+          mako = { template = 'colors-mako', target = '~/.cache/wallust/colors-mako' }
+          obsidian = { template = 'colors-obsidian.css', target = '~/zettelkasten/.obsidian/snippets/wallust.css' }
         '';
       }
     );
 
   };
 
-  home.packages = with pkgs; [
-    antigravity
-    bat
-    brightnessctl
-    calibre
-    fd
-    fff
-    ffmpeg
-    gimp
-    imagemagick
-    imv
-    qutebrowser
-    brave
-    keepassxc
-    libnotify
-    libreoffice
-    lswt
-    helix
-    mpv
-    obsidian
-    obs-studio
-    pandoc
-    gsettings-desktop-schemas
-    pwvucontrol
-    markdown-oxide
-    nil
-    nixfmt-rfc-style
-    texlab
-    ripgrep
-    pywal
-    uget
-    wbg
-    wireplumber
-    wl-clipboard
-    wlrctl
-    xwayland
-    zoxide
-
-  ];
+  home.packages =
+    with pkgs;
+    [
+      bat
+      brightnessctl
+      calibre
+      calcurse
+      fd
+      fff
+      ffmpeg
+      gimp
+      imagemagick
+      imv
+      qutebrowser
+      (brave.override {
+        commandLineArgs = [
+          "--enable-features=VaapiVideoDecodeLinuxGL"
+          "--disable-features=UseChromeOSDirectVideoDecoder"
+          "--use-gl=egl"
+          "--ozone-platform=wayland"
+        ];
+      })
+      tor-browser
+      keepassxc
+      libnotify
+      libreoffice
+      lswt
+      helix
+      mpv
+      obsidian
+      pandoc
+      gsettings-desktop-schemas
+      pwvucontrol
+      markdown-oxide
+      nil
+      nixfmt-rfc-style
+      texlab
+      ripgrep
+      wallust
+      uget
+      wbg
+      wireplumber
+      wl-clipboard
+      qbittorrent
+      slurp
+      grim
+      wlrctl
+      xwayland
+      zoxide
+    ]
+    ++ lib.optionals (osConfig.networking.hostName != "coriolis") [
+      antigravity
+      obs-studio
+    ];
 
 }

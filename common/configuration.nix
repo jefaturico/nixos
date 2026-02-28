@@ -13,12 +13,18 @@
   };
 
   services.xserver.xkb = {
-    layout = "es";
+    layout = "us";
+    variant = "altgr-intl";
   };
 
   console = {
     font = "Lat2-Terminus16";
-    keyMap = "es";
+    keyMap = "us";
+  };
+
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
   };
 
   services = {
@@ -124,7 +130,7 @@
     ];
     config = {
       common.default = [ "gtk" ];
-      river = {
+      wlroots = {
         "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
         "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
       };

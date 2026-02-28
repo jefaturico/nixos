@@ -45,7 +45,8 @@ static const struct xkb_rule_names xkb_rules = {
 	/* example:
 	.options = "ctrl:nocaps",
 	*/
-	.layout = "es",
+	.layout = "us",
+	.variant = "altgr-intl",
 	.options = "caps:ctrl_modifier",
 };
 
@@ -84,21 +85,26 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 #define MODKEY WLR_MODIFIER_LOGO
 
 #define TAGKEYS(KEY,SKEY,TAG) \
-	{ MODKEY,                                      KEY,            view,            {.ui = 1 << TAG} }, \
-	{ MODKEY|WLR_MODIFIER_CTRL,                    KEY,            tag,             {.ui = 1 << TAG} }, \
-	{ MODKEY|WLR_MODIFIER_SHIFT,                   SKEY,           toggleview,      {.ui = 1 << TAG} }, \
-	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT,SKEY,toggletag, {.ui = 1 << TAG} }
+	{ MODKEY,                                       KEY,  view,       {.ui = 1 << TAG} }, \
+	{ MODKEY|WLR_MODIFIER_SHIFT,                    SKEY, tag,        {.ui = 1 << TAG} }, \
+	{ MODKEY|WLR_MODIFIER_CTRL,                     KEY,  toggleview, {.ui = 1 << TAG} }, \
+	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT,  SKEY, toggletag,  {.ui = 1 << TAG} }
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *termcmd[] = { "foot", NULL };
-static const char *menucmd[] = { "fuzzel", NULL };
-static const char *wwwcmd[] = { "qutebrowser", NULL };
-static const char *zkcmd[] = { "foot", "-D", "/home/jefaturico/zettelkasten", "-e", "hx", ".", NULL };
+static const char *termcmd[] = { "footclient", NULL };
+static const char *termcmd_fallback[] = { "foot", NULL };
+static const char *menucmd[] = { "fuzzel", "-p", "λ ", NULL };
+static const char *zkcmd[] = { "footclient", "-D", "/home/jefaturico/zettelkasten", "-e", "hx", ".", NULL };
+static const char *calcmd[] = { "footclient", "-e", "calcurse", NULL };
+static const char *bmarkcmd[] = { "fuzzel-bookmarks", NULL };
 static const char *doccmd[] = { "wdoc-find", NULL };
 static const char *infocmd[] = { "systeminfo", NULL };
+static const char *wallrandcmd[] = { "wlsetbg", "-r", NULL };
+static const char *wallcmd[] = { "wlsetbg", NULL };
+
 static const char *brightnessup[] = { "brightnessctl", "set", "10%+", NULL };
 static const char *brightnessdown[] = { "brightnessctl", "set", "10%-", NULL };
 static const char *volumeup[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+", NULL };
@@ -126,11 +132,15 @@ static const Key keys[] = {
 	/* modifier                  key                  function          argument */
 	{ MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
 	{ MODKEY,                    XKB_KEY_Return,      spawn,            {.v = termcmd} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      spawn,            {.v = termcmd_fallback} },
 
-	{ MODKEY,                    XKB_KEY_b,      spawn,            {.v = wwwcmd} },
 	{ MODKEY,                    XKB_KEY_d,      spawn,            {.v = doccmd} },
 	{ MODKEY,                    XKB_KEY_i,      spawn,            {.v = infocmd} },
 	{ MODKEY,                    XKB_KEY_n,      spawn,            {.v = zkcmd} },
+	{ MODKEY,                    XKB_KEY_c,      spawn,            {.v = calcmd} },
+	{ MODKEY,                    XKB_KEY_b,      spawn,            {.v = bmarkcmd} },
+	{ MODKEY,                    XKB_KEY_w,      spawn,            {.v = wallrandcmd} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_W,      spawn,            {.v = wallcmd} },
 	
     { 0,                         XKB_KEY_XF86MonBrightnessUp,   spawn, {.v = brightnessup} },
     { 0,                         XKB_KEY_XF86MonBrightnessDown, spawn, {.v = brightnessdown} },
@@ -139,36 +149,35 @@ static const Key keys[] = {
     { 0,                         XKB_KEY_XF86AudioMute,         spawn, {.v = volumemute} },
 	{ MODKEY,                    XKB_KEY_j,           focusstack,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,           focusstack,       {.i = -1} },
-	{ MODKEY,                    XKB_KEY_minus,       incnmaster,       {.i = +1} },
-	{ MODKEY,                    XKB_KEY_plus,        incnmaster,       {.i = -1} },
-	{ MODKEY,                    XKB_KEY_equal,        incnmaster,       {.i = 1} },
+	{ MODKEY,                    XKB_KEY_minus,       incnmaster,       {.i = -1} },
+	{ MODKEY,                    XKB_KEY_equal,       incnmaster,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_h,           setmfact,         {.f = -0.1f} },
 	{ MODKEY,                    XKB_KEY_l,           setmfact,         {.f = +0.1f} },
-	{ MODKEY|WLR_MODIFIER_CTRL,  XKB_KEY_space,       togglefloating_chk, {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_space,       togglefloating_chk, {0} },
 	{ MODKEY,                    XKB_KEY_space,       zoom, {0} },
 	{ MODKEY,                    XKB_KEY_Tab,         view,             {0} },
 	{ MODKEY,                    XKB_KEY_q,           killclient,       {0} },
 	{ MODKEY,                    XKB_KEY_t,           setlayout,        {.v = &layouts[0]} },
 	{ MODKEY,                    XKB_KEY_f,           setlayout,        {.v = &layouts[1]} },
 	{ MODKEY,                    XKB_KEY_m,           setlayout,        {.v = &layouts[2]} },
-	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_space,       togglefloating,   {0} },
+
 	{ MODKEY,                    XKB_KEY_e,           togglefullscreen, {0} },
 
 	{ MODKEY,                    XKB_KEY_comma,       focusmon,         {.i = WLR_DIRECTION_LEFT} },
 	{ MODKEY,                    XKB_KEY_period,      focusmon,         {.i = WLR_DIRECTION_RIGHT} },
-	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_less,        tagmon,           {.i = WLR_DIRECTION_LEFT} },
-	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_greater,     tagmon,           {.i = WLR_DIRECTION_RIGHT} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_less,        tagmon,           {.i = WLR_DIRECTION_LEFT} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_greater,     tagmon,           {.i = WLR_DIRECTION_RIGHT} },
 	TAGKEYS(          XKB_KEY_1, XKB_KEY_exclam,                        0),
-	TAGKEYS(          XKB_KEY_2, XKB_KEY_quotedbl,                      1),
-	TAGKEYS(          XKB_KEY_3, XKB_KEY_periodcentered,                2),
+	TAGKEYS(          XKB_KEY_2, XKB_KEY_at,                            1),
+	TAGKEYS(          XKB_KEY_3, XKB_KEY_numbersign,                    2),
 	TAGKEYS(          XKB_KEY_4, XKB_KEY_dollar,                        3),
 	TAGKEYS(          XKB_KEY_5, XKB_KEY_percent,                       4),
-	TAGKEYS(          XKB_KEY_6, XKB_KEY_ampersand,                     5),
-	TAGKEYS(          XKB_KEY_7, XKB_KEY_slash,                         6),
-	TAGKEYS(          XKB_KEY_8, XKB_KEY_parenleft,                     7),
-	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenright,                    8),
-	TAGKEYS(          XKB_KEY_0, XKB_KEY_equal,                         9),
-	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_Escape,      quit,        {0} },
+	TAGKEYS(          XKB_KEY_6, XKB_KEY_asciicircum,                   5),
+	TAGKEYS(          XKB_KEY_7, XKB_KEY_ampersand,                     6),
+	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                      7),
+	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                     8),
+	TAGKEYS(          XKB_KEY_0, XKB_KEY_parenright,                    9),
+	{ MODKEY,                    XKB_KEY_End,         quit,        {0} },
 
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_CTRL,XKB_KEY_Terminate_Server, quit, {0} },
 

@@ -1,7 +1,0 @@
-○ mako.service
-     Loaded: loaded (/home/jefaturico/.config/systemd/user/mako.service; linked; preset: ignored)
-     Active: inactive (dead)
-
-Jan 31 22:14:15 ekman systemd[1844]: mako.service: Service has no ExecStart=, ExecStop=, or SuccessAction=. Refusing.
-Jan 31 22:14:15 ekman systemd[1844]: mako.service: Service has no ExecStart=, ExecStop=, or SuccessAction=. Refusing.
-Jan 31 22:14:15 ekman systemd[1844]: mako.service: Service has no ExecStart=, ExecStop=, or SuccessAction=. Refusing.

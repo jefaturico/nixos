@@ -38,53 +38,74 @@ in
   home.packages =
     with pkgs;
     [
-      (writeShellScriptBin "dwl-session" ''
-        # dwl-session
-        # Wraps dwl execution with startup tasks
+      (writeShellScriptBin "dwl-startup" ''
+        # dwl-startup
+        # Runs INSIDE dwl via -s flag, after WAYLAND_DISPLAY is set
 
-        # 1. Environment
-        export XDG_CURRENT_DESKTOP=wlroots
-        export XDG_SESSION_TYPE=wayland
-        dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
-
-        # 2. Key components
-        systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+        # 1. Propagate environment to systemd + dbus so portals can start
+        dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
+        systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
         systemctl --user start graphical-session.target
 
-        # 3. Exec Dwl (log to file for debug)
-        # Run wallpaper script using -s flag to ensure Wayland socket is ready
-        STARTUP=""
-        [ -f "$HOME/.wbg" ] && STARTUP="-s $HOME/.wbg"
+        # 2. Restart portal services so they pick up the new env
+        systemctl --user restart xdg-desktop-portal-wlr.service
+        systemctl --user restart xdg-desktop-portal.service
 
-        exec dwl $STARTUP > /tmp/dwl.log 2>&1
+        # 3. Start foot server for fast terminal spawning via footclient
+        foot --server <&- &
+
+        # 4. Run wallpaper startup script if it exists
+        [ -f "$HOME/.wbg" ] && bash "$HOME/.wbg"
+      '')
+
+      (writeShellScriptBin "dwl-session" ''
+        # dwl-session
+        # Wraps dwl execution - display manager calls this
+
+        # 1. Set environment before dwl starts
+        export XDG_CURRENT_DESKTOP=wlroots
+        export XDG_SESSION_TYPE=wayland
+
+        # 2. Exec dwl with startup script
+        #    -s runs dwl-startup AFTER the Wayland socket is ready
+        exec dwl -s dwl-startup > /tmp/dwl.log 2>&1
       '')
 
       (writeShellScriptBin "wlsetbg" ''
-        # wsetbg.sh - Optimized & Smart Wallpaper Setter
-        # Usage: wsetbg.sh [-r]
+        # wlsetbg - Optimized & Smart Wallpaper Setter
+        # Usage: wlsetbg [-r]
 
         export LC_ALL=C
 
         WALL_DIR="$HOME/images/wallpapers"
         STARTUP_SCRIPT="$HOME/.wbg"
         HISTORY_FILE="$HOME/.cache/wsetbg_history"
+        FILELIST_CACHE="$HOME/.cache/wsetbg_filelist"
         CURRENT_WALL=""
 
-        # Ensure history file exists
-        mkdir -p "$(dirname "$HISTORY_FILE")"
-        touch "$HISTORY_FILE"
+        # Ensure cache dir exists
+        mkdir -p "$HOME/.cache"
 
-        # 1. Fast retrieval of current wallpaper
+        # 1. Fast retrieval of current wallpaper (single awk, no pipe)
         if [[ -f "$STARTUP_SCRIPT" ]]; then
-            CURRENT_WALL=$(${pkgs.gnugrep}/bin/grep -o '"[^"]*"' "$STARTUP_SCRIPT" 2>/dev/null | ${pkgs.coreutils}/bin/tr -d '"')
+            CURRENT_WALL=$(${pkgs.gawk}/bin/awk -F'"' '/wbg/{print $2; exit}' "$STARTUP_SCRIPT" 2>/dev/null)
         fi
 
+        # Helper: get file list (cached by directory mtime)
+        get_file_list() {
+            WALL_MTIME=$(${pkgs.coreutils}/bin/stat -c %Y "$WALL_DIR" 2>/dev/null || echo 0)
+            CACHE_MTIME=$(${pkgs.coreutils}/bin/stat -c %Y "$FILELIST_CACHE" 2>/dev/null || echo 0)
+            if [[ "$WALL_MTIME" -gt "$CACHE_MTIME" ]] || [[ ! -s "$FILELIST_CACHE" ]]; then
+                ${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" > "$FILELIST_CACHE"
+            fi
+            ${pkgs.coreutils}/bin/cat "$FILELIST_CACHE"
+        }
+
         get_smart_random_wallpaper() {
-            ${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" | \
+            get_file_list | \
             ${pkgs.gawk}/bin/awk -v hist_file="$HISTORY_FILE" -v current_wall="$CURRENT_WALL" '
             BEGIN {
                 srand();
-                # Load history: map path -> timestamp
                 while ((getline line < hist_file) > 0) {
                     match(line, /^[0-9]+ /);
                     if (RLENGTH > 0) {
@@ -101,17 +122,14 @@ in
                 if (path == "" || path == current_wall) next;
 
                 if (!(path in history)) {
-                    # Tier 1: Unseen
                     unseen[u_count++] = path;
                 } else {
-                    # Tier 2: Seen
                     seen[path] = history[path];
                     s_count++;
                 }
             }
 
             END {
-                # Tier 1: Pick Unseen if any
                 if (u_count > 0) {
                     print unseen[int(rand() * u_count)];
                     exit 0;
@@ -119,8 +137,6 @@ in
 
                 if (s_count == 0) exit 1;
 
-                # Tier 2: Pick from Oldest 20%
-                # Use gawk sorted traversal
                 PROCINFO["sorted_in"] = "@val_num_asc";
 
                 cutoff = int(s_count * 0.2) + 1;
@@ -131,8 +147,7 @@ in
                     candidates[k++] = p;
                     if (k >= cutoff) break;
                 }
-                
-                # Pick random from candidates
+
                 print candidates[int(rand() * k)];
             }
             '
@@ -140,12 +155,10 @@ in
 
         if [[ "$1" == "-r" ]]; then
             FULL_PATH=$(get_smart_random_wallpaper)
-            # Fallback
             if [[ -z "$FULL_PATH" ]]; then
-                FULL_PATH=$(${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" | ${pkgs.coreutils}/bin/shuf -n 1)
+                FULL_PATH=$(get_file_list | ${pkgs.coreutils}/bin/shuf -n 1)
             fi
         else
-            # Interactive Mode
             cd "$WALL_DIR" || exit 1
             CHOICE=$(${pkgs.fd}/bin/fd --type f | ${pkgs.fuzzel}/bin/fuzzel -d -p "Select Wallpaper: ")
             [[ -z "$CHOICE" ]] && exit 0
@@ -155,63 +168,31 @@ in
         [[ -z "$FULL_PATH" || ! -f "$FULL_PATH" ]] && exit 1
 
         # 2. Apply Wallpaper (Instant feedback)
-        pkill wbg
+        # Use -x for exact match; brief wait to avoid race with new wbg
+        ${pkgs.procps}/bin/pkill -x wbg || true
+        sleep 0.05
         wbg "$FULL_PATH" > /dev/null 2>&1 &
 
-        # 2b. Generate Pywal Colors (Low Overhead)
-        # -n: skip setting wallpaper (wbg does it)
-        # -e: skip reloading other clients (we handle it)
-        # -q: quiet
-        ${pkgs.pywal}/bin/wal -b 000000 -n -e -q -i "$FULL_PATH"
+        # 2b. Generate Colors with wallust (runs in background)
+        # wallust reads templates from ~/.config/wallust/ and outputs to ~/.cache/wallust/
+        ${pkgs.wallust}/bin/wallust run -q "$FULL_PATH" &
+        WALLUST_PID=$!
 
-        # 2c. Reload Mako Config
-        # We use a template in ~/.config/wal/templates/colors-mako
-        # which mako is configured to include.
-        ${pkgs.mako}/bin/makoctl reload &
+        # 2c. Wait for wallust to finish, then reload mako
+        (
+            wait $WALLUST_PID 2>/dev/null
+            ${pkgs.mako}/bin/makoctl reload 2>/dev/null
+        ) &
 
-        # 2d. Update Obsidian Transparent theme background (if installed)
-        OBSIDIAN_THEME="$HOME/zettelkasten/.obsidian/themes/Transparent/theme.css"
-        if [ -f "$OBSIDIAN_THEME" ]; then
-            (
-                trap 'rm -f "$TMP_RESIZED" "$TMP_B64" "$TMP_THEME"' EXIT
-                TMP_RESIZED="/tmp/obsidian_wallpaper_$$.jpg"
-                TMP_B64="/tmp/obsidian_b64_$$"
-                TMP_THEME="/tmp/obsidian_theme_$$"
+        # 3. Update History
+        echo "$(${pkgs.coreutils}/bin/date +%s) $FULL_PATH" >> "$HISTORY_FILE"
 
-                # Find the variable definition line dynamically
-                LINE_NUM=$(grep -n '\-\-background-image-base64:' "$OBSIDIAN_THEME" | head -1 | cut -d: -f1)
-                [ -z "$LINE_NUM" ] && exit 0
-
-                ${pkgs.imagemagick}/bin/magick "$FULL_PATH" -resize 1920x -quality 60 "$TMP_RESIZED" \
-                && base64 -w 0 "$TMP_RESIZED" > "$TMP_B64" \
-                && head -n $((LINE_NUM - 1)) "$OBSIDIAN_THEME" > "$TMP_THEME" \
-                && printf '  --background-image-base64: url("data:image/jpg;base64,' >> "$TMP_THEME" \
-                && cat "$TMP_B64" >> "$TMP_THEME" \
-                && printf '");\n' >> "$TMP_THEME" \
-                && tail -n +$((LINE_NUM + 1)) "$OBSIDIAN_THEME" >> "$TMP_THEME" \
-                && mv "$TMP_THEME" "$OBSIDIAN_THEME"
-            ) 2>/dev/null &
-        fi
-
-        # 2e. Sync Obsidian accent color with pywal (if installed)
-        OBSIDIAN_APPEARANCE="$HOME/zettelkasten/.obsidian/appearance.json"
-        PYWAL_COLORS="$HOME/.cache/wal/colors.json"
-        if [ -f "$OBSIDIAN_APPEARANCE" ] && [ -f "$PYWAL_COLORS" ]; then
-            ACCENT=$(grep -o '"color1": "[^"]*"' "$PYWAL_COLORS" | grep -o '#[0-9A-Fa-f]*')
-            [ -n "$ACCENT" ] && sed -i "s/\"accentColor\": \"[^\"]*\"/\"accentColor\": \"$ACCENT\"/" "$OBSIDIAN_APPEARANCE"
-        fi
-
-        # 3. Update History (Append)
-        # We append now, compact later
-        echo "$(date +%s) $FULL_PATH" >> "$HISTORY_FILE"
-
-        # 4. Background Maintenance (Compaction)
-        # Compact history: Keep only latest timestamp per file
+        # 4. Background Maintenance — single-pass compaction
         (
             if [ -f "$HISTORY_FILE" ]; then
                 TMP_HIST="/tmp/wsetbg_history_$$"
-                # tac + awk !seen is typically fast enough for ~1000 lines
-                tac "$HISTORY_FILE" | awk '!seen[$2]++' | tac > "$TMP_HIST"
+                ${pkgs.gawk}/bin/awk '{data[$2] = $0} END {for (k in data) print data[k]}' "$HISTORY_FILE" \
+                    | ${pkgs.coreutils}/bin/sort -n > "$TMP_HIST"
                 mv "$TMP_HIST" "$HISTORY_FILE"
             fi
         ) &
@@ -220,11 +201,9 @@ in
         {
             echo "#!/usr/bin/env bash"
             echo "wbg \"$FULL_PATH\" &"
-            echo "${pkgs.pywal}/bin/wal -b 000000 -n -e -q -R"
+            echo "${pkgs.wallust}/bin/wallust run -s -q \"$FULL_PATH\""
         } > "$STARTUP_SCRIPT"
         chmod +x "$STARTUP_SCRIPT"
-
-
 
         exit 0
       '')
@@ -282,7 +261,7 @@ in
         for f in files:
             print(f)
         " | \
-        fuzzel -d --no-sort -p "Select Document: " -w 100 | \
+        fuzzel -d --no-sort -p "Select Document: " -w 70 | \
         {
             if read -r file; then
                 if [ -n "$file" ]; then
@@ -372,10 +351,10 @@ in
 
       (writeShellScriptBin "systeminfo" ''
         TIME=$(${pkgs.coreutils}/bin/date +%H:%M)
-        
+
         # Find all batteries
         BATS=$(${pkgs.findutils}/bin/find /sys/class/power_supply -name "BAT*" -print)
-        
+
         CHOSEN_BAT=""
         for bat in $BATS; do
             if [ -e "$bat/capacity" ]; then

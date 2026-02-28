@@ -18,3 +18,7 @@ display-inlay-hints = true
 [editor.file-picker]
 hidden = true
 git-ignore = false
+
+[editor.statusline]
+left = ["mode", "file-base-name", "position-percentage", "spacer", "file-modification-indicator"]
+right = ["read-only-indicator", "diagnostics", "spinner"]

@@ -1,5 +1,5 @@
 {
-  description = "NixOS Flake for Galileo and Ekman"; 
+  description = "NixOS Flake for Galileo, Ekman, and Coriolis"; 
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-25.11"; 
@@ -44,6 +44,19 @@
           specialArgs = { inherit inputs; };
           modules = [
             ./hosts/ekman/software.nix
+            home-manager.nixosModules.home-manager
+            inputs.nix-flatpak.nixosModules.nix-flatpak
+            homeManagerConf
+
+          ];
+        };
+
+        # ThinkPad X201i Configuration
+        coriolis = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = { inherit inputs; };
+          modules = [
+            ./hosts/coriolis/software.nix
             home-manager.nixosModules.home-manager
             inputs.nix-flatpak.nixosModules.nix-flatpak
             homeManagerConf

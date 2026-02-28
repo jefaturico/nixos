@@ -42,9 +42,9 @@
         "image/png" = [ "imv.desktop" ];
         "image/jpeg" = [ "imv.desktop" ];
         "image/gif" = [ "imv.desktop" ];
-        "text/plain" = [ "nvim.desktop" ];
-        "text/markdown" = [ "nvim.desktop" ];
-        "application/x-shellscript" = [ "nvim.desktop" ];
+        "text/plain" = [ "Helix.desktop" ];
+        "text/markdown" = [ "Helix.desktop" ];
+        "application/x-shellscript" = [ "Helix.desktop" ];
         "text/html" = "org.qutebrowser.qutebrowser.desktop";
         "x-scheme-handler/http" = "org.qutebrowser.qutebrowser.desktop";
         "x-scheme-handler/https" = "org.qutebrowser.qutebrowser.desktop";
@@ -63,21 +63,21 @@
       gtk-dialogs-use-header = false;
     };
     gtk3.extraCss = /* css */ ''
-      window:not(#zen):not(.zen-browser) headerbar.default-decoration {
+      headerbar.default-decoration {
         margin-bottom: 50px;
         margin-top: -100px;
       }
-      window:not(#zen):not(.zen-browser) window.csd,
-      window:not(#zen):not(.zen-browser) window.csd decoration {
+      window.csd,
+      window.csd decoration {
         box-shadow: none;
       }
     '';
     gtk4.extraCss = /* css */ ''
-      window:not(#zen):not(.zen-browser) headerbar.default-decoration {
+      headerbar.default-decoration {
         margin-bottom: 50px;
         margin-top: -100px;
       }
-      window:not(#zen):not(.zen-browser) window.csd {
+      window.csd {
         box-shadow: none;
       }
     '';

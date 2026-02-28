@@ -48,11 +48,8 @@ in
 
   programs = {
 
-
-
     bash = {
       enable = true;
-      shellAliases = { };
       sessionVariables = {
 
         TERM = "foot";
@@ -66,7 +63,12 @@ in
 
         bind "set completion-ignore-case on"
 
-        PS1='\[\e[34m\]\w\[\e[0m\] \[\e[32m\]λ\[\e[0m\] '
+        if [[ -n "$WAYLAND_DISPLAY" || -n "$DISPLAY" ]]; then
+          _prompt_char="λ"
+        else
+          _prompt_char="\$"
+        fi
+        PS1='\[\e[34m\]\w\[\e[0m\] \[\e[32m\]'"$_prompt_char"'\[\e[0m\] '
 
         shopt -s autocd
         shopt -s cdspell
@@ -89,11 +91,10 @@ in
         main = {
           font = "JetBrainsMono Nerd Font:size=16";
           pad = "24x24 center-when-maximized-and-fullscreen";
-          include = "~/.cache/wal/colors-foot.ini";
+          include = "~/.cache/wallust/colors-foot.ini";
+          initial-window-size-chars = "120x40";
+          resize-by-cells = "no";
 
-        };
-        colors = {
-          alpha = if osConfig.networking.hostName == "galileo" then "0.98" else "0.8";
         };
       };
     };
@@ -103,7 +104,6 @@ in
       settings = {
         main = {
           font = "JetBrainsMono Nerd Font:size=12";
-          prompt = "\"λ \"";
           icons-enabled = "no";
           list-executables-in-path = "no";
           lines = 5;
@@ -111,7 +111,7 @@ in
           horizontal-pad = 20;
           vertical-pad = 15;
           inner-pad = 5;
-          include = "~/.cache/wal/colors-fuzzel.ini";
+          include = "~/.cache/wallust/colors-fuzzel.ini";
         };
 
         border = {
@@ -134,7 +134,11 @@ in
     texlive = {
       enable = true;
       extraPackages = tpkgs: {
-        inherit (tpkgs) scheme-full;
+        inherit (tpkgs)
+          scheme-medium
+          latexmk
+          # Add extra packages below:
+          ;
       };
     };
 

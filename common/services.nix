@@ -14,7 +14,7 @@
         margin = "10";
         default-timeout = 2000;
         format = "<b>%s</b>\\n%b";
-        include = "~/.cache/wal/colors-mako";
+        include = "~/.cache/wallust/colors-mako";
       };
       extraConfig = ''
         [urgency=high]
@@ -46,8 +46,10 @@
       Restart = "always";
       ExecStart = "${pkgs.mako}/bin/mako";
       ExecStartPre = "${pkgs.writeShellScript "mako-pre" ''
-        mkdir -p "$HOME/.cache/wal"
-        touch "$HOME/.cache/wal/colors-mako"
+        mkdir -p "$HOME/.cache/wallust"
+        touch "$HOME/.cache/wallust/colors-mako"
+        touch "$HOME/.cache/wallust/colors-foot.ini"
+        touch "$HOME/.cache/wallust/colors-fuzzel.ini"
         ${pkgs.procps}/bin/pkill -x mako || true
       ''}";
     };

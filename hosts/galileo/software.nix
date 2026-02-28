@@ -2,17 +2,17 @@
   imports = [
     ./hardware.nix
     ../../common/configuration.nix
+    ./gaming.nix
   ];
 
   networking.hostName = "galileo";
 
   boot = {
-    initrd.kernelModules = ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
-
+    initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
     extraModprobeConfig = ''
-        options hid_apple swap_opt_cmd=1
-      '';
-};
+      options hid_apple swap_opt_cmd=1
+    '';
+  };
 
   hardware = {
     graphics = {
@@ -20,19 +20,13 @@
       enable32Bit = true;
     };
 
-    bluetooth = {
-      enable = true;
-      powerOnBoot = true;
-    };
-
   };
 
-security.polkit.enable = true;
-  
+  security.polkit.enable = true;
   services.xserver.videoDrivers = ["nvidia"];
   hardware.nvidia = {
     modesetting.enable = true;
-    powerManagement.enable = false;
+    powerManagement.enable = true;
     open = false;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
   };
@@ -40,7 +34,7 @@ security.polkit.enable = true;
   environment = {
     etc."nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json".text = builtins.toJSON {
       rules = [{
-        pattern = { feature = "procname"; matches = ["niri"]; };
+        pattern = { feature = "procname"; matches = ["dwl"]; };
         profile = { feature = "OglFreeBufferPoolLimit"; value = 100; };
       }];
     };
@@ -50,8 +44,7 @@ security.polkit.enable = true;
       GBM_BACKEND = "nvidia-drm";
       __GLX_VENDOR_LIBRARY_NAME = "nvidia";
       WLR_NO_HARDWARE_CURSORS = "1";
-      WLR_RENDERER = "vulkan";
-      NIXOS_OZONE_WL = "1";
+      WLR_RENDERER = "gles2";
       WLR_DRM_DEVICES = "/dev/dri/card0:/dev/dri/card1";
     };
   };
