@@ -1,6 +1,6 @@
 { inputs, pkgs, ... }:
 {
-
+  # Bootloader and system-level localization.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
@@ -12,6 +12,7 @@
     firewall.allowedTCPPorts = [ 22 ];
   };
 
+  # System-wide keyboard layout for TTY and X11 (though we mostly use Wayland).
   services.xserver.xkb = {
     layout = "us";
     variant = "altgr-intl";
@@ -28,6 +29,7 @@
   };
 
   services = {
+    # Ly is a TUI display manager.
     displayManager.ly = {
       enable = true;
       settings = {
@@ -47,6 +49,8 @@
       };
     };
 
+    # Manual creation of a Wayland session entry for dwl.
+    # This allows display managers like Ly to "see" and launch dwl.
     displayManager.sessionPackages = [
       (pkgs.runCommand "dwl-session"
         {
@@ -66,9 +70,9 @@
     ];
 
     udisks2.enable = true;
-
     dbus.enable = true;
 
+    # Declarative Flatpak management via nix-flatpak.
     flatpak = {
       enable = true;
       packages = [
@@ -105,6 +109,7 @@
       settings.KbdInteractiveAuthentication = false;
     };
 
+    # Keyd handles low-level keyboard remapping (Caps Lock as Control/Esc).
     keyd = {
       enable = true;
       keyboards = {
@@ -122,6 +127,7 @@
 
   programs.dconf.enable = true;
 
+  # XDG Portals enable features like screen sharing and file pickers in Wayland.
   xdg.portal = {
     enable = true;
     extraPortals = [
@@ -140,7 +146,7 @@
   users.users.jefaturico = {
     isNormalUser = true;
     extraGroups = [
-      "wheel"
+      "wheel"           # Sudo access
       "networkmanager"
       "video"
       "render"
@@ -149,7 +155,6 @@
   };
 
   environment.systemPackages = with pkgs; [
-    vim
     wget
     git
     curl
@@ -166,15 +171,18 @@
       "nix-command"
       "flakes"
     ];
+    # Automatically links identical files in the Nix store to save space.
     auto-optimise-store = true;
   };
 
+  # Periodic cleanup of old system generations.
   nix.gc = {
     automatic = true;
     dates = "weekly";
     options = "--delete-older-than 7d";
   };
 
+  # Performance and lifecycle optimizations.
   zramSwap.enable = true;
   services.fstrim.enable = true;
   boot.kernel.sysctl = {

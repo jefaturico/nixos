@@ -289,8 +289,6 @@ static void focusstack(const Arg *arg);
 static Client *focustop(Monitor *m);
 static void fullscreennotify(struct wl_listener *listener, void *data);
 static void gpureset(struct wl_listener *listener, void *data);
-static void handlecursoractivity(void);
-static int hidecursor(void *data);
 static void handlesig(int signo);
 static void incnmaster(const Arg *arg);
 static void inputdevice(struct wl_listener *listener, void *data);
@@ -320,7 +318,7 @@ static void rendermon(struct wl_listener *listener, void *data);
 static void requestdecorationmode(struct wl_listener *listener, void *data);
 static void requeststartdrag(struct wl_listener *listener, void *data);
 static void requestmonstate(struct wl_listener *listener, void *data);
-static void resize(Client *c, struct wlr_box geo, int interact, int draw_borders);
+static void resize(Client *c, struct wlr_box geo, int interact);
 static void run(char *startup_cmd);
 static void setcursor(struct wl_listener *listener, void *data);
 static void setcursorshape(struct wl_listener *listener, void *data);
@@ -350,7 +348,6 @@ static void urgent(struct wl_listener *listener, void *data);
 static void view(const Arg *arg);
 static void virtualkeyboard(struct wl_listener *listener, void *data);
 static void virtualpointer(struct wl_listener *listener, void *data);
-static void warpcursor(const Client *c);
 static Monitor *xytomon(double x, double y);
 static void xytonode(double x, double y, struct wlr_surface **psurface,
 		Client **pc, LayerSurface **pl, double *nx, double *ny);
@@ -393,14 +390,6 @@ static struct wlr_pointer_constraint_v1 *active_constraint;
 
 static struct wlr_cursor *cursor;
 static struct wlr_xcursor_manager *cursor_mgr;
-static struct wl_event_source *hide_source;
-static bool cursor_hidden = false;
-static struct {
-	enum wp_cursor_shape_device_v1_shape shape;
-	struct wlr_surface *surface;
-	int hotspot_x;
-	int hotspot_y;
-} last_cursor;
 
 static struct wlr_scene_rect *root_bg;
 static struct wlr_session_lock_manager_v1 *session_lock_mgr;
@@ -553,7 +542,6 @@ arrange(Monitor *m)
 		m->lt[m->sellt]->arrange(m);
 	motionnotify(0, NULL, 0, 0, 0, 0);
 	checkidleinhibitor(NULL);
-	warpcursor(focustop(selmon));
 }
 
 void
@@ -598,7 +586,7 @@ arrangelayers(Monitor *m)
 		arrange(m);
 	}
 
-	/* Arrange non-exlusive surfaces from top->bottom */
+	/* Arrange non-exclusive surfaces from top->bottom */
 	for (i = 3; i >= 0; i--)
 		arrangelayer(m, &m->layers[i], &usable_area, 0);
 
@@ -623,9 +611,8 @@ axisnotify(struct wl_listener *listener, void *data)
 	 * for example when you move the scroll wheel. */
 	struct wlr_pointer_axis_event *event = data;
 	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
-	handlecursoractivity();
-	/* TODO: allow usage of scroll whell for mousebindings, it can be implemented
-	 * checking the event's orientation and the delta of the event */
+	/* TODO: allow usage of scroll wheel for mousebindings, it can be implemented
+	 * by checking the event's orientation and the delta of the event */
 	/* Notify the client with pointer focus of the axis event. */
 	wlr_seat_pointer_notify_axis(seat,
 			event->time_msec, event->orientation, event->delta,
@@ -642,7 +629,6 @@ buttonpress(struct wl_listener *listener, void *data)
 	const Button *b;
 
 	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
-	handlecursoractivity();
 
 	switch (event->state) {
 	case WL_POINTER_BUTTON_STATE_PRESSED:
@@ -824,7 +810,7 @@ closemon(Monitor *m)
 	wl_list_for_each(c, &clients, link) {
 		if (c->isfloating && c->geom.x > m->m.width)
 			resize(c, (struct wlr_box){.x = c->geom.x - m->w.width, .y = c->geom.y,
-					.width = c->geom.width, .height = c->geom.height}, 0, 1);
+					.width = c->geom.width, .height = c->geom.height}, 0);
 		if (c->mon == m)
 			setmon(c, selmon, c->tags);
 	}
@@ -893,11 +879,7 @@ commitnotify(struct wl_listener *listener, void *data)
 		return;
 	}
 
-	if (client_surface(c)->mapped && c->mon && c->mon->lt[c->mon->sellt]->arrange
-			&& !c->isfullscreen && !c->isfloating)
-		c->mon->lt[c->mon->sellt]->arrange(c->mon);
-	else
-		resize(c, c->geom, (c->isfloating && !c->isfullscreen), (c->isfloating && !c->isfullscreen));
+	resize(c, c->geom, (c->isfloating && !c->isfullscreen));
 
 	/* mark a pending resize as completed */
 	if (c->resize && c->resize <= c->surface.xdg->current.configure_serial)
@@ -1429,10 +1411,6 @@ focusclient(Client *c, int lift)
 	if (locked)
 		return;
 
-	/* Warp cursor to center of client if it is outside */
-	if (lift)
-		warpcursor(c);
-
 	/* Raise client in stacking order if requested */
 	if (c && lift)
 		wlr_scene_node_raise_to_top(&c->scene->node);
@@ -1587,32 +1565,6 @@ handlesig(int signo)
 		while (waitpid(-1, NULL, WNOHANG) > 0);
 	else if (signo == SIGINT || signo == SIGTERM)
 		quit(NULL);
-}
-
-void
-handlecursoractivity(void)
-{
-	wl_event_source_timer_update(hide_source, cursor_timeout * 1000);
-
-	if (!cursor_hidden)
-		return;
-
-	cursor_hidden = false;
-
-	if (last_cursor.shape)
-		wlr_cursor_set_xcursor(cursor, cursor_mgr,
-				wlr_cursor_shape_v1_name(last_cursor.shape));
-	else
-		wlr_cursor_set_surface(cursor, last_cursor.surface,
-				last_cursor.hotspot_x, last_cursor.hotspot_y);
-}
-
-int
-hidecursor(void *data)
-{
-	wlr_cursor_unset_image(cursor);
-	cursor_hidden = true;
-	return 1;
 }
 
 void
@@ -1878,7 +1830,7 @@ monocle(Monitor *m)
 	wl_list_for_each(c, &clients, link) {
 		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
 			continue;
-		resize(c, m->w, 0, !smartborders);
+		resize(c, m->w, 0);
 		n++;
 	}
 	if (n)
@@ -1956,7 +1908,6 @@ motionnotify(uint32_t time, struct wlr_input_device *device, double dx, double d
 
 		wlr_cursor_move(cursor, device, dx, dy);
 		wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
-		handlecursoractivity();
 
 		/* Update selmon (even while dragging a window) */
 		if (sloppyfocus)
@@ -1970,18 +1921,18 @@ motionnotify(uint32_t time, struct wlr_input_device *device, double dx, double d
 	if (cursor_mode == CurMove) {
 		/* Move the grabbed client to the new position. */
 		resize(grabc, (struct wlr_box){.x = (int)round(cursor->x) - grabcx, .y = (int)round(cursor->y) - grabcy,
-			.width = grabc->geom.width, .height = grabc->geom.height}, 1, 1);
+			.width = grabc->geom.width, .height = grabc->geom.height}, 1);
 		return;
 	} else if (cursor_mode == CurResize) {
 		resize(grabc, (struct wlr_box){.x = grabc->geom.x, .y = grabc->geom.y,
-			.width = (int)round(cursor->x) - grabc->geom.x, .height = (int)round(cursor->y) - grabc->geom.y}, 1, 1);
+			.width = (int)round(cursor->x) - grabc->geom.x, .height = (int)round(cursor->y) - grabc->geom.y}, 1);
 		return;
 	}
 
 	/* If there's no client surface under the cursor, set the cursor image to a
 	 * default. This is what makes the cursor image appear when you move it
 	 * off of a client or over its border. */
-	if (!surface && !seat->drag && !cursor_hidden)
+	if (!surface && !seat->drag)
 		wlr_cursor_set_xcursor(cursor, cursor_mgr, "default");
 
 	pointerfocus(c, surface, sx, sy, time);
@@ -2183,7 +2134,7 @@ powermgrsetmode(struct wl_listener *listener, void *data)
 	if (!m)
 		return;
 
-	m->gamma_lut_changed = 1; /* Reapply gamma LUT when re-enabling the ouput */
+	m->gamma_lut_changed = 1; /* Reapply gamma LUT when re-enabling the output */
 	wlr_output_state_set_enabled(&state, event->mode);
 	wlr_output_commit_state(m->wlr_output, &state);
 
@@ -2253,7 +2204,7 @@ requestmonstate(struct wl_listener *listener, void *data)
 }
 
 void
-resize(Client *c, struct wlr_box geo, int interact, int draw_borders)
+resize(Client *c, struct wlr_box geo, int interact)
 {
 	struct wlr_box *bbox;
 	struct wlr_box clip;
@@ -2265,7 +2216,6 @@ resize(Client *c, struct wlr_box geo, int interact, int draw_borders)
 
 	client_set_bounds(c, geo.width, geo.height);
 	c->geom = geo;
-	c->bw = draw_borders ? borderpx : 0;
 	applybounds(c, bbox);
 
 	/* Update scene-graph, including borders */
@@ -2339,7 +2289,6 @@ run(char *startup_cmd)
 	 * monitor when displayed here */
 	wlr_cursor_warp_closest(cursor, NULL, cursor->x, cursor->y);
 	wlr_cursor_set_xcursor(cursor, cursor_mgr, "default");
-	handlecursoractivity();
 
 	/* Run the Wayland event loop. This does not return until you exit the
 	 * compositor. Starting the backend rigged up all of the necessary event
@@ -2363,16 +2312,9 @@ setcursor(struct wl_listener *listener, void *data)
 	 * use the provided surface as the cursor image. It will set the
 	 * hardware cursor on the output that it's currently on and continue to
 	 * do so as the cursor moves between outputs. */
-	if (event->seat_client == seat->pointer_state.focused_client) {
-		last_cursor.shape = 0;
-		last_cursor.surface = event->surface;
-		last_cursor.hotspot_x = event->hotspot_x;
-		last_cursor.hotspot_y = event->hotspot_y;
-
-		if (!cursor_hidden)
-			wlr_cursor_set_surface(cursor, event->surface,
-					event->hotspot_x, event->hotspot_y);
-	}
+	if (event->seat_client == seat->pointer_state.focused_client)
+		wlr_cursor_set_surface(cursor, event->surface,
+				event->hotspot_x, event->hotspot_y);
 }
 
 void
@@ -2384,14 +2326,9 @@ setcursorshape(struct wl_listener *listener, void *data)
 	/* This can be sent by any client, so we check to make sure this one
 	 * actually has pointer focus first. If so, we can tell the cursor to
 	 * use the provided cursor shape. */
-	if (event->seat_client == seat->pointer_state.focused_client) {
-		last_cursor.shape = event->shape;
-		last_cursor.surface = NULL;
-
-		if (!cursor_hidden)
-			wlr_cursor_set_xcursor(cursor, cursor_mgr,
-					wlr_cursor_shape_v1_name(event->shape));
-	}
+	if (event->seat_client == seat->pointer_state.focused_client)
+		wlr_cursor_set_xcursor(cursor, cursor_mgr,
+				wlr_cursor_shape_v1_name(event->shape));
 }
 
 void
@@ -2405,8 +2342,6 @@ setfloating(Client *c, int floating)
 	wlr_scene_node_reparent(&c->scene->node, layers[c->isfullscreen ||
 			(p && p->isfullscreen) ? LyrFS
 			: c->isfloating ? LyrFloat : LyrTile]);
-	if (c->isfloating && !c->bw)
-		resize(c, c->mon->m, 0, 1);
 	arrange(c->mon);
 	printstatus();
 }
@@ -2424,11 +2359,11 @@ setfullscreen(Client *c, int fullscreen)
 
 	if (fullscreen) {
 		c->prev = c->geom;
-		resize(c, c->mon->m, 0, 0);
+		resize(c, c->mon->m, 0);
 	} else {
 		/* restore previous size instead of arrange for floating windows since
 		 * client positions are set by the user and cannot be recalculated */
-		resize(c, c->prev, 0, 1);
+		resize(c, c->prev, 0);
 	}
 	arrange(c->mon);
 	printstatus();
@@ -2444,12 +2379,6 @@ setlayout(const Arg *arg)
 	if (arg && arg->v)
 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, LENGTH(selmon->ltsymbol));
-	if (!selmon->lt[selmon->sellt]->arrange) {
-		/* floating layout, draw borders around all clients */
-		Client *c;
-		wl_list_for_each(c, &clients, link)
-			resize(c, c->mon->m, 0, 1);
-	}
 	arrange(selmon);
 	printstatus();
 }
@@ -2484,7 +2413,7 @@ setmon(Client *c, Monitor *m, uint32_t newtags)
 		arrange(oldmon);
 	if (m) {
 		/* Make sure window actually overlaps with the monitor */
-		resize(c, c->geom, 0, 1);
+		resize(c, c->geom, 0);
 		c->tags = newtags ? newtags : m->tagset[m->seltags]; /* assign tags of target monitor */
 		setfullscreen(c, c->isfullscreen); /* This will call arrange(c->mon) */
 		setfloating(c, c->isfloating);
@@ -2527,7 +2456,7 @@ setup(void)
 	wlr_log_init(log_level, NULL);
 
 	/* The Wayland display is managed by libwayland. It handles accepting
-	 * clients from the Unix socket, manging Wayland globals, and so on. */
+	 * clients from the Unix socket, managing Wayland globals, and so on. */
 	dpy = wl_display_create();
 	event_loop = wl_display_get_event_loop(dpy);
 
@@ -2691,9 +2620,6 @@ setup(void)
 	cursor_shape_mgr = wlr_cursor_shape_manager_v1_create(dpy, 1);
 	wl_signal_add(&cursor_shape_mgr->events.request_set_shape, &request_set_cursor_shape);
 
-	hide_source = wl_event_loop_add_timer(wl_display_get_event_loop(dpy),
-			hidecursor, cursor);
-
 	/*
 	 * Configures a seat, which is a single "seat" at which a user sits and
 	 * operates the computer. This conceptually includes up to one keyboard,
@@ -2788,7 +2714,7 @@ tagmon(const Arg *arg)
 void
 tile(Monitor *m)
 {
-	unsigned int mw, my, ty, draw_borders = 1;
+	unsigned int mw, my, ty;
 	int i, n = 0;
 	Client *c;
 
@@ -2797,9 +2723,6 @@ tile(Monitor *m)
 			n++;
 	if (n == 0)
 		return;
-
-	if (n == smartborders)
-		draw_borders = 0;
 
 	if (n > m->nmaster)
 		mw = m->nmaster ? (int)roundf(m->w.width * m->mfact) : 0;
@@ -2811,11 +2734,11 @@ tile(Monitor *m)
 			continue;
 		if (i < m->nmaster) {
 			resize(c, (struct wlr_box){.x = m->w.x, .y = m->w.y + my, .width = mw,
-				.height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0, draw_borders);
+				.height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0);
 			my += c->geom.height;
 		} else {
 			resize(c, (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty,
-				.width = m->w.width - mw, .height = (m->w.height - ty) / (n - i)}, 0, draw_borders);
+				.width = m->w.width - mw, .height = (m->w.height - ty) / (n - i)}, 0);
 			ty += c->geom.height;
 		}
 		i++;
@@ -2984,7 +2907,7 @@ updatemons(struct wl_listener *listener, void *data)
 		arrange(m);
 		/* make sure fullscreen clients have the right size */
 		if ((c = focustop(m)) && c->isfullscreen)
-			resize(c, m->m, 0, 0);
+			resize(c, m->m, 0);
 
 		/* Try to re-set the gamma LUT when updating monitors,
 		 * it's only really needed when enabling a disabled output, but meh. */
@@ -3081,28 +3004,6 @@ virtualpointer(struct wl_listener *listener, void *data)
 	wlr_cursor_attach_input_device(cursor, device);
 	if (event->suggested_output)
 		wlr_cursor_map_input_to_output(cursor, device, event->suggested_output);
-	handlecursoractivity();
-}
-
-void
-warpcursor(const Client *c) {
-	if (cursor_mode != CurNormal) {
-		return;
-	}
-	if (!c && selmon) {
-		wlr_cursor_warp_closest(cursor,
-			  NULL,
-			  selmon->w.x + selmon->w.width / 2.0 ,
-			  selmon->w.y + selmon->w.height / 2.0);
-	}
-	else if ( c && (cursor->x < c->geom.x ||
-		cursor->x > c->geom.x + c->geom.width ||
-		cursor->y < c->geom.y ||
-		cursor->y > c->geom.y + c->geom.height))
-		wlr_cursor_warp_closest(cursor,
-			  NULL,
-			  c->geom.x + c->geom.width / 2.0,
-			  c->geom.y + c->geom.height / 2.0);
 }
 
 Monitor *
@@ -3215,7 +3116,7 @@ configurex11(struct wl_listener *listener, void *data)
 	if ((c->isfloating && c != grabc) || !c->mon->lt[c->mon->sellt]->arrange) {
 		resize(c, (struct wlr_box){.x = event->x - c->bw,
 				.y = event->y - c->bw, .width = event->width + c->bw * 2,
-				.height = event->height + c->bw * 2}, 0, 1);
+				.height = event->height + c->bw * 2}, 0);
 	} else {
 		arrange(c->mon);
 	}

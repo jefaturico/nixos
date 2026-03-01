@@ -37,6 +37,9 @@ in
       '';
     }
     // (
+      # Automatically symlink directories in ./dots/ to ~/.config/
+      # We use mkOutOfStoreSymlink so that changes to files in the git repo
+      # are immediately reflected without needing a 'nixos-rebuild switch'.
       builtins.listToAttrs (
         map (name: {
           name = ".config/${name}";
@@ -46,6 +49,7 @@ in
         }) (builtins.attrNames symlinks)
       )
       // {
+        # Wallust templates generate configuration files based on wallpaper colors.
         ".config/wallust/templates/colors-foot.ini".text = ''
           [colors]
           foreground={{foreground | strip}}
@@ -83,6 +87,29 @@ in
           text-color={{foreground}}ff
           border-color={{color3}}ff
         '';
+        ".config/wallust/templates/colors-zathura".text = ''
+          set default-bg "{{background}}"
+          set default-fg "{{foreground}}"
+          set statusbar-bg "{{background}}"
+          set statusbar-fg "{{foreground}}"
+          set inputbar-bg "{{background}}"
+          set inputbar-fg "{{color4}}"
+          set notification-bg "{{background}}"
+          set notification-fg "{{foreground}}"
+          set notification-error-bg "{{background}}"
+          set notification-error-fg "{{color1}}"
+          set notification-warning-bg "{{background}}"
+          set notification-warning-fg "{{color3}}"
+          set highlight-color "{{color1}}"
+          set highlight-active-color "{{color2}}"
+          set completion-bg "{{background}}"
+          set completion-fg "{{color4}}"
+          set completion-highlight-bg "{{color2}}"
+          set completion-highlight-fg "{{background}}"
+          set recolor-lightcolor "{{background}}"
+          set recolor-darkcolor "{{foreground}}"
+        '';
+
         ".config/wallust/templates/colors-obsidian.css".text = ''
           .theme-dark {
             --background-primary: {{background}} !important;
@@ -114,7 +141,9 @@ in
           foot = { template = 'colors-foot.ini', target = '~/.cache/wallust/colors-foot.ini' }
           fuzzel = { template = 'colors-fuzzel.ini', target = '~/.cache/wallust/colors-fuzzel.ini' }
           mako = { template = 'colors-mako', target = '~/.cache/wallust/colors-mako' }
+          zathura = { template = 'colors-zathura', target = '~/.cache/wallust/colors-zathura' }
           obsidian = { template = 'colors-obsidian.css', target = '~/zettelkasten/.obsidian/snippets/wallust.css' }
+
         '';
       }
     );
@@ -129,7 +158,6 @@ in
       calibre
       calcurse
       fd
-      fff
       ffmpeg
       gimp
       imagemagick
@@ -160,17 +188,18 @@ in
       texlab
       ripgrep
       wallust
-      uget
+      uget # minimal alternative: aria2
       wbg
       wireplumber
       wl-clipboard
-      qbittorrent
+      qbittorrent # minimal alternative: tremc
       slurp
       grim
       wlrctl
       xwayland
       zoxide
     ]
+    # Conditional package inclusion: only install heavy apps on non-laptop hosts.
     ++ lib.optionals (osConfig.networking.hostName != "coriolis") [
       antigravity
       obs-studio

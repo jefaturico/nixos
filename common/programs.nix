@@ -1,6 +1,8 @@
 { pkgs, osConfig, ... }:
 
 let
+  # Custom build of dwl (Dynamic Window Manager for Wayland).
+  # This builds dwl from source using the files in ../dots/dwl.
   dwl-custom = pkgs.stdenv.mkDerivation {
     name = "dwl-custom";
     src = ../dots/dwl;
@@ -22,9 +24,11 @@ let
     enableParallelBuilding = true;
 
     preBuild = ''
+      # Inject our personal configuration headers into the build.
       cp ${../dots/dwl/config.h} config.h
       cp ${../dots/dwl/config.mk} config.mk
 
+      # Dynamic wlroots version detection to ensure compatibility with nixpkgs.
       echo "Checking for wlroots pkg-config..."
       if pkg-config --exists wlroots; then
         echo "Using wlroots.pc"
@@ -51,7 +55,6 @@ in
     bash = {
       enable = true;
       sessionVariables = {
-
         TERM = "foot";
         BROWSER = "qutebrowser";
         DEFAULT_BROWSER = "qutebrowser";
@@ -63,6 +66,7 @@ in
 
         bind "set completion-ignore-case on"
 
+        # Use a lambda prompt in graphical sessions, otherwise a standard '$'.
         if [[ -n "$WAYLAND_DISPLAY" || -n "$DISPLAY" ]]; then
           _prompt_char="λ"
         else
@@ -70,18 +74,18 @@ in
         fi
         PS1='\[\e[34m\]\w\[\e[0m\] \[\e[32m\]'"$_prompt_char"'\[\e[0m\] '
 
-        shopt -s autocd
-        shopt -s cdspell
+        # Bash quality-of-life shell options.
+        shopt -s autocd     # 'cd' is optional for directories
+        shopt -s cdspell    # fix minor typos in 'cd'
         shopt -s checkwinsize
         shopt -s cmdhist
         shopt -s dirspell
-        shopt -s globstar
+        shopt -s globstar   # recursive globbing (**/*.nix)
         shopt -s histappend
 
         HISTCONTROL=ignoreboth:erasedups
         HISTSIZE=10000
         HISTFILESIZE=20000
-
       '';
     };
 
@@ -91,10 +95,16 @@ in
         main = {
           font = "JetBrainsMono Nerd Font:size=16";
           pad = "24x24 center-when-maximized-and-fullscreen";
-          include = "~/.cache/wallust/colors-foot.ini";
           initial-window-size-chars = "120x40";
           resize-by-cells = "no";
-
+          workers = 8;
+          include = "~/.cache/wallust/colors-foot.ini";
+        };
+        colors = {
+          alpha = 1.0;
+        };
+        tweak = {
+          font-monospace-warn = "no";
         };
       };
     };
@@ -137,7 +147,6 @@ in
         inherit (tpkgs)
           scheme-medium
           latexmk
-          # Add extra packages below:
           ;
       };
     };
@@ -152,14 +161,25 @@ in
       options = {
         render-loading = "false";
         guioptions = "none";
-        page-cache-size = 512;
+        page-cache-size = 1024;
         continuous-hist-save = true;
         selection-clipboard = "clipboard";
+        database = "sqlite";
+        sandbox = "none";
+        include = "~/.cache/wallust/colors-zathura";
       };
     };
 
-    fzf = {
+    nnn = {
       enable = true;
+      package = pkgs.nnn;
+      bookmarks = {
+        d = "~/downloads";
+        n = "~/nixos";
+        w = "~/workbench";
+      };
     };
+
+    fzf.enable = true;
   };
 }

@@ -16,6 +16,7 @@
       XDG_SESSION_TYPE = "wayland";
       XDG_CURRENT_DESKTOP = "wlroots";
       NIXOS_OZONE_WL = "1";
+      NNN_OPTS = "eEHR"; # entry, exit on q, hidden, relative
       PATH = "$HOME/.local/bin:$PATH";
       XDG_DATA_DIRS = "$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS";
     };

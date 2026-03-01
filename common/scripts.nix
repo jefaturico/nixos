@@ -6,10 +6,9 @@
 }:
 
 let
-  batteryCheck = pkgs.writeShellScriptBin "battery-check" ''
-    # battery-check.sh
-    # Checks battery level and notifies if low
-    set -euo pipefail
+  batteryCheck = pkgs.writeScriptBin "battery-check" ''
+    #!${pkgs.dash}/bin/dash
+    set -eu
 
     # Find the first battery with capacity
     BATS=$(${pkgs.findutils}/bin/find /sys/class/power_supply -name "BAT*" -print)
@@ -21,10 +20,7 @@ let
         fi
     done
 
-    if [ -z "$CHOSEN_BAT" ]; then
-        # No battery found
-        exit 0
-    fi
+    [ -z "$CHOSEN_BAT" ] && exit 0
 
     CAPACITY=$(${pkgs.coreutils}/bin/cat "$CHOSEN_BAT/capacity")
     STATUS=$(${pkgs.coreutils}/bin/cat "$CHOSEN_BAT/status")
@@ -38,69 +34,66 @@ in
   home.packages =
     with pkgs;
     [
-      (writeShellScriptBin "dwl-startup" ''
-        # dwl-startup
-        # Runs INSIDE dwl via -s flag, after WAYLAND_DISPLAY is set
+      # dwl-startup: Runs WITHIN dwl via the -s flag.
+      # This is crucial because it executes AFTER the Wayland socket is initialized.
+      (writeScriptBin "dwl-startup" ''
+        #!${pkgs.dash}/bin/dash
 
-        # 1. Propagate environment to systemd + dbus so portals can start
+        # 1. Propagate environment to systemd + dbus.
+        # This allows XDG portals (screen sharing, file pickers) to function correctly.
         dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
         systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
         systemctl --user start graphical-session.target
 
-        # 2. Restart portal services so they pick up the new env
+        # 2. Restart portal services to ensure they recognize the new environment.
         systemctl --user restart xdg-desktop-portal-wlr.service
         systemctl --user restart xdg-desktop-portal.service
 
-        # 3. Start foot server for fast terminal spawning via footclient
-        foot --server <&- &
+        # 3. Start foot server after Wayland is up.
+        ${pkgs.foot}/bin/foot --server &
 
-        # 4. Run wallpaper startup script if it exists
-        [ -f "$HOME/.wbg" ] && bash "$HOME/.wbg"
+        # 4. Restore last wallpaper.
+        [ -f "$HOME/.wbg" ] && . "$HOME/.wbg"
       '')
 
-      (writeShellScriptBin "dwl-session" ''
-        # dwl-session
-        # Wraps dwl execution - display manager calls this
-
-        # 1. Set environment before dwl starts
+      # dwl-session: Wrapper script called by the display manager (Ly).
+      (writeScriptBin "dwl-session" ''
+        #!${pkgs.dash}/bin/dash
         export XDG_CURRENT_DESKTOP=wlroots
         export XDG_SESSION_TYPE=wayland
 
-        # 2. Exec dwl with startup script
-        #    -s runs dwl-startup AFTER the Wayland socket is ready
+        # Exec dwl with our startup script using the -s flag.
         exec dwl -s dwl-startup > /tmp/dwl.log 2>&1
       '')
 
-      (writeShellScriptBin "wlsetbg" ''
-        # wlsetbg - Optimized & Smart Wallpaper Setter
-        # Usage: wlsetbg [-r]
+      # wlsetbg: Smart wallpaper rotator with history and dynamic theming.
+      # It uses wallust to generate color schemes for foot/fuzzel/etc.
+      (writeScriptBin "wlsetbg" ''
+        #!${pkgs.dash}/bin/dash
+        # Usage: wlsetbg [-r for random]
 
         export LC_ALL=C
-
         WALL_DIR="$HOME/images/wallpapers"
         STARTUP_SCRIPT="$HOME/.wbg"
         HISTORY_FILE="$HOME/.cache/wsetbg_history"
         FILELIST_CACHE="$HOME/.cache/wsetbg_filelist"
         CURRENT_WALL=""
 
-        # Ensure cache dir exists
         mkdir -p "$HOME/.cache"
 
-        # 1. Fast retrieval of current wallpaper (single awk, no pipe)
-        if [[ -f "$STARTUP_SCRIPT" ]]; then
-            CURRENT_WALL=$(${pkgs.gawk}/bin/awk -F'"' '/wbg/{print $2; exit}' "$STARTUP_SCRIPT" 2>/dev/null)
-        fi
+        # Extract current wallpaper from persistence script.
+        [ -f "$STARTUP_SCRIPT" ] && CURRENT_WALL=$(${pkgs.gawk}/bin/awk -F'"' '/wbg/{print $2; exit}' "$STARTUP_SCRIPT" 2>/dev/null)
 
-        # Helper: get file list (cached by directory mtime)
         get_file_list() {
             WALL_MTIME=$(${pkgs.coreutils}/bin/stat -c %Y "$WALL_DIR" 2>/dev/null || echo 0)
             CACHE_MTIME=$(${pkgs.coreutils}/bin/stat -c %Y "$FILELIST_CACHE" 2>/dev/null || echo 0)
-            if [[ "$WALL_MTIME" -gt "$CACHE_MTIME" ]] || [[ ! -s "$FILELIST_CACHE" ]]; then
+            if [ "$WALL_MTIME" -gt "$CACHE_MTIME" ] || [ ! -s "$FILELIST_CACHE" ]; then
                 ${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" > "$FILELIST_CACHE"
             fi
             ${pkgs.coreutils}/bin/cat "$FILELIST_CACHE"
         }
 
+        # Selects a wallpaper that hasnt been seen recently, or a fresh one.
         get_smart_random_wallpaper() {
             get_file_list | \
             ${pkgs.gawk}/bin/awk -v hist_file="$HISTORY_FILE" -v current_wall="$CURRENT_WALL" '
@@ -138,7 +131,6 @@ in
                 if (s_count == 0) exit 1;
 
                 PROCINFO["sorted_in"] = "@val_num_asc";
-
                 cutoff = int(s_count * 0.2) + 1;
                 if (cutoff < 1) cutoff = 1;
 
@@ -147,47 +139,40 @@ in
                     candidates[k++] = p;
                     if (k >= cutoff) break;
                 }
-
                 print candidates[int(rand() * k)];
             }
             '
         }
 
-        if [[ "$1" == "-r" ]]; then
+        if [ "$1" = "-r" ] ; then
             FULL_PATH=$(get_smart_random_wallpaper)
-            if [[ -z "$FULL_PATH" ]]; then
-                FULL_PATH=$(get_file_list | ${pkgs.coreutils}/bin/shuf -n 1)
-            fi
+            [ -z "$FULL_PATH" ] && FULL_PATH=$(get_file_list | ${pkgs.coreutils}/bin/shuf -n 1)
         else
             cd "$WALL_DIR" || exit 1
             CHOICE=$(${pkgs.fd}/bin/fd --type f | ${pkgs.fuzzel}/bin/fuzzel -d -p "Select Wallpaper: ")
-            [[ -z "$CHOICE" ]] && exit 0
+            [ -z "$CHOICE" ] && exit 0
             FULL_PATH="$WALL_DIR/$CHOICE"
         fi
 
-        [[ -z "$FULL_PATH" || ! -f "$FULL_PATH" ]] && exit 1
+        [ -z "$FULL_PATH" ] || [ ! -f "$FULL_PATH" ] && exit 1
 
-        # 2. Apply Wallpaper (Instant feedback)
-        # Use -x for exact match; brief wait to avoid race with new wbg
+        # Apply Wallpaper immediately.
         ${pkgs.procps}/bin/pkill -x wbg || true
-        sleep 0.05
+        ${pkgs.coreutils}/bin/sleep 0.05
         wbg "$FULL_PATH" > /dev/null 2>&1 &
 
-        # 2b. Generate Colors with wallust (runs in background)
-        # wallust reads templates from ~/.config/wallust/ and outputs to ~/.cache/wallust/
+        # Background theming generation with wallust.
         ${pkgs.wallust}/bin/wallust run -q "$FULL_PATH" &
         WALLUST_PID=$!
 
-        # 2c. Wait for wallust to finish, then reload mako
         (
             wait $WALLUST_PID 2>/dev/null
             ${pkgs.mako}/bin/makoctl reload 2>/dev/null
         ) &
 
-        # 3. Update History
         echo "$(${pkgs.coreutils}/bin/date +%s) $FULL_PATH" >> "$HISTORY_FILE"
 
-        # 4. Background Maintenance — single-pass compaction
+        # Background maintenance of history file (deduplication).
         (
             if [ -f "$HISTORY_FILE" ]; then
                 TMP_HIST="/tmp/wsetbg_history_$$"
@@ -197,170 +182,108 @@ in
             fi
         ) &
 
-        # 5. Persist startup script
-        {
-            echo "#!/usr/bin/env bash"
-            echo "wbg \"$FULL_PATH\" &"
-            echo "${pkgs.wallust}/bin/wallust run -s -q \"$FULL_PATH\""
-        } > "$STARTUP_SCRIPT"
+        # Save current wallpaper command for restoration on next login.
+        cat <<EOF > "$STARTUP_SCRIPT"
+#!/usr/bin/env dash
+wbg "$FULL_PATH" &
+${pkgs.wallust}/bin/wallust run -s -q "$FULL_PATH"
+EOF
         chmod +x "$STARTUP_SCRIPT"
-
         exit 0
       '')
 
-      (writeShellScriptBin "wdoc-find" ''
-        # wdoc-find.sh - Fast Document Selector
-        # Usage: wdoc-find.sh
+      # wdoc-find: Specialized document picker that prioritizes recently opened files in Zathura.
+      (writeScriptBin "wdoc-find" ''
+        #!${pkgs.dash}/bin/dash
+        DB_PATH="$HOME/.local/share/zathura/bookmarks.sqlite"
+        HIST_CACHE="/tmp/wdoc_hist_$$"
 
-        # 1. Use fd to search specific directories.
-        # 2. Sort by Zathura history (bookmarks.sqlite) because filesystem is noatime.
-        # 3. Select with fuzzel and open with zathura.
-        fd --type f -e pdf -e epub --follow --absolute-path . ~/college ~/library ~/downloads ~/workbench 2>/dev/null | \
-        ${pkgs.python3}/bin/python3 -c "
-        import sys, sqlite3, os
+        # 1. Pull most recently accessed files from Zathuras internal database.
+        if [ -f "$DB_PATH" ]; then
+            ${pkgs.sqlite}/bin/sqlite3 -separator '' "$DB_PATH" "SELECT file, time FROM fileinfo" > "$HIST_CACHE" 2>/dev/null
+        fi
 
-        # 1. Read all input first (robustness)
-        try:
-            files = sys.stdin.read().splitlines()
-        except Exception:
-            sys.exit(0)
-
-        if not files:
-            sys.exit(0)
-
-        # 2. Try to sort using History and Mtime
-        try:
-            history = {}
-            db_path = os.path.expanduser('~/.local/share/zathura/bookmarks.sqlite')
-
-            if os.path.exists(db_path):
-                # uri=True allows read-only mode if supported, but standard connect is fine
-                conn = sqlite3.connect(db_path)
-                c = conn.cursor()
-                for row in c.execute('SELECT file, time FROM fileinfo'):
-                    history[row[0]] = row[1]
-                conn.close()
-
-            def get_sort_key(f):
-                # Primary: Zathura access time (ISO String or \"\")
-                # Secondary: Filesystem modification time (Float or 0.0)
-                # Python compares tuples element-by-element safely provided types match position-wise
-                z_time = history.get(f) or \"\"
-                try:
-                    m_time = os.path.getmtime(f)
-                except OSError:
-                    m_time = 0.0
-                return (z_time, m_time)
-
-            files.sort(key=get_sort_key, reverse=True)
-        except Exception:
-            # If DB fails or sort crashes, ignore and print original list (Graceful Degradation)
-            pass
-
-        # 3. Output
-        for f in files:
-            print(f)
-        " | \
-        fuzzel -d --no-sort -p "Select Document: " -w 70 | \
+        # 2. Join Zathura history with filesystem search, then sort by 'relevance'.
+        MAP_CACHE="/tmp/wdoc_map_$$"
         {
-            if read -r file; then
-                if [ -n "$file" ]; then
-                    setsid zathura "$file" >/dev/null 2>&1 &
-                fi
+            [ -f "$HIST_CACHE" ] && ${pkgs.gawk}/bin/awk -F'' '{print "H\t" $2 "\t" $1}' "$HIST_CACHE"
+            ${pkgs.findutils}/bin/find ~/college ~/library ~/downloads ~/workbench -maxdepth 4 -type f \( -name "*.pdf" -o -name "*.epub" \) -printf "F\t%T@\t%p\n" 2>/dev/null
+        } | ${pkgs.gawk}/bin/awk -F'\t' '
+            /^H/ { 
+                hist[$3] = $2
+                next 
+            }
+            /^F/ {
+                t = $2
+                path = $3
+                z_time = hist[path] ? hist[path] : 0
+                n = split(path, parts, "/")
+                bname = parts[n]
+                print z_time "\t" t "\t" bname "\t" path
+            }
+        ' | ${pkgs.coreutils}/bin/sort -t'	' -rn | ${pkgs.coreutils}/bin/cut -f3- > "$MAP_CACHE"
+
+        # 3. Present cleanly sorted list to user via Fuzzel.
+        SELECTED=$(${pkgs.coreutils}/bin/cut -f1 "$MAP_CACHE" | \
+                   ${pkgs.fuzzel}/bin/fuzzel -d --no-sort -p "Select Document: " -w 70)
+
+        if [ -n "$SELECTED" ]; then
+            FILE=$(${pkgs.gawk}/bin/awk -F'\t' -v s="$SELECTED" '$1 == s { print $2; exit }' "$MAP_CACHE")
+            if [ -f "$FILE" ]; then
+                exec setsid ${pkgs.zathura}/bin/zathura "$FILE" >/dev/null 2>&1
             fi
-        }
-        exit 0
+        fi
+        rm -f "$MAP_CACHE" "$HIST_CACHE"
       '')
 
-      (writeShellScriptBin "fuzzel-bookmarks" ''
-        # fuzzel-bookmarks
-        # Usage: fuzzel-bookmarks [-a|--add]
-
+      (writeScriptBin "fuzzel-bookmarks" ''
+        #!${pkgs.dash}/bin/dash
         BOOKMARK_FILE="$HOME/nixos/common/bookmarks.txt"
         mkdir -p "$(dirname "$BOOKMARK_FILE")"
         [ ! -f "$BOOKMARK_FILE" ] && touch "$BOOKMARK_FILE"
 
-        # Helper for input using fuzzel dmenu mode
-        # Hack: We echo an empty string to ensure fuzzel opens.
-        # Users must type and likely need to press Shift+Enter or just Enter dependent on config for "custom input"
-        # But since we can't guarantee 'print-no-match', using footclient is safer?
-        # User insisted on fuzzel: we try to use it as a selector for "Cancel" or just input.
         get_input() {
-            # Prompt is passed as $1
-            # We use a trick: If we pass no lines, fuzzel shows nothing.
-            # But many configs accept unknown input.
-            # If not, we might need a fallback.
             echo "" | fuzzel -d -p "$1" -w 40 --lines 0 | head -n1
         }
 
-        if [[ "$1" == "-a" || "$1" == "--add" ]]; then
+        if [ "$1" = "-a" ] || [ "$1" = "--add" ]; then
             URL=$(get_input "Enter URL: ")
-            [[ -z "$URL" ]] && exit 0
-
+            [ -z "$URL" ] && exit 0
             NAME=$(get_input "Enter Name: ")
-            [[ -z "$NAME" ]] && NAME="$URL"
-
+            [ -z "$NAME" ] && NAME="$URL"
             echo "$NAME $URL" >> "$BOOKMARK_FILE"
             notify-send "Bookmark Added" "$NAME"
             exit 0
         fi
 
-        # Normal Mode: Select & Open
-
-        # 1. Read Bookmarks & Select
-        # Format: "Name URL"
         if [ ! -s "$BOOKMARK_FILE" ]; then
-            # Populate with defaults if empty
             cat <<EOF > "$BOOKMARK_FILE"
-        GitHub https://github.com
-        NixOS-Search https://search.nixos.org/packages
-        YouTube https://youtube.com
-        EOF
+GitHub https://github.com
+NixOS-Search https://search.nixos.org/packages
+YouTube https://youtube.com
+EOF
         fi
 
-        # Display ONLY the name (everything except the last field)
-        # We assume the name is unique enough for lookup.
-        # awk logic: iterate fields 1 to NF-1, then print newline
         SELECTED_NAME=$(awk '{for(i=1;i<NF;i++) printf "%s%s", $i, (i==NF-1?"":" "); print ""}' "$BOOKMARK_FILE" | fuzzel -d -p "Bookmarks: " -w 50)
-
-        if [ -z "$SELECTED_NAME" ]; then
-            exit 0
-        fi
-
-        # 2. Extract URL
-        # We grep the line starting with the selected name to find the full line, then extract the last field.
-        # This handles spaces in names correctly if name is unique.
-        # If duplicates exist, it picks the first one.
+        [ -z "$SELECTED_NAME" ] && exit 0
         URL=$(grep -F -m 1 "$SELECTED_NAME " "$BOOKMARK_FILE" | awk '{print $NF}')
 
         if [ -z "$URL" ]; then
-            # Fallback: Search DuckDuckGo
-            # If no URL found (meaning user typed something new), treat as search query.
             URL="https://duckduckgo.com/?q=$SELECTED_NAME"
         fi
 
         setsid xdg-open "$URL" >/dev/null 2>&1 &
-
-        # 3. Simple Focus: Switch to Workspace 1 (Browser)
-        # dwl: We assume browser is on Tag 10.
-        # Since we can't switch/tag from script easily, we just ensure browser is launched.
-        # User might need to switch to Tag 10 manually if it's already running elsewere.
-        # Or we could use wlrctl? No, wlrctl can't switch dwl tags yet (protocol limitation).
-
       '')
 
-      (writeShellScriptBin "systeminfo" ''
+      (writeScriptBin "systeminfo" ''
+        #!${pkgs.dash}/bin/dash
         TIME=$(${pkgs.coreutils}/bin/date +%H:%M)
 
-        # Find all batteries
+        # Smart battery detection.
         BATS=$(${pkgs.findutils}/bin/find /sys/class/power_supply -name "BAT*" -print)
-
         CHOSEN_BAT=""
         for bat in $BATS; do
-            if [ -e "$bat/capacity" ]; then
-                CHOSEN_BAT="$bat"
-                break
-            fi
+            [ -e "$bat/capacity" ] && CHOSEN_BAT="$bat" && break
         done
 
         if [ -n "$CHOSEN_BAT" ]; then
