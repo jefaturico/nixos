@@ -13,10 +13,12 @@
         padding = "10";
         margin = "10";
         default-timeout = 2000;
+        progress-color = "over #ffffffff";
         format = "<b>%s</b>\\n%b";
-        include = "~/.cache/wallust/colors-mako";
       };
       extraConfig = ''
+        include=~/.cache/wallust/colors-mako
+
         [urgency=high]
         default-timeout=0
         ignore-timeout=1

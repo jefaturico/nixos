@@ -22,7 +22,7 @@ static int log_level = WLR_ERROR;
 
 static const Rule rules[] = {
         /* app_id             title       tags mask     isfloating   monitor */
-        { "qutebrowser",  NULL,       1 << 9,       0,           -1 }, 
+	{ "foot-float",   NULL,       0,            1,           -1 },
 };
 
 /* layout(s) */
@@ -94,38 +94,45 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *termcmd[] = { "footclient", NULL };
+static const char *termcmd[] = { "foot", NULL };
+static const char *floatcmd[] = { "foot", "--app-id=foot-float", "--window-size-chars=82x25", NULL };
 static const char *termcmd_fallback[] = { "foot", NULL };
 static const char *menucmd[] = { "fuzzel", "-p", "λ ", NULL };
-static const char *zkcmd[] = { "footclient", "-D", "/home/jefaturico/zettelkasten", "-e", "hx", ".", NULL };
-static const char *calcmd[] = { "footclient", "-e", "calcurse", NULL };
+static const char *zkcmd[] = { "foot", "-D", "/home/jefaturico/zettelkasten", "-e", "hx", ".", NULL };
+static const char *obsidiancmd[] = { "obsidian", NULL };
+static const char *calcmd[] = { "foot", "-e", "calcurse", NULL };
 static const char *bmarkcmd[] = { "fuzzel-bookmarks", NULL };
 static const char *doccmd[] = { "wdoc-find", NULL };
 static const char *infocmd[] = { "systeminfo", NULL };
 static const char *wallrandcmd[] = { "wlsetbg", "-r", NULL };
 static const char *wallcmd[] = { "wlsetbg", NULL };
+static const char *daynightcmd[] = { "wldaynight", NULL };
+static const char *themecmd[] = { "wlsettheme", NULL };
 
-static const char *brightnessup[] = { "brightnessctl", "set", "10%+", NULL };
-static const char *brightnessdown[] = { "brightnessctl", "set", "10%-", NULL };
-static const char *volumeup[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+", NULL };
-static const char *volumedown[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-", NULL };
-static const char *volumemute[] = { "wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle", NULL };
+static const char *brightnessup[] = { "wlbrightness", "10%+", NULL };
+static const char *brightnessdown[] = { "wlbrightness", "10%-", NULL };
+static const char *volumeup[] = { "wlvolume", "5%+", NULL };
+static const char *volumedown[] = { "wlvolume", "5%-", NULL };
+static const char *volumemute[] = { "wlvolume", "mute", NULL };
 
 static const Key keys[] = {
         /* Note that Shift changes certain key codes: 2 -> at, etc. */
         /* modifier                  key                  function          argument */
         { MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
         { MODKEY,                    XKB_KEY_Return,      spawn,            {.v = termcmd} },
-        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      spawn,            {.v = termcmd_fallback} },
+        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      spawn,            {.v = floatcmd} },
 
         { MODKEY,                    XKB_KEY_d,      spawn,            {.v = doccmd} },
         { MODKEY,                    XKB_KEY_i,      spawn,            {.v = infocmd} },
         { MODKEY,                    XKB_KEY_n,      spawn,            {.v = zkcmd} },
+        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_n,      spawn,            {.v = obsidiancmd} },
         { MODKEY,                    XKB_KEY_c,      spawn,            {.v = calcmd} },
         { MODKEY,                    XKB_KEY_b,      spawn,            {.v = bmarkcmd} },
         { MODKEY,                    XKB_KEY_w,      spawn,            {.v = wallrandcmd} },
         { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_W,      spawn,            {.v = wallcmd} },
-        
+        { MODKEY,                    XKB_KEY_t,      spawn,            {.v = themecmd} },
+        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_T,      spawn,            {.v = daynightcmd} },
+
     { 0,                         XKB_KEY_XF86MonBrightnessUp,   spawn, {.v = brightnessup} },
     { 0,                         XKB_KEY_XF86MonBrightnessDown, spawn, {.v = brightnessdown} },
     { 0,                         XKB_KEY_XF86AudioRaiseVolume,  spawn, {.v = volumeup} },
@@ -135,15 +142,15 @@ static const Key keys[] = {
         { MODKEY,                    XKB_KEY_k,           focusstack,       {.i = -1} },
         { MODKEY,                    XKB_KEY_minus,       incnmaster,       {.i = -1} },
         { MODKEY,                    XKB_KEY_equal,       incnmaster,       {.i = +1} },
-        { MODKEY,                    XKB_KEY_h,           setmfact,         {.f = -0.1f} },
-        { MODKEY,                    XKB_KEY_l,           setmfact,         {.f = +0.1f} },
+        { MODKEY,                    XKB_KEY_r,           setmfact,         {.f = -0.1f} },
+        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_r,           setmfact,         {.f = +0.1f} },
         { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_space,       togglefloating, {0} },
         { MODKEY,                    XKB_KEY_space,       zoom, {0} },
         { MODKEY,                    XKB_KEY_Tab,         view,             {0} },
         { MODKEY,                    XKB_KEY_q,           killclient,       {0} },
-        { MODKEY,                    XKB_KEY_t,           setlayout,        {.v = &layouts[0]} },
-        { MODKEY,                    XKB_KEY_f,           setlayout,        {.v = &layouts[1]} },
-        { MODKEY,                    XKB_KEY_m,           setlayout,        {.v = &layouts[2]} },
+        { MODKEY,                    XKB_KEY_l,           setlayout,        {.v = &layouts[0]} },
+        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_L,           setlayout,        {.v = &layouts[2]} },
+        { MODKEY|WLR_MODIFIER_SHIFT|WLR_MODIFIER_CTRL, XKB_KEY_L, setlayout, {.v = &layouts[1]} },
 
         { MODKEY,                    XKB_KEY_e,           togglefullscreen, {0} },
 

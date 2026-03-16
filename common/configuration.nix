@@ -1,4 +1,10 @@
-{ inputs, pkgs, ... }:
+{
+  inputs,
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 {
   # Bootloader and system-level localization.
   boot.loader.systemd-boot.enable = true;
@@ -37,10 +43,10 @@
         foreground = "0x00AAAAAA";
         full_color = true;
         animation = "none";
-        animation_frame_delay = 15;
-        colormix_col1 = "0x40AAAAAA";
-        colormix_col2 = "0x20000000";
-        colormix_col3 = "0x400000AA";
+        animation_frame_delay = 10;
+        colormix_col1 = "0x40FFFFFF";
+        colormix_col2 = "0x40AAAAAA";
+        colormix_col3 = "0x20000000";
         restore = true;
         session_log = "null";
         hide_version_string = true;
@@ -76,8 +82,10 @@
     flatpak = {
       enable = true;
       packages = [
-        "com.stremio.Stremio"
         "org.jamovi.jamovi"
+      ]
+      ++ lib.optionals (config.networking.hostName != "coriolis") [
+        "com.stremio.Stremio"
       ];
       remotes = [
         {
@@ -125,6 +133,12 @@
     };
   };
 
+  environment.etc."libinput/local-overrides.quirks".text = ''
+    [keyd Virtual Keyboard]
+    MatchName=keyd virtual keyboard
+    AttrKeyboardIntegration=internal
+  '';
+
   programs.dconf.enable = true;
 
   # XDG Portals enable features like screen sharing and file pickers in Wayland.
@@ -133,6 +147,7 @@
     extraPortals = [
       pkgs.xdg-desktop-portal-gtk
       pkgs.xdg-desktop-portal-wlr
+      pkgs.xdg-desktop-portal-gnome
     ];
     config = {
       common.default = [ "gtk" ];
@@ -146,7 +161,7 @@
   users.users.jefaturico = {
     isNormalUser = true;
     extraGroups = [
-      "wheel"           # Sudo access
+      "wheel" # Sudo access
       "networkmanager"
       "video"
       "render"

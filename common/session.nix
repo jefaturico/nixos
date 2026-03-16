@@ -46,11 +46,11 @@
         "text/plain" = [ "Helix.desktop" ];
         "text/markdown" = [ "Helix.desktop" ];
         "application/x-shellscript" = [ "Helix.desktop" ];
-        "text/html" = "org.qutebrowser.qutebrowser.desktop";
-        "x-scheme-handler/http" = "org.qutebrowser.qutebrowser.desktop";
-        "x-scheme-handler/https" = "org.qutebrowser.qutebrowser.desktop";
-        "x-scheme-handler/about" = "org.qutebrowser.qutebrowser.desktop";
-        "x-scheme-handler/unknown" = "org.qutebrowser.qutebrowser.desktop";
+        "text/html" = "librewolf.desktop";
+        "x-scheme-handler/http" = "librewolf.desktop";
+        "x-scheme-handler/https" = "librewolf.desktop";
+        "x-scheme-handler/about" = "librewolf.desktop";
+        "x-scheme-handler/unknown" = "librewolf.desktop";
       };
     };
   };

@@ -1,4 +1,9 @@
-{ pkgs, osConfig, ... }:
+{
+  pkgs,
+  osConfig,
+  lib,
+  ...
+}:
 
 let
   # Custom build of dwl (Dynamic Window Manager for Wayland).
@@ -25,7 +30,7 @@ let
 
     preBuild = ''
       # Inject our personal configuration headers into the build.
-      cp ${../dots/dwl/config.h} config.h
+      cp ${../dots/dwl/config.def.h} config.h
       cp ${../dots/dwl/config.mk} config.mk
 
       # Dynamic wlroots version detection to ensure compatibility with nixpkgs.
@@ -48,7 +53,6 @@ let
   };
 in
 {
-  home.packages = [ dwl-custom ];
 
   programs = {
 
@@ -56,8 +60,9 @@ in
       enable = true;
       sessionVariables = {
         TERM = "foot";
-        BROWSER = "qutebrowser";
-        DEFAULT_BROWSER = "qutebrowser";
+        EDITOR = "hx";
+        BROWSER = "librewolf";
+        DEFAULT_BROWSER = "librewolf";
       };
 
       initExtra = /* bash */ ''
@@ -182,4 +187,66 @@ in
 
     fzf.enable = true;
   };
+
+  home.packages =
+    with pkgs;
+    [
+      dwl-custom
+      bat
+      bc
+      brightnessctl
+      calibre
+      calcurse
+      fd
+      ffmpeg
+      gimp
+      imagemagick
+      imv
+      librewolf
+      (brave.override {
+        commandLineArgs = [
+          "--enable-features=VaapiVideoDecodeLinuxGL,PipeWireWebRTCScreensharing"
+          "--disable-features=UseChromeOSDirectVideoDecoder"
+          "--use-gl=egl"
+          "--ozone-platform=wayland"
+        ];
+      })
+      tor-browser
+      keepassxc
+      libnotify
+      libreoffice
+      lswt
+      helix
+      mpv
+      obsidian
+      pandoc
+      gsettings-desktop-schemas
+      pwvucontrol
+      markdown-oxide
+      nil
+      nixfmt-rfc-style
+      texlab
+      ripgrep
+      uget # minimal alternative: aria2
+      wbg
+      wireplumber
+      wl-clipboard
+      qbittorrent # minimal alternative: tremc
+      slurp
+      grim
+      wlrctl
+      xwayland
+      zoxide
+    ]
+    # Conditional package inclusion: only install heavy apps on non-laptop hosts.
+    ++ lib.optionals (osConfig.networking.hostName != "coriolis") [
+      (antigravity.override {
+        commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing";
+      })
+      obs-studio
+    ]
+    # Logitech mouse configuration tool: only needed on Galileo.
+    ++ lib.optionals (osConfig.networking.hostName == "galileo") [
+      piper
+    ];
 }

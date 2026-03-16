@@ -3,7 +3,7 @@ NixOS-Search https://search.nixos.org/packages
 YouTube https://youtube.com
 Google Gemini https://gemini.google.com/app
 YouTube Music https://music.youtube.com/
-YouTube Creator Studio - elsewhere https://studio.youtube.com/channel/UCNYr8wbLHiDtMebn8UL-1MA
+YouTube Creator Studio https://studio.youtube.com/channel/UCNYr8wbLHiDtMebn8UL-1MA
 Syncthing http://localhost:8384/
 CampusDocencia UCV https://campusdocencia.ucv.es/my/
 Google NotebookLM https://notebooklm.google.com/
@@ -12,4 +12,3 @@ Outlook - UCV https://outlook.office.com/mail/
 Gmail https://mail.google.com/mail/u/0/#inbox
 Talley et al. - Descriptive Physical Oceanography Companion Website https://booksite.elsevier.com/DPO/
 Tutanota https://app.tuta.com/mail/OOg6IOX--J-9
-456movie.net https://456movie.net/

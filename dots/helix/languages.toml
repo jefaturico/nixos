@@ -18,7 +18,7 @@ name = "markdown"
 language-servers = [ "markdown-oxide" ]
 rulers = []
 soft-wrap = { enable = true, wrap-at-text-width = true, wrap-indicator = "" }
-text-width = 80
+text-width = 60
 
 [[language]]
 name = "latex"

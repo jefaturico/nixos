@@ -1,7 +1,5 @@
 {
   pkgs,
-  lib,
-  osConfig,
   ...
 }:
 
@@ -41,19 +39,31 @@ in
 
         # 1. Propagate environment to systemd + dbus.
         # This allows XDG portals (screen sharing, file pickers) to function correctly.
-        dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
-        systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
+        dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
+        systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
         systemctl --user start graphical-session.target
 
         # 2. Restart portal services to ensure they recognize the new environment.
         systemctl --user restart xdg-desktop-portal-wlr.service
         systemctl --user restart xdg-desktop-portal.service
+        
+        # 3. Always start in dark mode.
+        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'"
 
-        # 3. Start foot server after Wayland is up.
-        ${pkgs.foot}/bin/foot --server &
-
-        # 4. Restore last wallpaper.
+        # 4. Restore last wallpaper and theme.
         [ -f "$HOME/.wbg" ] && . "$HOME/.wbg"
+        
+        # Restore theme state
+        STATE_FILE="$HOME/.cache/wltheme_state"
+        if [ -f "$STATE_FILE" ]; then
+            . "$STATE_FILE"
+            if [ "$DARK_THEME" = "Dynamic" ]; then
+                [ -f "$HOME/.wbg_path" ] && ${pkgs.wallust}/bin/wallust run -q "$(cat "$HOME/.wbg_path")" &
+            else
+                ${pkgs.wallust}/bin/wallust theme -q "$DARK_THEME" &
+            fi
+            WPID=$!; ( wait $WPID; ${pkgs.mako}/bin/makoctl reload ) &
+        fi
       '')
 
       # dwl-session: Wrapper script called by the display manager (Ly).
@@ -66,23 +76,33 @@ in
         exec dwl -s dwl-startup > /tmp/dwl.log 2>&1
       '')
 
-      # wlsetbg: Smart wallpaper rotator with history and dynamic theming.
-      # It uses wallust to generate color schemes for foot/fuzzel/etc.
+      # wlsetbg: Pure wallpaper manager (no theme logic).
       (writeScriptBin "wlsetbg" ''
         #!${pkgs.dash}/bin/dash
-        # Usage: wlsetbg [-r for random]
-
+        set -eu
         export LC_ALL=C
+
         WALL_DIR="$HOME/images/wallpapers"
         STARTUP_SCRIPT="$HOME/.wbg"
-        HISTORY_FILE="$HOME/.cache/wsetbg_history"
-        FILELIST_CACHE="$HOME/.cache/wsetbg_filelist"
-        CURRENT_WALL=""
-
+        PATH_STORAGE="$HOME/.wbg_path"
+        HISTORY_FILE="$HOME/.cache/wlsetbg_history"
+        FILELIST_CACHE="$HOME/.cache/wlsetbg_filelist"
+        STATE_FILE="$HOME/.cache/wltheme_state"
+        
+        RANDOM_MODE=0
         mkdir -p "$HOME/.cache"
+        [ -d "$WALL_DIR" ] || exit 1
 
-        # Extract current wallpaper from persistence script.
-        [ -f "$STARTUP_SCRIPT" ] && CURRENT_WALL=$(${pkgs.gawk}/bin/awk -F'"' '/wbg/{print $2; exit}' "$STARTUP_SCRIPT" 2>/dev/null)
+        while getopts "r" opt; do
+            case "$opt" in
+                r) RANDOM_MODE=1 ;;
+                *) exit 1 ;;
+            esac
+        done
+
+        # Extract current wallpaper
+        CURRENT_WALL=""
+        [ -f "$PATH_STORAGE" ] && CURRENT_WALL=$(cat "$PATH_STORAGE")
 
         get_file_list() {
             WALL_MTIME=$(${pkgs.coreutils}/bin/stat -c %Y "$WALL_DIR" 2>/dev/null || echo 0)
@@ -90,108 +110,178 @@ in
             if [ "$WALL_MTIME" -gt "$CACHE_MTIME" ] || [ ! -s "$FILELIST_CACHE" ]; then
                 ${pkgs.fd}/bin/fd --type f --absolute-path . "$WALL_DIR" > "$FILELIST_CACHE"
             fi
-            ${pkgs.coreutils}/bin/cat "$FILELIST_CACHE"
+            cat "$FILELIST_CACHE"
         }
 
-        # Selects a wallpaper that hasnt been seen recently, or a fresh one.
-        get_smart_random_wallpaper() {
-            get_file_list | \
-            ${pkgs.gawk}/bin/awk -v hist_file="$HISTORY_FILE" -v current_wall="$CURRENT_WALL" '
-            BEGIN {
-                srand();
-                while ((getline line < hist_file) > 0) {
-                    match(line, /^[0-9]+ /);
-                    if (RLENGTH > 0) {
-                        ts = substr(line, 1, RLENGTH-1);
-                        p = substr(line, RLENGTH+1);
-                        history[p] = ts;
-                    }
-                }
-                close(hist_file);
-            }
-
-            {
-                path = $0;
-                if (path == "" || path == current_wall) next;
-
-                if (!(path in history)) {
-                    unseen[u_count++] = path;
-                } else {
-                    seen[path] = history[path];
-                    s_count++;
-                }
-            }
-
-            END {
-                if (u_count > 0) {
-                    print unseen[int(rand() * u_count)];
-                    exit 0;
-                }
-
-                if (s_count == 0) exit 1;
-
-                PROCINFO["sorted_in"] = "@val_num_asc";
-                cutoff = int(s_count * 0.2) + 1;
-                if (cutoff < 1) cutoff = 1;
-
-                k = 0;
-                for (p in seen) {
-                    candidates[k++] = p;
-                    if (k >= cutoff) break;
-                }
-                print candidates[int(rand() * k)];
-            }
-            '
-        }
-
-        if [ "$1" = "-r" ] ; then
-            FULL_PATH=$(get_smart_random_wallpaper)
-            [ -z "$FULL_PATH" ] && FULL_PATH=$(get_file_list | ${pkgs.coreutils}/bin/shuf -n 1)
+        if [ "$RANDOM_MODE" -eq 1 ]; then
+            FULL_PATH=$(get_file_list | ${pkgs.coreutils}/bin/shuf -n 1)
         else
-            cd "$WALL_DIR" || exit 1
-            CHOICE=$(${pkgs.fd}/bin/fd --type f | ${pkgs.fuzzel}/bin/fuzzel -d -p "Select Wallpaper: ")
+            CHOICE=$(${pkgs.fd}/bin/fd --type f --base-directory "$WALL_DIR" | ${pkgs.fuzzel}/bin/fuzzel -d -p "Select Wallpaper: ")
             [ -z "$CHOICE" ] && exit 0
             FULL_PATH="$WALL_DIR/$CHOICE"
         fi
 
-        [ -z "$FULL_PATH" ] || [ ! -f "$FULL_PATH" ] && exit 1
+        [ -f "$FULL_PATH" ] || exit 1
 
-        # Apply Wallpaper immediately.
-        ${pkgs.procps}/bin/pkill -x wbg || true
-        ${pkgs.coreutils}/bin/sleep 0.05
+        # Apply Wallpaper
+        pkill -x wbg || true
         wbg "$FULL_PATH" > /dev/null 2>&1 &
+        echo "$FULL_PATH" > "$PATH_STORAGE"
 
-        # Background theming generation with wallust.
-        ${pkgs.wallust}/bin/wallust run -q "$FULL_PATH" &
-        WALLUST_PID=$!
-
-        (
-            wait $WALLUST_PID 2>/dev/null
-            ${pkgs.mako}/bin/makoctl reload 2>/dev/null
-        ) &
-
-        echo "$(${pkgs.coreutils}/bin/date +%s) $FULL_PATH" >> "$HISTORY_FILE"
-
-        # Background maintenance of history file (deduplication).
-        (
-            if [ -f "$HISTORY_FILE" ]; then
-                TMP_HIST="/tmp/wsetbg_history_$$"
-                ${pkgs.gawk}/bin/awk '{data[$2] = $0} END {for (k in data) print data[k]}' "$HISTORY_FILE" \
-                    | ${pkgs.coreutils}/bin/sort -n > "$TMP_HIST"
-                mv "$TMP_HIST" "$HISTORY_FILE"
+        # Update Dynamic theme if active
+        if [ -f "$STATE_FILE" ]; then
+            . "$STATE_FILE"
+            CUR_MODE=$(${pkgs.dconf}/bin/dconf read /org/gnome/desktop/interface/color-scheme || echo "'prefer-dark'")
+            [ "$CUR_MODE" = "'prefer-dark'" ] && THEME="$DARK_THEME" || THEME="$LIGHT_THEME"
+            if [ "$THEME" = "Dynamic" ]; then
+                ${pkgs.wallust}/bin/wallust run -q "$FULL_PATH" && ${pkgs.mako}/bin/makoctl reload &
             fi
-        ) &
+        fi
 
-        # Save current wallpaper command for restoration on next login.
-        cat <<EOF > "$STARTUP_SCRIPT"
-#!/usr/bin/env dash
-wbg "$FULL_PATH" &
-${pkgs.wallust}/bin/wallust run -s -q "$FULL_PATH"
-EOF
+        # Save startup script
+        echo "wbg \"$FULL_PATH\" &" > "$STARTUP_SCRIPT"
         chmod +x "$STARTUP_SCRIPT"
-        exit 0
       '')
 
+      # wlsettheme: Curated theme picker with mode-aware filtering.
+      (writeScriptBin "wlsettheme" ''
+        #!${pkgs.dash}/bin/dash
+        set -eu
+        STATE_FILE="$HOME/.cache/wltheme_state"
+        mkdir -p "$(dirname "$STATE_FILE")"
+        [ -f "$STATE_FILE" ] || printf "DARK_THEME=Modus-Vivendi\nLIGHT_THEME=Modus-Operandi\n" > "$STATE_FILE"
+        . "$STATE_FILE"
+
+        CUR_MODE=$(${pkgs.dconf}/bin/dconf read /org/gnome/desktop/interface/color-scheme || echo "'prefer-dark'")
+        
+        DARK_THEMES="Dynamic
+Aci
+Afterglow
+Apprentice
+Argonaut
+Arthur
+Atom
+Ayu-Dark
+Ayu-Mirage
+Belafonte-Night
+Blazer
+Borland
+Breeze
+Broadcast
+Brogrammer
+Catppuccin-Frappé
+Catppuccin-Macchiato
+Catppuccin-Mocha
+Chalk
+Chalkboard
+Clone-Of-Ubuntu
+Cobalt-Neon
+Dark-Pastel
+Darkside
+Desert
+Doom-One
+Dracula
+Earthsong
+Elemental
+Elementary
+Elic
+Espresso
+Espresso-Libre
+Everforest-Dark-Hard
+Flat
+Flatland
+Github-Dark
+Grape
+Grass
+Gruvbox
+Gruvbox-Material-Dark
+Horizon-Dark
+Kanagawa-Dragon
+Kanagawa-Wave
+Modus-Vivendi
+Nord
+Oceanic-Next
+One-Dark
+Palenight
+Rosé-Pine
+Snazzy
+Solarized-Dark
+Tokyo-Night
+Tomorrow-Night"
+
+        LIGHT_THEMES="Ayu-Light
+Belafonte-Day
+Catppuccin-Latte
+Github-Light
+Gruvbox-Material-Light
+Modus-Operandi
+One-Light
+Papercolor-Light
+Rosé-Pine-Dawn
+Solarized-Light
+Tokyo-Night-Light"
+
+        if [ "$CUR_MODE" = "'prefer-light'" ]; then
+            THEMES="$LIGHT_THEMES"
+            PROMPT="Light Theme: "
+        else
+            THEMES="$DARK_THEMES"
+            PROMPT="Dark Theme: "
+        fi
+
+        SELECTED=$(echo "$THEMES" | ${pkgs.fuzzel}/bin/fuzzel -d -p "$PROMPT" -w 30)
+        [ -z "$SELECTED" ] && exit 0
+
+        # Update state persistence carefully
+        if [ "$CUR_MODE" = "'prefer-dark'" ]; then
+            grep -q "^DARK_THEME=" "$STATE_FILE" && sed -i "s/^DARK_THEME=.*/DARK_THEME=$SELECTED/" "$STATE_FILE" || printf "DARK_THEME=$SELECTED\n" >> "$STATE_FILE"
+        else
+            grep -q "^LIGHT_THEME=" "$STATE_FILE" && sed -i "s/^LIGHT_THEME=.*/LIGHT_THEME=$SELECTED/" "$STATE_FILE" || printf "LIGHT_THEME=$SELECTED\n" >> "$STATE_FILE"
+        fi
+
+        # Apply
+        if [ "$SELECTED" = "Dynamic" ]; then
+            [ -f "$HOME/.wbg_path" ] && ${pkgs.wallust}/bin/wallust run -q "$(cat "$HOME/.wbg_path")"
+        else
+            ${pkgs.wallust}/bin/wallust theme -q "$SELECTED"
+        fi
+        
+        ${pkgs.mako}/bin/makoctl reload
+        ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "Theme Applied" "$SELECTED"
+      '')
+
+      # wldaynight: Toggle between light/dark, remembering specifically chosen themes.
+      (writeScriptBin "wldaynight" ''
+        #!${pkgs.dash}/bin/dash
+        set -eu
+        STATE_FILE="$HOME/.cache/wltheme_state"
+        
+        # Initialize defaults if not present
+        DARK_THEME="Modus-Vivendi"
+        LIGHT_THEME="Modus-Operandi"
+        [ -f "$STATE_FILE" ] && . "$STATE_FILE"
+
+        CUR_MODE=$(${pkgs.dconf}/bin/dconf read /org/gnome/desktop/interface/color-scheme || echo "'prefer-dark'")
+        
+        if [ "$CUR_MODE" = "'prefer-dark'" ]; then
+            # Switching to Light
+            ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-light'"
+            THEME="$LIGHT_THEME"
+        else
+            # Switching to Dark
+            ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'"
+            THEME="$DARK_THEME"
+        fi
+
+        if [ "$THEME" = "Dynamic" ]; then
+            [ -f "$HOME/.wbg_path" ] && ${pkgs.wallust}/bin/wallust run -q "$(cat "$HOME/.wbg_path")"
+        else
+            ${pkgs.wallust}/bin/wallust theme -q "$THEME"
+        fi
+        
+        ${pkgs.mako}/bin/makoctl reload
+      '')
+ 
       # wdoc-find: Specialized document picker that prioritizes recently opened files in Zathura.
       (writeScriptBin "wdoc-find" ''
         #!${pkgs.dash}/bin/dash
@@ -288,18 +378,70 @@ EOF
 
         if [ -n "$CHOSEN_BAT" ]; then
           CAPACITY=$(${pkgs.coreutils}/bin/cat "$CHOSEN_BAT/capacity")
-          ${pkgs.libnotify}/bin/notify-send "It's $TIME" "Battery at $CAPACITY% capacity"
+          ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "It's $TIME" "Battery at $CAPACITY% capacity"
         else
-          ${pkgs.libnotify}/bin/notify-send "It's $TIME"
+          ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "It's $TIME"
+        fi
+      '')
+
+      # wlbrightness: Minimalist brightness control with a hard 10% floor.
+      (writeScriptBin "wlbrightness" ''
+        #!${pkgs.dash}/bin/dash
+        set -eu
+
+        # 1. Read pre-state (format: device,class,cur,max,pct%)
+        PRE=$(${pkgs.brightnessctl}/bin/brightnessctl i -m)
+        tmp=''${PRE%,*}; perc=''${tmp##*,}; v=''${perc%%%}
+
+        # 2. Hard floor: clamp any decrease to 10%
+        case "$1" in
+            *-) [ "$v" -le 10 ] && set -- 10% ;;
+        esac
+
+        ${pkgs.brightnessctl}/bin/brightnessctl set "$1" -q
+
+        # 3. Read post-state and notify with progress bar
+        POST=$(${pkgs.brightnessctl}/bin/brightnessctl i -m)
+        tmp=''${POST%,*}; perc=''${tmp##*,}; v=''${perc%%%}
+        ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status -h int:value:"$v" "Brightness: $perc"
+      '')
+
+      # wlvolume: Minimalist volume control with atomic locking and % progress bar.
+      (writeScriptBin "wlvolume" ''
+        #!${pkgs.dash}/bin/dash
+        set -eu
+
+        # Atomic lock (mkdir fails if already exists, preventing races)
+        LOCK="/tmp/wlvolume.lock"
+        mkdir "$LOCK" 2>/dev/null || exit 0
+        trap 'rmdir "$LOCK"' EXIT
+
+        # 1. Update hardware (strict 100% cap)
+        case "$1" in
+            mute) ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+            *)    ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ "$1" -l 1.0 ;;
+        esac
+
+        # 2. Format and notify
+        # wpctl output format: "Volume: 0.55" or "Volume: 0.55 [MUTED]"
+        INFO=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)
+        if [ "''${INFO#*MUTED}" != "$INFO" ]; then
+            ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "Volume: MUTED"
+        else
+            vol=''${INFO##* }            # "0.55"
+            v=''${vol%.*}''${vol#*.}     # "055"
+            v=''${v#0}; v=''${v#0}       # "55"
+            [ -z "$v" ] && v=0
+            ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status -h int:value:"$v" "Volume: $v%"
         fi
       '')
 
     ]
-    ++ lib.optionals (osConfig.networking.hostName == "ekman") [
+    ++ [
       batteryCheck
     ];
 
-  systemd.user.services.battery-check = lib.mkIf (osConfig.networking.hostName == "ekman") {
+  systemd.user.services.battery-check = {
     Unit.Description = "Battery Low Warning Service";
     Service = {
       Type = "oneshot";
@@ -307,7 +449,7 @@ EOF
     };
   };
 
-  systemd.user.timers.battery-check = lib.mkIf (osConfig.networking.hostName == "ekman") {
+  systemd.user.timers.battery-check = {
     Timer = {
       OnCalendar = "*:0/5";
       Unit = "battery-check.service";

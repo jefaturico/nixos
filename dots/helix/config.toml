@@ -2,9 +2,12 @@ theme = "base16_transparent"
 
 [editor]
 line-number = "relative"
-mouse = true
+mouse = false
 color-modes = true
 auto-pairs = false
+trim-trailing-whitespace = true
+insert-final-newline = true
+trim-final-newlines = true
 
 [editor.cursor-shape]
 normal = "block"
