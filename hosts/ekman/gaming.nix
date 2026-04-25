@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, ... }:
 {
   # ── Steam ──────────────────────────────────────────────────────────
   programs.steam = {
@@ -55,4 +55,22 @@
 
   # Many Proton/Wine games need a higher map count
   boot.kernel.sysctl."vm.max_map_count" = 1048576;
+
+  # Intel Specific Optimizations
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+    extraPackages = with pkgs; [
+      intel-media-driver
+      intel-vaapi-driver
+      libvdpau-va-gl
+    ];
+  };
+
+  # Process prioritization
+  services.ananicy = {
+    enable = true;
+    package = pkgs.ananicy-cpp;
+    rulesProvider = pkgs.ananicy-rules-cachyos;
+  };
 }

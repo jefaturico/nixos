@@ -61,8 +61,8 @@ in
       sessionVariables = {
         TERM = "foot";
         EDITOR = "hx";
-        BROWSER = "librewolf";
-        DEFAULT_BROWSER = "librewolf";
+        BROWSER = "brave";
+        DEFAULT_BROWSER = "brave";
       };
 
       initExtra = /* bash */ ''
@@ -127,11 +127,15 @@ in
           vertical-pad = 15;
           inner-pad = 5;
           include = "~/.cache/wallust/colors-fuzzel.ini";
+          match-mode = "fzf";
         };
 
         border = {
           width = 1;
           radius = 0;
+        };
+        "key-bindings" = {
+          execute-input = "Control+Return";
         };
       };
     };
@@ -212,7 +216,6 @@ in
         ];
       })
       tor-browser
-      keepassxc
       libnotify
       libreoffice
       lswt
@@ -221,8 +224,11 @@ in
       obsidian
       pandoc
       gsettings-desktop-schemas
+      bitwarden-desktop
       pwvucontrol
+      hugo
       markdown-oxide
+      yacreader
       nil
       nixfmt-rfc-style
       texlab
@@ -244,6 +250,8 @@ in
         commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing";
       })
       obs-studio
+      dwarf-fortress
+      qgis
     ]
     # Logitech mouse configuration tool: only needed on Galileo.
     ++ lib.optionals (osConfig.networking.hostName == "galileo") [

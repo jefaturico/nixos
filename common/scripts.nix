@@ -8,24 +8,72 @@ let
     #!${pkgs.dash}/bin/dash
     set -eu
 
-    # Find the first battery with capacity
-    BATS=$(${pkgs.findutils}/bin/find /sys/class/power_supply -name "BAT*" -print)
-    CHOSEN_BAT=""
-    for bat in $BATS; do
-        if [ -e "$bat/capacity" ]; then
-            CHOSEN_BAT="$bat"
-            break
+    # Find AC and Battery paths once
+    AC_PATH=$(${pkgs.findutils}/bin/find /sys/class/power_supply -name "AC*" -o -name "ADP*" -o -name "ACAD" | ${pkgs.coreutils}/bin/head -n1)
+    BAT_PATH=$(${pkgs.findutils}/bin/find /sys/class/power_supply -name "BAT*" | ${pkgs.coreutils}/bin/head -n1)
+
+    # If no battery exists, just exit (desktops)
+    [ -z "$BAT_PATH" ] && exit 0
+
+    LAST_AC=""
+    LOW_NOTIFIED=0
+    CRIT_NOTIFIED=0
+
+    # Notification tags
+    STATUS_TAG="string:x-canonical-private-synchronous:status"
+    BATTERY_TAG="string:x-canonical-private-synchronous:battery-low"
+
+    while true; do
+        # 1. Read capacity and status using shell builtins to avoid forks
+        read -r CAPACITY < "$BAT_PATH/capacity"
+        
+        # Check AC status (if available)
+        if [ -n "$AC_PATH" ]; then
+            read -r AC_ONLINE < "$AC_PATH/online"
+        else
+            # Fallback to battery status if no AC path found
+            read -r STATUS < "$BAT_PATH/status"
+            [ "$STATUS" = "Charging" ] && AC_ONLINE=1 || AC_ONLINE=0
         fi
+
+        # 2. Handle AC state changes (Plug/Unplug)
+        if [ "$AC_ONLINE" != "$LAST_AC" ]; then
+            if [ "$AC_ONLINE" = "1" ]; then
+                # Plugged in: Notify Charging + ALWAYS dismiss battery alerts
+                [ -n "$LAST_AC" ] && ${pkgs.libnotify}/bin/notify-send -h "$STATUS_TAG" -i battery-charging "Charging" "Battery is now charging"
+                ${pkgs.libnotify}/bin/notify-send -h "$BATTERY_TAG" " " -t 1 # Quick dismiss
+                LOW_NOTIFIED=0
+                CRIT_NOTIFIED=0
+            fi
+            LAST_AC="$AC_ONLINE"
+        fi
+
+        # 3. Handle Low Battery Thresholds (only if discharging)
+        if [ "$AC_ONLINE" = "0" ]; then
+            if [ "$CAPACITY" -le 10 ]; then
+                if [ "$CRIT_NOTIFIED" -eq 0 ]; then
+                    ${pkgs.libnotify}/bin/notify-send -u critical -h "$BATTERY_TAG" -i battery-empty "Battery Critical" "Level: ''${CAPACITY}%"
+                    CRIT_NOTIFIED=1
+                fi
+            elif [ "$CAPACITY" -le 15 ]; then
+                if [ "$LOW_NOTIFIED" -lt 2 ]; then
+                    ${pkgs.libnotify}/bin/notify-send -u normal -h "$BATTERY_TAG" -i battery-low "Battery Low" "Level: ''${CAPACITY}%"
+                    LOW_NOTIFIED=2
+                fi
+            elif [ "$CAPACITY" -le 20 ]; then
+                if [ "$LOW_NOTIFIED" -lt 1 ]; then
+                    ${pkgs.libnotify}/bin/notify-send -u normal -h "$BATTERY_TAG" -i battery-low "Battery Low" "Level: ''${CAPACITY}%"
+                    LOW_NOTIFIED=1
+                fi
+            else
+                # Reset notifications if battery goes above 20%
+                LOW_NOTIFIED=0
+                CRIT_NOTIFIED=0
+            fi
+        fi
+
+        ${pkgs.coreutils}/bin/sleep 1
     done
-
-    [ -z "$CHOSEN_BAT" ] && exit 0
-
-    CAPACITY=$(${pkgs.coreutils}/bin/cat "$CHOSEN_BAT/capacity")
-    STATUS=$(${pkgs.coreutils}/bin/cat "$CHOSEN_BAT/status")
-
-    if [ "$STATUS" = "Discharging" ] && [ "$CAPACITY" -le 20 ]; then
-        ${pkgs.libnotify}/bin/notify-send -u critical "Battery Low" "Level: ''${CAPACITY}%"
-    fi
   '';
 in
 {
@@ -37,33 +85,33 @@ in
       (writeScriptBin "dwl-startup" ''
         #!${pkgs.dash}/bin/dash
 
-        # 1. Propagate environment to systemd + dbus.
-        # This allows XDG portals (screen sharing, file pickers) to function correctly.
+        # 1. Restore wallpaper IMMEDIATELY for perceived speed.
+        [ -f "$HOME/.wbg" ] && . "$HOME/.wbg"
+
+        # 2. Propagate environment (fast).
         dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
         systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
-        systemctl --user start graphical-session.target
 
-        # 2. Restart portal services to ensure they recognize the new environment.
-        systemctl --user restart xdg-desktop-portal-wlr.service
-        systemctl --user restart xdg-desktop-portal.service
-        
-        # 3. Always start in dark mode.
+        # 3. Start session and services in the background.
+        systemctl --user start --no-block graphical-session.target
+        (
+            systemctl --user restart xdg-desktop-portal-wlr.service
+            systemctl --user restart xdg-desktop-portal.service
+        ) &
+
+        # 4. Apply theme and dark mode in the background.
         ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'"
 
-        # 4. Restore last wallpaper and theme.
-        [ -f "$HOME/.wbg" ] && . "$HOME/.wbg"
-        
-        # Restore theme state
-        STATE_FILE="$HOME/.cache/wltheme_state"
-        if [ -f "$STATE_FILE" ]; then
-            . "$STATE_FILE"
-            if [ "$DARK_THEME" = "Dynamic" ]; then
-                [ -f "$HOME/.wbg_path" ] && ${pkgs.wallust}/bin/wallust run -q "$(cat "$HOME/.wbg_path")" &
-            else
-                ${pkgs.wallust}/bin/wallust theme -q "$DARK_THEME" &
+        (
+            STATE_FILE="$HOME/.cache/wltheme_state"
+            if [ -f "$STATE_FILE" ]; then
+                . "$STATE_FILE"
+                [ "$DARK_THEME" = "Dynamic" ] && \
+                    { [ -f "$HOME/.wbg_path" ] && ${pkgs.wallust}/bin/wallust run -q "$(cat "$HOME/.wbg_path")"; } || \
+                    ${pkgs.wallust}/bin/wallust theme -q "$DARK_THEME"
+                ${pkgs.mako}/bin/makoctl reload
             fi
-            WPID=$!; ( wait $WPID; ${pkgs.mako}/bin/makoctl reload ) &
-        fi
+        ) &
       '')
 
       # dwl-session: Wrapper script called by the display manager (Ly).
@@ -297,7 +345,7 @@ Tokyo-Night-Light"
         MAP_CACHE="/tmp/wdoc_map_$$"
         {
             [ -f "$HIST_CACHE" ] && ${pkgs.gawk}/bin/awk -F'' '{print "H\t" $2 "\t" $1}' "$HIST_CACHE"
-            ${pkgs.findutils}/bin/find ~/college ~/library ~/downloads ~/workbench -maxdepth 4 -type f \( -name "*.pdf" -o -name "*.epub" \) -printf "F\t%T@\t%p\n" 2>/dev/null
+            ${pkgs.findutils}/bin/find -L ~/college ~/library ~/downloads ~/workbench -maxdepth 4 -type f \( -name "*.pdf" -o -name "*.epub" \) -printf "F\t%T@\t%p\n" 2>/dev/null
         } | ${pkgs.gawk}/bin/awk -F'\t' '
             /^H/ { 
                 hist[$3] = $2
@@ -389,71 +437,130 @@ EOF
         #!${pkgs.dash}/bin/dash
         set -eu
 
-        # 1. Read pre-state (format: device,class,cur,max,pct%)
-        PRE=$(${pkgs.brightnessctl}/bin/brightnessctl i -m)
-        tmp=''${PRE%,*}; perc=''${tmp##*,}; v=''${perc%%%}
-
-        # 2. Hard floor: clamp any decrease to 10%
+        # 1. Hard floor: clamp any decrease to 10%
         case "$1" in
-            *-) [ "$v" -le 10 ] && set -- 10% ;;
+            *-) 
+                PRE=$(${pkgs.brightnessctl}/bin/brightnessctl i -m)
+                tmp=''${PRE%,*}; perc=''${tmp##*,}; v=''${perc%%%}
+                [ "$v" -le 10 ] && set -- 10%
+                ;;
         esac
 
-        ${pkgs.brightnessctl}/bin/brightnessctl set "$1" -q
-
-        # 3. Read post-state and notify with progress bar
-        POST=$(${pkgs.brightnessctl}/bin/brightnessctl i -m)
-        tmp=''${POST%,*}; perc=''${tmp##*,}; v=''${perc%%%}
-        ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status -h int:value:"$v" "Brightness: $perc"
+        # 2. Apply change and notify
+        NEW=$(${pkgs.brightnessctl}/bin/brightnessctl set "$1" -m | cut -d, -f4)
+        ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "Brightness: $NEW"
       '')
 
-      # wlvolume: Minimalist volume control with atomic locking and % progress bar.
+      # wlvolume: Minimalist volume control.
       (writeScriptBin "wlvolume" ''
         #!${pkgs.dash}/bin/dash
         set -eu
 
-        # Atomic lock (mkdir fails if already exists, preventing races)
-        LOCK="/tmp/wlvolume.lock"
-        mkdir "$LOCK" 2>/dev/null || exit 0
-        trap 'rmdir "$LOCK"' EXIT
-
-        # 1. Update hardware (strict 100% cap)
+        # 1. Update hardware
         case "$1" in
             mute) ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
-            *)    ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ "$1" -l 1.0 ;;
+            *)    ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ "$1" -l 1.5 ;;
         esac
 
         # 2. Format and notify
-        # wpctl output format: "Volume: 0.55" or "Volume: 0.55 [MUTED]"
         INFO=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)
-        if [ "''${INFO#*MUTED}" != "$INFO" ]; then
-            ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "Volume: MUTED"
-        else
-            vol=''${INFO##* }            # "0.55"
-            v=''${vol%.*}''${vol#*.}     # "055"
-            v=''${v#0}; v=''${v#0}       # "55"
-            [ -z "$v" ] && v=0
-            ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status -h int:value:"$v" "Volume: $v%"
-        fi
+        case "$INFO" in
+            *MUTED*) TEXT="Volume: MUTED" ;;
+            *)
+                v=''${INFO##* }
+                v=''${v%.*}''${v#*.}
+                v=''${v#0}; v=''${v#0}
+                TEXT="Volume: ''${v:-0}%"
+                ;;
+        esac
+        ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:status "$TEXT"
       '')
 
+      # wlscreenshot: Screenshot utility using grim and slurp.
+      (writeScriptBin "wlscreenshot" ''
+        #!${pkgs.dash}/bin/dash
+        set -eu
+        SCREENSHOT_DIR="$HOME/images/screenshots"
+        mkdir -p "$SCREENSHOT_DIR"
+        FILE="$SCREENSHOT_DIR/$(date +'%Y%m%d_%H%M%S').png"
+
+        if [ "$#" -gt 0 ] && [ "$1" = "-s" ]; then
+            GEOM=$(${pkgs.slurp}/bin/slurp)
+            [ -z "$GEOM" ] && exit 0
+            ${pkgs.grim}/bin/grim -g "$GEOM" "$FILE"
+        else
+            ${pkgs.grim}/bin/grim "$FILE"
+        fi
+
+        ${pkgs.wl-clipboard}/bin/wl-copy < "$FILE"
+        ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:screenshot "Screenshot Taken" "Saved to $(basename "$FILE") and copied to clipboard" -i camera-photo
+      '')
+
+      # fuzzel-history-run: Smart bash history search/execution.
+      # Silent/Small -> Notification | Large/Long/TUI -> Terminal
+      (pkgs.writeScriptBin "fuzzel-history-run" ''
+        #!${pkgs.bash}/bin/bash
+        HISTFILE="$HOME/.bash_history"
+        CMD=$(${pkgs.coreutils}/bin/tac "$HISTFILE" 2>/dev/null | ${pkgs.gawk}/bin/awk '!x[$0]++' | \
+          ${pkgs.fuzzel}/bin/fuzzel -d -p "Run: " -w 80 \
+            --no-sort \
+            --placeholder="e.g. sudo nixos-rebuild switch")
+        
+        [ -z "$CMD" ] && exit 0
+ 
+        # 1. Safeguard for destructive commands
+        # Matches commands starting with rm, mv, cp, dd (optionally with sudo)
+        DESTRUCTIVES="rm|mv|cp|dd|nix-collect-garbage"
+        if [[ "$CMD" =~ ^(sudo\ )?($DESTRUCTIVES)(\ |$) ]]; then
+            CONFIRM=$(printf "No\nYes" | ${pkgs.fuzzel}/bin/fuzzel -d -p "Destructive! Confirm? " -w 30)
+            [ "$CONFIRM" != "Yes" ] && exit 0
+        fi
+
+        # 1. TUI/Interactive Detection (includes sudo for password prompt)
+        TUIs="hx|top|htop|btop|iotop|nmtui|calcurse|pwvucontrol|nnn|less|man|vi|vim|nano|python|gh|ip|sudo"
+        if [[ "$CMD" =~ ^($TUIs) ]] || [[ "$CMD" == *" -e "* ]] || [[ "$CMD" == *" --execute "* ]]; then
+            exec setsid ${pkgs.foot}/bin/foot bash -i -c "$CMD; exec bash" >/dev/null 2>&1
+        fi
+
+        # 2. Smart Capture Path
+        OUT_FILE=$(mktemp /tmp/fuzzel_run_XXXXXX)
+        (eval "$CMD") > "$OUT_FILE" 2>&1 &
+        PID=$!
+        
+        # Wait to check if it's a "quick" background task or a long/noisy one
+        sleep 0.8
+        
+        if kill -0 $PID 2>/dev/null; then
+            # Still running after 0.8s: Open terminal and follow output
+            ${pkgs.libnotify}/bin/notify-send "Long Process Started" "$CMD"
+            exec setsid ${pkgs.foot}/bin/foot bash -c "tail -f $OUT_FILE --pid=$PID; echo -e '\n--- Process Finished ---'; rm -f $OUT_FILE; exec bash" >/dev/null 2>&1
+        else
+            # Finished quickly: check output volume
+            LINES=$(wc -l < "$OUT_FILE")
+            if [ "$LINES" -gt 15 ]; then
+                # Large output: show in terminal
+                exec setsid ${pkgs.foot}/bin/foot bash -c "cat $OUT_FILE; echo -e '\n--- Output End ---'; rm -f $OUT_FILE; exec bash" >/dev/null 2>&1
+            else
+                # Small output: notify
+                CONTENT=$(cat "$OUT_FILE" | head -c 1000)
+                ${pkgs.libnotify}/bin/notify-send "Done: $CMD" "''${CONTENT:-[No Output]}"
+                rm -f "$OUT_FILE"
+            fi
+        fi
+      '')
     ]
     ++ [
       batteryCheck
     ];
 
   systemd.user.services.battery-check = {
-    Unit.Description = "Battery Low Warning Service";
+    Unit.Description = "Battery Status Monitor Service";
     Service = {
-      Type = "oneshot";
+      Type = "simple";
       ExecStart = "${batteryCheck}/bin/battery-check";
+      Restart = "always";
+      RestartSec = 5;
     };
-  };
-
-  systemd.user.timers.battery-check = {
-    Timer = {
-      OnCalendar = "*:0/5";
-      Unit = "battery-check.service";
-    };
-    Install.WantedBy = [ "timers.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 }

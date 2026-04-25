@@ -11,6 +11,7 @@ static const float rootcolor[]             = COLOR(0x222222ff);
 static const float bordercolor[]           = COLOR(0x000000ff);
 static const float focuscolor[]            = COLOR(0x000000ff);
 static const float urgentcolor[]           = COLOR(0xff0000ff);
+static const int cursor_timeout            = 5;
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]         = {0.0f, 0.0f, 0.0f, 1.0f}; /* You can also use glsl colors */
 
@@ -46,7 +47,7 @@ static const struct xkb_rule_names xkb_rules = {
         */
         .layout = "us",
         .variant = "altgr-intl",
-        .options = "caps:ctrl_modifier",
+        .options = "caps:ctrl_modifier,altwin:menu_win",
 };
 
 static const int repeat_rate = 50;
@@ -95,7 +96,7 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 
 /* commands */
 static const char *termcmd[] = { "foot", NULL };
-static const char *floatcmd[] = { "foot", "--app-id=foot-float", "--window-size-chars=82x25", NULL };
+static const char *histruncmd[] = { "fuzzel-history-run", NULL };
 static const char *termcmd_fallback[] = { "foot", NULL };
 static const char *menucmd[] = { "fuzzel", "-p", "λ ", NULL };
 static const char *zkcmd[] = { "foot", "-D", "/home/jefaturico/zettelkasten", "-e", "hx", ".", NULL };
@@ -120,7 +121,7 @@ static const Key keys[] = {
         /* modifier                  key                  function          argument */
         { MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
         { MODKEY,                    XKB_KEY_Return,      spawn,            {.v = termcmd} },
-        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      spawn,            {.v = floatcmd} },
+        { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      spawn,            {.v = histruncmd} },
 
         { MODKEY,                    XKB_KEY_d,      spawn,            {.v = doccmd} },
         { MODKEY,                    XKB_KEY_i,      spawn,            {.v = infocmd} },
