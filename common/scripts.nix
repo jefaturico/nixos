@@ -410,6 +410,8 @@ EOF
             URL="https://duckduckgo.com/?q=$SELECTED_NAME"
         fi
 
+        ${pkgs.wlrctl}/bin/wlrctl keyboard type "0" SUPER
+
         setsid xdg-open "$URL" >/dev/null 2>&1 &
       '')
 
@@ -549,11 +551,13 @@ EOF
         fi
       '')
 
-      (pkgs.writeScriptBin "run-brave" ''
+      (pkgs.writeScriptBin "single-instance" ''
         #!${pkgs.dash}/bin/dash
-        if ! ${pkgs.procps}/bin/pgrep -x "brave" > /dev/null && ! ${pkgs.procps}/bin/pgrep -x ".brave-wrapped" > /dev/null; then
-            setsid ${pkgs.brave}/bin/brave >/dev/null 2>&1 &
-        fi
+        PROCS=$1; shift
+        for p in $PROCS; do
+            ${pkgs.procps}/bin/pgrep -x "$p" >/dev/null && exit 0
+        done
+        exec "$@" >/dev/null 2>&1
       '')
     ]
     ++ [

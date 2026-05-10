@@ -118,14 +118,23 @@ static const char *volumedown[] = { "wlvolume", "5%-", NULL };
 static const char *volumemute[] = { "wlvolume", "mute", NULL };
 static const char *screenshot_select[] = { "wlscreenshot", "-s", NULL };
 static const char *screenshot_full[]   = { "wlscreenshot", NULL };
-static const char *bravecmd[] = { "run-brave", NULL };
+typedef struct {
+        const char **cmd;
+        uint32_t tag;
+} SpawnViewArg;
+
+static const char *bravecmd[] = { "single-instance", "brave .brave-wrapped", "brave", NULL };
+static const SpawnViewArg brave_sva = { bravecmd, 1 << 9 };
 
 static void
 spawn_and_view(const Arg *arg)
 {
-        Arg a = {.ui = 1 << 9};
-        view(&a);
-        spawn(arg);
+        const SpawnViewArg *sva = arg->v;
+        Arg view_arg = {.ui = sva->tag};
+        view(&view_arg);
+        
+        Arg cmd_arg = {.v = sva->cmd};
+        spawn(&cmd_arg);
 }
 
 static const Key keys[] = {
@@ -182,7 +191,7 @@ static const Key keys[] = {
         TAGKEYS(          XKB_KEY_7, XKB_KEY_ampersand,                     6),
         TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                      7),
         TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                     8),
-        { MODKEY,                                       XKB_KEY_0,  spawn_and_view, {.v = bravecmd} },
+        { MODKEY,                                       XKB_KEY_0,  spawn_and_view, {.v = &brave_sva} },
         { MODKEY|WLR_MODIFIER_SHIFT,                    XKB_KEY_parenright, tag,        {.ui = 1 << 9} },
         { MODKEY|WLR_MODIFIER_CTRL,                     XKB_KEY_0,  toggleview, {.ui = 1 << 9} },
         { MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT,  XKB_KEY_parenright, toggletag,  {.ui = 1 << 9} },
