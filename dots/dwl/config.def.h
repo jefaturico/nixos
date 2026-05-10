@@ -23,6 +23,7 @@ static int log_level = WLR_ERROR;
 
 static const Rule rules[] = {
         /* app_id             title       tags mask     isfloating   monitor */
+        { "brave-browser",    NULL,       1 << 9,       0,           -1 },
 	{ "foot-float",   NULL,       0,            1,           -1 },
 };
 
@@ -117,6 +118,15 @@ static const char *volumedown[] = { "wlvolume", "5%-", NULL };
 static const char *volumemute[] = { "wlvolume", "mute", NULL };
 static const char *screenshot_select[] = { "wlscreenshot", "-s", NULL };
 static const char *screenshot_full[]   = { "wlscreenshot", NULL };
+static const char *bravecmd[] = { "run-brave", NULL };
+
+static void
+spawn_and_view(const Arg *arg)
+{
+        Arg a = {.ui = 1 << 9};
+        view(&a);
+        spawn(arg);
+}
 
 static const Key keys[] = {
         /* Note that Shift changes certain key codes: 2 -> at, etc. */
@@ -172,7 +182,10 @@ static const Key keys[] = {
         TAGKEYS(          XKB_KEY_7, XKB_KEY_ampersand,                     6),
         TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                      7),
         TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                     8),
-        TAGKEYS(          XKB_KEY_0, XKB_KEY_parenright,                    9),
+        { MODKEY,                                       XKB_KEY_0,  spawn_and_view, {.v = bravecmd} },
+        { MODKEY|WLR_MODIFIER_SHIFT,                    XKB_KEY_parenright, tag,        {.ui = 1 << 9} },
+        { MODKEY|WLR_MODIFIER_CTRL,                     XKB_KEY_0,  toggleview, {.ui = 1 << 9} },
+        { MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT,  XKB_KEY_parenright, toggletag,  {.ui = 1 << 9} },
         { MODKEY,                    XKB_KEY_End,         quit,        {0} },
 
         { WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },

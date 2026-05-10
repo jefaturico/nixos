@@ -3,7 +3,7 @@
   imports = [
     ./hardware.nix
     ../../common/configuration.nix
-    ./gaming.nix
+    # ./gaming.nix
   ];
 
   networking.hostName = "galileo";

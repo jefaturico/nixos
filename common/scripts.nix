@@ -548,6 +548,13 @@ EOF
             fi
         fi
       '')
+
+      (pkgs.writeScriptBin "run-brave" ''
+        #!${pkgs.dash}/bin/dash
+        if ! ${pkgs.procps}/bin/pgrep -x "brave" > /dev/null && ! ${pkgs.procps}/bin/pgrep -x ".brave-wrapped" > /dev/null; then
+            setsid ${pkgs.brave}/bin/brave >/dev/null 2>&1 &
+        fi
+      '')
     ]
     ++ [
       batteryCheck

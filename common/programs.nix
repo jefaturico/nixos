@@ -150,16 +150,6 @@ in
       };
     };
 
-    texlive = {
-      enable = true;
-      extraPackages = tpkgs: {
-        inherit (tpkgs)
-          scheme-medium
-          latexmk
-          ;
-      };
-    };
-
     zathura = {
       enable = true;
       package = pkgs.zathura.override {
@@ -222,6 +212,7 @@ in
       helix
       mpv
       obsidian
+      typst
       pandoc
       gsettings-desktop-schemas
       bitwarden-desktop
@@ -241,6 +232,7 @@ in
       slurp
       grim
       wlrctl
+      tinymist
       xwayland
       zoxide
     ]
@@ -250,7 +242,6 @@ in
         commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing";
       })
       obs-studio
-      dwarf-fortress
       qgis
     ]
     # Logitech mouse configuration tool: only needed on Galileo.
