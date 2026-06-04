@@ -2,7 +2,6 @@
   imports = [
     ./hardware.nix
     ../../common/configuration.nix
-    ./gaming.nix
   ];
 
   networking.hostName = "ekman";

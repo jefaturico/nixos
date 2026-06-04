@@ -63,7 +63,7 @@
     gtk4.extraConfig = {
       gtk-dialogs-use-header = false;
     };
-    gtk3.extraCss = /* css */ ''
+    gtk3.extraCss = ''
       headerbar.default-decoration {
         margin-bottom: 50px;
         margin-top: -100px;
@@ -73,7 +73,7 @@
         box-shadow: none;
       }
     '';
-    gtk4.extraCss = /* css */ ''
+    gtk4.extraCss = ''
       headerbar.default-decoration {
         margin-bottom: 50px;
         margin-top: -100px;

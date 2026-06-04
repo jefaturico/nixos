@@ -10,5 +10,4 @@ Google NotebookLM https://notebooklm.google.com/
 WhatsApp Web https://web.whatsapp.com/
 Outlook - UCV https://outlook.office.com/mail/
 Gmail https://mail.google.com/mail/u/0/#inbox
-Talley et al. - Descriptive Physical Oceanography Companion Website https://booksite.elsevier.com/DPO/
 Tutanota https://app.tuta.com/mail/OOg6IOX--J-9

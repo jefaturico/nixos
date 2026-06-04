@@ -10,7 +10,7 @@
         HISTORY_FILE="$HOME/.cache/wlsetbg_history"
         FILELIST_CACHE="$HOME/.cache/wlsetbg_filelist"
         STATE_FILE="$HOME/.cache/wltheme_state"
-        
+
         RANDOM_MODE=0
         mkdir -p "$HOME/.cache"
         [ -d "$WALL_DIR" ] || exit 1

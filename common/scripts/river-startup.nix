@@ -9,7 +9,8 @@
         dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
         systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
 
-        # 3. Restart XDG portal services in the background.
+        # 3. Start session and services in the background.
+        systemctl --user start --no-block graphical-session.target
         (
             systemctl --user restart xdg-desktop-portal-wlr.service
             systemctl --user restart xdg-desktop-portal.service

@@ -42,6 +42,11 @@
         };
       };
     };
+
+    vdirsyncer = {
+      enable = true;
+      frequency = "*:0/15";
+    };
   };
   systemd.user.services.mako = {
     Service = {

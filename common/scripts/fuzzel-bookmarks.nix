@@ -35,7 +35,7 @@ EOF
             URL="https://duckduckgo.com/?q=$SELECTED_NAME"
         fi
 
-        ${pkgs.wlrctl}/bin/wlrctl keyboard type "0" SUPER
+        riverctl set-focused-tags $((1 << 9))
 
         setsid xdg-open "$URL" >/dev/null 2>&1 &
 ''

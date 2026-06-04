@@ -18,7 +18,7 @@
         fi
 
         # 1. TUI/Interactive Detection (includes sudo for password prompt)
-        TUIs="hx|top|htop|btop|iotop|nmtui|calcurse|pwvucontrol|nnn|less|man|vi|vim|nano|python|gh|ip|sudo"
+        TUIs="nvim|top|htop|btop|iotop|nmtui|taskwarrior-tui|khal|pwvucontrol|nnn|less|man|vi|vim|nano|python|gh|ip|sudo"
         if [[ "$CMD" =~ ^($TUIs) ]] || [[ "$CMD" == *" -e "* ]] || [[ "$CMD" == *" --execute "* ]]; then
             exec setsid ${pkgs.foot}/bin/foot bash -i -c "$CMD; exec bash" >/dev/null 2>&1
         fi

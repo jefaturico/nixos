@@ -1,0 +1,21 @@
+[general]
+status_path = "~/.local/share/vdirsyncer/status/"
+
+[pair calendars]
+a = "local_calendars"
+b = "google_calendars"
+collections = ["from b"]
+metadata = ["color"]
+conflict_resolution = "b wins"
+
+[storage local_calendars]
+type = "filesystem"
+path = "~/.calendars/"
+fileext = ".ics"
+
+[storage google_calendars]
+type = "google_calendar"
+token_file = "~/.local/share/vdirsyncer/google_calendar_token"
+client_id = "17683897267-ubl94g1835jqb8fc70t6fksbq845qjka.apps.googleusercontent.com"
+client_secret = "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"
+item_types = ["VEVENT"]

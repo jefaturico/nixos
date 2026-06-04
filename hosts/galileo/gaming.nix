@@ -10,27 +10,7 @@
 
   # ── Lutris + Wine ──────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
-    (lutris.override {
-      extraLibraries =
-        pkgs: with pkgs; [
-          gamemode
-          mangohud
-          vulkan-loader
-        ];
-      extraPkgs =
-        pkgs: with pkgs; [
-          wine-staging
-          winetricks
-          gamemode
-          mangohud
-          vulkan-loader
-          vulkan-tools
-          gnutls # networking for Wine games
-          openldap # some multiplayer games
-          libgpg-error # crypto/auth
-          sqlite # save data
-        ];
-    })
+    lutris
     wine-staging
     winetricks
     mangohud

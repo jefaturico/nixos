@@ -7,6 +7,7 @@
         [ -f "$STATE_FILE" ] || printf "DARK_THEME=Modus-Vivendi\nLIGHT_THEME=Modus-Operandi\n" > "$STATE_FILE"
         . "$STATE_FILE"
 
+        # Check the current GNOME color-scheme preference via dconf.
         CUR_MODE=$(${pkgs.dconf}/bin/dconf read /org/gnome/desktop/interface/color-scheme || echo "'prefer-dark'")
         
         DARK_THEMES="Dynamic
@@ -87,7 +88,7 @@ Tokyo-Night-Light"
         SELECTED=$(echo "$THEMES" | ${pkgs.fuzzel}/bin/fuzzel -d -p "$PROMPT" -w 30)
         [ -z "$SELECTED" ] && exit 0
 
-        # Update state persistence carefully
+        # Update the theme state file to remember the choice for this mode (LIGHT/DARK).
         if [ "$CUR_MODE" = "'prefer-dark'" ]; then
             grep -q "^DARK_THEME=" "$STATE_FILE" && sed -i "s/^DARK_THEME=.*/DARK_THEME=$SELECTED/" "$STATE_FILE" || printf "DARK_THEME=$SELECTED\n" >> "$STATE_FILE"
         else

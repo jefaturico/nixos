@@ -67,6 +67,6 @@
           fi
       fi
 
-      ${pkgs.coreutils}/bin/sleep 60
+      ${pkgs.coreutils}/bin/sleep 2
   done
 ''

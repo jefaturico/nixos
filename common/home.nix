@@ -5,7 +5,8 @@
 
 let
   symlinks = {
-    helix = "helix";
+    vdirsyncer = "vdirsyncer";
+    nvim = "nvim";
   };
 in
 {
@@ -50,4 +51,3 @@ in
   };
 
 }
-

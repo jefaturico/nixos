@@ -73,6 +73,23 @@
           EOF
         ''
       )
+
+      # Register River session for login managers.
+      (pkgs.runCommand "river-session"
+        {
+          passthru.providedSessions = [ "river" ];
+        }
+        ''
+          mkdir -p $out/share/wayland-sessions
+          cat <<EOF > $out/share/wayland-sessions/river.desktop
+          [Desktop Entry]
+          Name=river
+          Comment=A dynamic tiling Wayland compositor
+          Exec=river-session
+          Type=Application
+          EOF
+        ''
+      )
     ];
 
     udisks2.enable = true;
@@ -201,7 +218,7 @@
   zramSwap.enable = true;
   services.fstrim.enable = true;
   boot.kernel.sysctl = {
-    "vm.swappiness" = 10;
+    "vm.swappiness" = 100;
   };
 
   system.stateVersion = "25.11";
