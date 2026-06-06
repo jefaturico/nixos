@@ -1,41 +1,47 @@
-{ pkgs }:
+{ pkgs, ... }:
+let
+  fuzzel = "${pkgs.fuzzel}/bin/fuzzel";
+in
 ''
-        #!${pkgs.dash}/bin/dash
-        BOOKMARK_FILE="$HOME/nixos/common/bookmarks.txt"
-        mkdir -p "$(dirname "$BOOKMARK_FILE")"
-        [ ! -f "$BOOKMARK_FILE" ] && touch "$BOOKMARK_FILE"
+  #!${pkgs.bash}/bin/bash
+  # Robust Wayland bookmarks script with logging
+  
+  LOG_FILE="/tmp/fuzzel-bookmarks.log"
+  echo "--- $(date) ---" > "$LOG_FILE"
+  
+  # Ensure we have a Wayland display if possible
+  if [ -z "$WAYLAND_DISPLAY" ]; then
+      echo "WARNING: WAYLAND_DISPLAY is not set. Fuzzel might fail." >> "$LOG_FILE"
+  else
+      echo "INFO: WAYLAND_DISPLAY is set to $WAYLAND_DISPLAY" >> "$LOG_FILE"
+  fi
+  
+  BOOKMARK_FILE="$HOME/nixos/common/bookmarks.txt"
+  if [ ! -f "$BOOKMARK_FILE" ]; then
+      echo "ERROR: Bookmark file $BOOKMARK_FILE not found." >> "$LOG_FILE"
+      exit 1
+  fi
 
-        get_input() {
-            echo "" | fuzzel -d -p "$1" -w 40 --lines 0 | head -n1
-        }
+  # Pick a bookmark or enter a query
+  echo "INFO: Running fuzzel..." >> "$LOG_FILE"
+  SELECTED=$(${pkgs.gawk}/bin/awk '{for(i=1;i<NF;i++) printf "%s%s", $i, (i==NF-1?"":" "); print ""}' "$BOOKMARK_FILE" | ${fuzzel} -d -p "Bookmarks: " -w 50 2>> "$LOG_FILE")
+  
+  if [ -z "$SELECTED" ]; then
+      echo "INFO: No selection made. Exiting." >> "$LOG_FILE"
+      exit 0
+  fi
 
-        if [ "$1" = "-a" ] || [ "$1" = "--add" ]; then
-            URL=$(get_input "Enter URL: ")
-            [ -z "$URL" ] && exit 0
-            NAME=$(get_input "Enter Name: ")
-            [ -z "$NAME" ] && NAME="$URL"
-            echo "$NAME $URL" >> "$BOOKMARK_FILE"
-            notify-send "Bookmark Added" "$NAME"
-            exit 0
-        fi
+  echo "INFO: Selected '$SELECTED'" >> "$LOG_FILE"
 
-        if [ ! -s "$BOOKMARK_FILE" ]; then
-            cat <<EOF > "$BOOKMARK_FILE"
-GitHub https://github.com
-NixOS-Search https://search.nixos.org/packages
-YouTube https://youtube.com
-EOF
-        fi
+  # Find the URL (last column) for the selected name
+  URL=$(grep -F -m 1 "$SELECTED " "$BOOKMARK_FILE" | ${pkgs.gawk}/bin/awk '{print $NF}')
+  
+  # If no URL found, treat as search query
+  if [ -z "$URL" ]; then
+      echo "INFO: No URL found for '$SELECTED', treating as search query." >> "$LOG_FILE"
+      URL="https://duckduckgo.com/?q=''${SELECTED// /+}"
+  fi
 
-        SELECTED_NAME=$(awk '{for(i=1;i<NF;i++) printf "%s%s", $i, (i==NF-1?"":" "); print ""}' "$BOOKMARK_FILE" | fuzzel -d -p "Bookmarks: " -w 50)
-        [ -z "$SELECTED_NAME" ] && exit 0
-        URL=$(grep -F -m 1 "$SELECTED_NAME " "$BOOKMARK_FILE" | awk '{print $NF}')
-
-        if [ -z "$URL" ]; then
-            URL="https://duckduckgo.com/?q=$SELECTED_NAME"
-        fi
-
-        river-set-focused-tags $((1 << 9))
-
-        setsid xdg-open "$URL" >/dev/null 2>&1 &
+  echo "INFO: Opening URL: $URL" >> "$LOG_FILE"
+  setsid xdg-open "$URL" >/dev/null 2>&1 &
 ''

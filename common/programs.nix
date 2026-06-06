@@ -154,7 +154,7 @@ in
           buildInputs = [ pkgs.makeWrapper ];
           postBuild = ''
             wrapProgram $out/bin/code \
-              --add-flags "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing"
+              --add-flags "--enable-features=UseOzonePlatform,WebUIDarkMode --ozone-platform=wayland --disable-gpu-compositing"
           '';
         }) // {
           pname = pkgs.vscode-fhs.pname or "vscode";
@@ -220,8 +220,7 @@ in
   home.packages =
     with pkgs;
     [
-      river-classic
-      rivercarro
+      pkgs-unstable.river
       bat
       brightnessctl
       calibre
@@ -280,7 +279,7 @@ in
       (antigravity.override {
         commandLineArgs =
           let
-            baseFlags = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
+            baseFlags = "--enable-features=UseOzonePlatform,WebUIDarkMode --ozone-platform=wayland";
             nvidiaFlags = "--disable-gpu-memory-buffer-video-frames --use-gl=egl";
             intelFlags = "--enable-gpu-rasterization --enable-zero-copy";
           in

@@ -7,6 +7,7 @@ let
   symlinks = {
     vdirsyncer = "vdirsyncer";
     nvim = "nvim";
+    rill = "rill";
   };
 in
 {

@@ -1,0 +1,126 @@
+.{
+    // Gap between windows and the output's top/bottom edge
+    .vertical_gap = 0,
+    // Gap between adjacent windows
+    .horizontal_gap = 0,
+    // Default proportion of the output's available width that a window occupies when spawned
+    .default_window_width = 0.6,
+
+    // Center the focused window (never, always, single)
+    // Set it to single to center a window if it's the only window in the workspace
+    .center_focused_window = .never,
+
+    // Disable client side decorations
+    .no_csd = true,
+    // Duration of animations, in milliseconds
+    .animation_duration = 200,
+
+    .border = .{
+        .width = 0,
+        .focused_color = .{ .r = 0, .g = 0, .b = 0, .a = 1.0 },
+        .unfocused_color = .{ .r = 0, .g = 0, .b = 0, .a = 1.0 },
+    },
+
+    // Theme and size of cursor (set it to null to use default cursor)
+    // .cursor = .{ .theme = "Adwaita", .size = 24 },
+    .cursor = null,
+
+    .spawn_at_startup = .{
+        .{"rill-init"},
+        // .{ "wl-clip-persist", "--clipboard", "both" },
+    },
+
+    .keybindings = .{
+        // Key: keysym names (case insensitive) from xkbcommon-keysyms.h
+        // Common ones include:
+        // "Left", "Up", "Right", "Down", "BackSpace", "Tab", "Space", "Return", "Escape", "Delete",
+        // "XF86MonBrightnessUp", "XF86MonBrightnessDown",
+        // "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute"
+        //
+        // Modifiers: shift, ctrl, mod1 (alt), mod4 (super)
+
+        .{ .key = "q", .modifiers = .{ .mod4 = true }, .action = .close_window },
+        .{ .key = "f", .modifiers = .{ .mod4 = true }, .action = .toggle_fullscreen },
+
+        // Decrease focused window's width by 0.1 of the output's available width
+        .{ .key = "minus", .modifiers = .{ .mod4 = true }, .action = .{ .adjust_window_width = -0.1 } },
+        // Increase focused window's width by 0.1 of the output's available width
+        .{ .key = "equal", .modifiers = .{ .mod4 = true }, .action = .{ .adjust_window_width = 0.1 } },
+        // Set focused window's width to 0.5 of the output's available width
+        .{ .key = "BackSpace", .modifiers = .{ .mod4 = true }, .action = .{ .set_window_width = 0.5 } },
+
+        // ── Window Focus & Movement ──────────────────────────────────────────
+        .{ .key = "h", .modifiers = .{ .mod4 = true }, .action = .focus_window_left },
+        .{ .key = "l", .modifiers = .{ .mod4 = true }, .action = .focus_window_right },
+        .{ .key = "h", .modifiers = .{ .mod4 = true, .shift = true }, .action = .move_window_left },
+        .{ .key = "l", .modifiers = .{ .mod4 = true, .shift = true }, .action = .move_window_right },
+
+        // ── Workspace Navigation ─────────────────────────────────────────────
+        // .{ .key = "v", .modifiers = .{ .mod4 = true }, .action = .toggle_workspace_floating },
+        .{ .key = "k", .modifiers = .{ .mod4 = true }, .action = .focus_workspace_above },
+        .{ .key = "j", .modifiers = .{ .mod4 = true }, .action = .focus_workspace_below },
+        .{ .key = "tab", .modifiers = .{ .mod4 = true }, .action = .focus_workspace_previous },
+
+        .{ .key = "1", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 1 } },
+        .{ .key = "2", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 2 } },
+        .{ .key = "3", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 3 } },
+        .{ .key = "4", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 4 } },
+        .{ .key = "5", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 5 } },
+        .{ .key = "6", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 6 } },
+        .{ .key = "7", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 7 } },
+        .{ .key = "8", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 8 } },
+        .{ .key = "9", .modifiers = .{ .mod4 = true }, .action = .{ .focus_workspace_number = 9 } },
+
+        .{ .key = "1", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 1 } },
+        .{ .key = "2", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 2 } },
+        .{ .key = "3", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 3 } },
+        .{ .key = "4", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 4 } },
+        .{ .key = "5", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 5 } },
+        .{ .key = "6", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 6 } },
+        .{ .key = "7", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 7 } },
+        .{ .key = "8", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 8 } },
+        .{ .key = "9", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .move_window_to_workspace_number = 9 } },
+
+        // ── Multi-Output ────────────────────────────────────────────────────
+        .{ .key = "Left", .modifiers = .{ .mod4 = true }, .action = .focus_output_left },
+        .{ .key = "Right", .modifiers = .{ .mod4 = true }, .action = .focus_output_right },
+        // .{ .key = "k", .modifiers = .{ .mod4 = true }, .action = .focus_output_above },
+        // .{ .key = "j", .modifiers = .{ .mod4 = true }, .action = .focus_output_below },
+
+        .{ .key = "Left", .modifiers = .{ .mod4 = true, .shift = true }, .action = .move_window_to_output_left },
+        .{ .key = "Right", .modifiers = .{ .mod4 = true, .shift = true }, .action = .move_window_to_output_right },
+
+        // ── Applications ─────────────────────────────────────────────────────
+        .{ .key = "Return", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"foot"} } },
+        .{ .key = "p", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"fuzzel", "-p", "λ "} } },
+        .{ .key = "b", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"/etc/profiles/per-user/jefaturico/bin/brave"} } },
+        .{ .key = "b", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .spawn = .{"fuzzel-bookmarks"} } },
+        .{ .key = "d", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"wdoc-find"} } },
+        .{ .key = "i", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"systeminfo"} } },
+        .{ .key = "n", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"foot", "-D", "/home/jefaturico/zettelkasten", "-e", "nvim", "-c", "ObsidianSearch"} } },
+        .{ .key = "n", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .spawn = .{"obsidian"} } },
+        .{ .key = "c", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"foot", "-e", "taskwarrior-tui"} } },
+        .{ .key = "c", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .spawn = .{"foot", "-e", "khal", "interactive"} } },
+        .{ .key = "w", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"wlsetbg", "-r"} } },
+        .{ .key = "w", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .spawn = .{"wlsetbg"} } },
+        .{ .key = "t", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"wlsettheme"} } },
+        .{ .key = "t", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .spawn = .{"wldaynight"} } },
+        .{ .key = "s", .modifiers = .{ .mod4 = true }, .action = .{ .spawn = .{"wlscreenshot", "-s"} } },
+        .{ .key = "s", .modifiers = .{ .mod4 = true, .shift = true }, .action = .{ .spawn = .{"wlscreenshot"} } },
+
+        .{ .key = "XF86MonBrightnessUp", .modifiers = .{}, .action = .{ .spawn = .{"wlbrightness", "10%+"} } },
+        .{ .key = "XF86MonBrightnessDown", .modifiers = .{}, .action = .{ .spawn = .{"wlbrightness", "10%-"} } },
+        .{ .key = "XF86AudioRaiseVolume", .modifiers = .{}, .action = .{ .spawn = .{"wlvolume", "5%+"} } },
+        .{ .key = "XF86AudioLowerVolume", .modifiers = .{}, .action = .{ .spawn = .{"wlvolume", "5%-"} } },
+        .{ .key = "XF86AudioMute", .modifiers = .{}, .action = .{ .spawn = .{"wlvolume", "mute"} } },
+
+        .{ .key = "End", .modifiers = .{ .mod4 = true }, .action = .exit },
+        .{ .key = "r", .modifiers = .{ .mod4 = true }, .action = .reload_config },
+    },
+
+    .pointer_bindings = .{
+        // Button: left, right, middle
+        .{ .button = .left, .modifiers = .{ .mod4 = true }, .action = .move_window },
+        .{ .button = .right, .modifiers = .{ .mod4 = true }, .action = .resize_window },
+    },
+}

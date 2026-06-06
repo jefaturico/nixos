@@ -1,65 +1,39 @@
 {
   pkgs,
+  pkgs-unstable,
+  inputs,
+  config,
   ...
 }:
 
 let
+  # ── Individual script definitions ──
   batteryCheck = pkgs.writeScriptBin "battery-check" (import ./scripts/battery-check.nix { inherit pkgs; });
 in
 {
   home.packages =
     with pkgs;
     [
+      # ── Session wrappers ──────────────────────────────────────────────────
+      (pkgs.writeScriptBin "rill-session" (import ./scripts/rill-session.nix { inherit pkgs pkgs-unstable; }))
 
-      # river-session: Wrapper script for River, called by Ly display manager.
-      (pkgs.writeScriptBin "river-session" (import ./scripts/river-session.nix { inherit pkgs; }))
+      # ── Rill layout generator ────────────────────────────────────────────
+      (pkgs.callPackage ./pkgs/rill.nix {
+        zig_0_16 = pkgs-unstable.zig;
+        rillSource = inputs.rill;
+      })
 
-      # river-startup: Environment setup run on River startup (wallpaper, dbus, services).
-      (pkgs.writeScriptBin "river-startup" (import ./scripts/river-startup.nix { inherit pkgs; }))
-
-      # river-init: River configuration script (keybindings, input, rules, layout).
-      (pkgs.writeScriptBin "river-init" (import ./scripts/river-init.nix { inherit pkgs; }))
-
-      (pkgs.writeScriptBin "river-state-init" (import ./scripts/river-state-init.nix { inherit pkgs; }))
-
-      (pkgs.writeScriptBin "river-set-focused-tags" (import ./scripts/river-set-focused-tags.nix { inherit pkgs; }))
-
-      (pkgs.writeScriptBin "river-toggle-focused-tags" (import ./scripts/river-toggle-focused-tags.nix { inherit pkgs; }))
-
-      (pkgs.writeScriptBin "river-focus-previous-tags" (import ./scripts/river-focus-previous-tags.nix { inherit pkgs; }))
-
-      # wlsetbg: Pure wallpaper manager (no theme logic).
+      # ── Utility scripts ─────────────────────────────────────────────────
       (pkgs.writeScriptBin "wlsetbg" (import ./scripts/wlsetbg.nix { inherit pkgs; }))
-
-      # wlsettheme: Curated theme picker with mode-aware filtering.
       (pkgs.writeScriptBin "wlsettheme" (import ./scripts/wlsettheme.nix { inherit pkgs; }))
-
-      # wldaynight: Toggle between light/dark, remembering specifically chosen themes.
       (pkgs.writeScriptBin "wldaynight" (import ./scripts/wldaynight.nix { inherit pkgs; }))
- 
-      # wdoc-find: Specialized document picker that prioritizes recently opened files in Zathura.
+      (pkgs.writeScriptBin "rill-init" (import ./scripts/rill-init.nix { inherit pkgs; }))
       (pkgs.writeScriptBin "wdoc-find" (import ./scripts/wdoc-find.nix { inherit pkgs; }))
-
       (pkgs.writeScriptBin "fuzzel-bookmarks" (import ./scripts/fuzzel-bookmarks.nix { inherit pkgs; }))
-
       (pkgs.writeScriptBin "systeminfo" (import ./scripts/systeminfo.nix { inherit pkgs; }))
-
-      # wlbrightness: Minimalist brightness control with a hard 10% floor.
       (pkgs.writeScriptBin "wlbrightness" (import ./scripts/wlbrightness.nix { inherit pkgs; }))
-
-      # wlvolume: Minimalist volume control.
       (pkgs.writeScriptBin "wlvolume" (import ./scripts/wlvolume.nix { inherit pkgs; }))
-
-      # wlscreenshot: Screenshot utility using grim and slurp.
       (pkgs.writeScriptBin "wlscreenshot" (import ./scripts/wlscreenshot.nix { inherit pkgs; }))
-
-      # fuzzel-history-run: Smart bash history search/execution.
-      # Silent/Small -> Notification | Large/Long/TUI -> Terminal
-      (pkgs.writeScriptBin "fuzzel-history-run" (import ./scripts/fuzzel-history-run.nix { inherit pkgs; }))
-
-      (pkgs.writeScriptBin "river-toggle-float" (import ./scripts/river-toggle-float.nix { inherit pkgs; }))
-
-      (pkgs.writeScriptBin "single-instance" (import ./scripts/single-instance.nix { inherit pkgs; }))
     ]
     ++ [
       batteryCheck
@@ -75,4 +49,5 @@ in
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
+
 }

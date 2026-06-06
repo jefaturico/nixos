@@ -11,6 +11,10 @@
       inputs.nixpkgs.follows = "nixpkgs"; 
     };
     nix-flatpak.url = "github:gmodena/nix-flatpak";
+    rill = {
+      url = "git+https://codeberg.org/lzj15/rill.git";
+      flake = false;
+    };
   };
 
   # Outputs define the final system configurations.

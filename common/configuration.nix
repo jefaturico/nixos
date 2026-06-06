@@ -56,18 +56,18 @@
     };
 
     displayManager.sessionPackages = [
-      # Register River session for login managers.
-      (pkgs.runCommand "river-session"
+      # Register River (rill) session.
+      (pkgs.runCommand "river-rill-session"
         {
-          passthru.providedSessions = [ "river" ];
+          passthru.providedSessions = [ "rill" ];
         }
         ''
           mkdir -p $out/share/wayland-sessions
-          cat <<EOF > $out/share/wayland-sessions/river.desktop
+          cat <<EOF > $out/share/wayland-sessions/rill.desktop
           [Desktop Entry]
-          Name=river
-          Comment=A dynamic tiling Wayland compositor
-          Exec=river-session
+          Name=River (rill)
+          Comment=River with rill layout generator
+          Exec=rill-session
           Type=Application
           EOF
         ''
