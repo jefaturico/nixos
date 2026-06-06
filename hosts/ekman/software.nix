@@ -6,7 +6,27 @@
 
   networking.hostName = "ekman";
 
-  services.tlp.enable = true;
+  boot.kernelParams = [
+    "i915.enable_guc=3"
+    "i915.enable_fbc=1"
+  ];
+
+  services.tlp = {
+    enable = true;
+    settings = {
+      # Intel P-State EPP
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
+      CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance";
+
+      # Disable Turbo Boost on battery
+      CPU_BOOST_ON_BAT = 0;
+      CPU_BOOST_ON_AC = 1;
+
+      # PCIe ASPM
+      PCIE_ASPM_ON_BAT = "powersave";
+    };
+  };
+
   services.thermald.enable = true;
 
   hardware.graphics = {

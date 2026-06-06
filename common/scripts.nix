@@ -10,12 +10,6 @@ in
   home.packages =
     with pkgs;
     [
-      # dwl-startup: Runs WITHIN dwl via the -s flag.
-      # This is crucial because it executes AFTER the Wayland socket is initialized.
-      (pkgs.writeScriptBin "dwl-startup" (import ./scripts/dwl-startup.nix { inherit pkgs; }))
-
-      # dwl-session: Wrapper script called by the display manager (Ly).
-      (pkgs.writeScriptBin "dwl-session" (import ./scripts/dwl-session.nix { inherit pkgs; }))
 
       # river-session: Wrapper script for River, called by Ly display manager.
       (pkgs.writeScriptBin "river-session" (import ./scripts/river-session.nix { inherit pkgs; }))
@@ -25,6 +19,14 @@ in
 
       # river-init: River configuration script (keybindings, input, rules, layout).
       (pkgs.writeScriptBin "river-init" (import ./scripts/river-init.nix { inherit pkgs; }))
+
+      (pkgs.writeScriptBin "river-state-init" (import ./scripts/river-state-init.nix { inherit pkgs; }))
+
+      (pkgs.writeScriptBin "river-set-focused-tags" (import ./scripts/river-set-focused-tags.nix { inherit pkgs; }))
+
+      (pkgs.writeScriptBin "river-toggle-focused-tags" (import ./scripts/river-toggle-focused-tags.nix { inherit pkgs; }))
+
+      (pkgs.writeScriptBin "river-focus-previous-tags" (import ./scripts/river-focus-previous-tags.nix { inherit pkgs; }))
 
       # wlsetbg: Pure wallpaper manager (no theme logic).
       (pkgs.writeScriptBin "wlsetbg" (import ./scripts/wlsetbg.nix { inherit pkgs; }))
@@ -54,6 +56,8 @@ in
       # fuzzel-history-run: Smart bash history search/execution.
       # Silent/Small -> Notification | Large/Long/TUI -> Terminal
       (pkgs.writeScriptBin "fuzzel-history-run" (import ./scripts/fuzzel-history-run.nix { inherit pkgs; }))
+
+      (pkgs.writeScriptBin "river-toggle-float" (import ./scripts/river-toggle-float.nix { inherit pkgs; }))
 
       (pkgs.writeScriptBin "single-instance" (import ./scripts/single-instance.nix { inherit pkgs; }))
     ]

@@ -13,7 +13,7 @@
         MAP_CACHE="/tmp/wdoc_map_$$"
         {
             [ -f "$HIST_CACHE" ] && ${pkgs.gawk}/bin/awk -F'' '{print "H\t" $2 "\t" $1}' "$HIST_CACHE"
-            ${pkgs.findutils}/bin/find -L ~/college ~/library ~/downloads ~/workbench -maxdepth 4 -type f \( -name "*.pdf" -o -name "*.epub" \) -printf "F\t%T@\t%p\n" 2>/dev/null
+            ${pkgs.findutils}/bin/find -L ~/college ~/library ~/downloads -maxdepth 4 -type f \( -name "*.pdf" -o -name "*.epub" \) -printf "F\t%T@\t%p\n" 2>/dev/null
         } | ${pkgs.gawk}/bin/awk -F'\t' '
             /^H/ { 
                 hist[$3] = $2

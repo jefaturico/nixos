@@ -3,7 +3,8 @@
 
   # Inputs define where we pull our packages and modules from.
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-25.11"; 
+    nixpkgs.url = "nixpkgs/nixos-25.11";
+    nixpkgs-unstable.url = "nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager/release-25.11"; 
       # Ensures home-manager uses the same nixpkgs version as the system.
@@ -13,14 +14,20 @@
   };
 
   # Outputs define the final system configurations.
-  outputs = { self, nixpkgs, home-manager, ... }@inputs: 
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... }@inputs: 
     let
+      # Import unstable nixpkgs for cherry-picking newer packages.
+      pkgs-unstable = import nixpkgs-unstable {
+        system = "x86_64-linux";
+        config.allowUnfree = true;
+      };
+
       # Shared Home Manager setup across all hosts to avoid repetition.
       homeManagerConf = {
         home-manager = {
           useGlobalPkgs = true; 
           useUserPackages = true; 
-          extraSpecialArgs = { inherit inputs; }; 
+          extraSpecialArgs = { inherit inputs pkgs-unstable; }; 
           users.jefaturico = import ./common/home.nix; 
           backupFileExtension = "backup"; 
         };

@@ -35,7 +35,7 @@ EOF
             URL="https://duckduckgo.com/?q=$SELECTED_NAME"
         fi
 
-        riverctl set-focused-tags $((1 << 9))
+        river-set-focused-tags $((1 << 9))
 
         setsid xdg-open "$URL" >/dev/null 2>&1 &
 ''

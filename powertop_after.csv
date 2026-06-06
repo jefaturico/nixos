@@ -1,0 +1,519 @@
+____________________________________________________________________
+			P o w e r T O P
+
+____________________________________________________________________
+ *  *  *   System Information   *  *  *
+
+PowerTOP Version;2.15 ran at Thu Jun  4 18:11:06 2026
+
+Kernel Version;Linux version 6.12.85
+System Name;HUAWEIMRC-WX0M1NONE
+CPU Information;8 Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+OS Information;NixOS 25.11 (Xantusia)
+
+Target: 1 units/s;System:  1147.2 wakeup/s;CPU:  47.4% usage;GPU: 0 ops/s;GFX: 0 wakeups/s;VFS: 0 ops/s;
+
+____________________________________________________________________
+ *  *  *   Top 10 Power Consumers   *  *  *
+
+Usage;Events/s;Category;Description
+  1.3%;692.7;Timer;tick_nohz_handler
+  2.6%;234.9;Process;[PID 55465] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/resources/app/extensions/antigravit
+ 20.6%;  3.5;Process;[PID 55246] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+  1.1%; 56.0;Interrupt;[7] sched(softirq)
+  0.8%; 43.8;Timer;hrtimer_wakeup
+ 11.3%;  0.9;Process;[PID 55162] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --ozone-platform-hint=a
+  0.0%; 25.5;Process;[PID 19] [rcu_preempt]
+  0.4%; 23.1;Process;[PID 55239] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote --no-zygo
+  0.0%; 13.0;Timer;inactive_task_timer
+  0.0%;  8.7;Process;[PID 50128] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=gpu-process --ozone-pla
+
+____________________________________________________________________
+ *  *  *   Processor Idle State Report   *  *  *
+
+Package;0
+C2 (pc2);  5.1%
+C3 (pc3);  0.5%
+C6 (pc6); 10.5%
+C7 (pc7);  0.3%
+C8 (pc8);  0.0%
+C9 (pc9);  0.0%
+C10 (pc10);  0.0%
+;
+;
+;
+
+;Core 0
+C3 (cc3);  0.9%
+C6 (cc6); 19.5%
+C7 (cc7); 26.0%
+;Core 1
+C3 (cc3);  1.0%
+C6 (cc6); 21.4%
+C7 (cc7); 35.6%
+;Core 2
+C3 (cc3);  0.9%
+C6 (cc6); 19.4%
+C7 (cc7); 34.7%
+;Core 3
+C3 (cc3);  1.0%
+C6 (cc6); 20.4%
+C7 (cc7); 41.5%
+
+CPU;0;CPU;4
+C0 active; 17.9%; 45.3%;
+POLL;  0.1%;   0.0 ms;  0.1%;   0.0 ms
+C1;  0.2%;   0.1 ms;  0.1%;   0.0 ms
+;
+C3;  1.3%;   0.1 ms;  0.9%;   0.1 ms
+C6; 23.1%;   0.5 ms; 12.9%;   0.5 ms
+C7s;  0.0%;   0.0 ms;  0.0%;   0.0 ms
+C8; 16.7%;   0.7 ms;  6.4%;   0.6 ms
+C9;  0.4%;   0.5 ms;  2.4%;   2.7 ms
+;
+C10; 40.1%;   1.1 ms; 35.6%;   2.1 ms
+C1E;  0.8%;   0.1 ms;  0.6%;   0.1 ms
+CPU;1;CPU;5
+C0 active; 21.6%; 25.8%;
+POLL;  0.1%;   0.0 ms;  0.1%;   0.0 ms
+C1;  0.1%;   0.1 ms;  0.1%;   0.1 ms
+;
+C3;  1.2%;   0.1 ms;  0.9%;   0.1 ms
+C6; 18.6%;   0.5 ms; 15.3%;   0.5 ms
+C7s;  0.0%;   0.0 ms;  0.0%;   0.0 ms
+C8; 15.2%;   0.7 ms;  8.3%;   0.7 ms
+C9;  1.8%;   2.2 ms;  3.3%;   3.5 ms
+;
+C10; 42.6%;   1.8 ms; 46.4%;   2.2 ms
+C1E;  0.8%;   0.1 ms;  0.6%;   0.1 ms
+CPU;2;CPU;6
+C0 active; 17.7%; 34.7%;
+POLL;  0.1%;   0.0 ms;  0.1%;   0.0 ms
+C1;  0.1%;   0.1 ms;  0.1%;   0.1 ms
+;
+C3;  1.1%;   0.1 ms;  0.8%;   0.1 ms
+C6; 18.4%;   0.5 ms; 13.4%;   0.5 ms
+C7s;  0.0%;   0.0 ms;  0.0%;   0.0 ms
+C8; 11.6%;   0.7 ms;  7.8%;   0.7 ms
+C9;  1.8%;   2.4 ms;  3.1%;   2.9 ms
+;
+C10; 49.2%;   1.8 ms; 43.6%;   2.7 ms
+C1E;  0.8%;   0.1 ms;  0.5%;   0.1 ms
+CPU;3;CPU;7
+C0 active; 25.6%; 16.8%;
+POLL;  0.1%;   0.0 ms;  0.1%;   0.0 ms
+C1;  0.1%;   0.0 ms;  0.1%;   0.1 ms
+;
+C3;  1.3%;   0.1 ms;  0.7%;   0.1 ms
+C6; 19.4%;   0.5 ms; 11.8%;   0.5 ms
+C7s;  0.0%;   0.0 ms;  0.0%;   0.0 ms
+C8; 12.5%;   0.7 ms;  8.3%;   0.7 ms
+C9;  0.9%;   1.9 ms;  3.1%;   2.8 ms
+;
+C10; 42.0%;   2.5 ms; 59.6%;   3.2 ms
+C1E;  0.8%;   0.1 ms;  0.5%;   0.1 ms
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+
+____________________________________________________________________
+ *  *  *   Processor Frequency Report   *  *  *
+
+Package;0
+Idle;
+;
+;
+;
+
+;Core 0
+Idle;
+;Core 1
+Idle;
+;Core 2
+Idle;
+;Core 3
+Idle;
+
+CPU 0;CPU 4
+Average;1.8 GHz;2.0 GHz
+Idle;
+CPU 1;CPU 5
+Average;2.0 GHz;1.8 GHz
+Idle;
+CPU 2;CPU 6
+Average;1.8 GHz;2.0 GHz
+Idle;
+CPU 3;CPU 7
+Average;2.0 GHz;1.9 GHz
+Idle;
+;;
+;;
+;;
+;;
+
+____________________________________________________________________
+ *  *  *   Overview of Software Power Consumers   *  *  *
+
+Usage;Wakeups/s;GPU ops/s;Disk IO/s;GFX Wakeups/s;Category;Description
+ 13.4 ms/s;692.7;;;;Timer;tick_nohz_handler
+ 25.9 ms/s;234.9;;;;Process;[PID 55465] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/resources/app/extensions/antigravit
+206.2 ms/s;  3.5;;;;Process;[PID 55246] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+ 11.4 ms/s; 56.0;;;;Interrupt;[7] sched(softirq)
+  7.6 ms/s; 43.8;;;;Timer;hrtimer_wakeup
+112.8 ms/s;  0.9;;;;Process;[PID 55162] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --ozone-platform-hint=a
+350.6 us/s; 25.5;;;;Process;[PID 19] [rcu_preempt]
+  3.9 ms/s; 23.1;;;;Process;[PID 55239] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote --no-zygo
+131.7 us/s; 13.0;;;;Timer;inactive_task_timer
+475.3 us/s;  8.7;;;;Process;[PID 50128] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=gpu-process --ozone-pla
+ 17.6 ms/s;  1.2;;;;kWork;intel_atomic_commit_work
+ 11.9 ms/s;  1.8;;;;Process;[PID 55275] /proc/self/exe --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --
+  1.4 ms/s;  5.3;;;;Process;[PID 55251] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+ 11.1 ms/s;  0.6;;;;Process;[PID 55248] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+ 10.1 ms/s; 0.20;;;;Process;[PID 55249] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+  8.8 ms/s; 0.10;;;;Process;[PID 55255] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+ 33.1 us/s;  3.3;;;;Process;[PID 34998] /nix/store/p8lkynya12kzg2kry0bpipypilk11qln-syncthing-2.0.10/bin/syncthing --config=/home/jefaturico/.config/syncth
+137.9 us/s;  2.6;;;;Interrupt;[4] block(softirq)
+ 76.9 us/s;  2.4;;;;kWork;engine_retire
+ 26.3 us/s;  2.4;;;;kWork;toggle_allocation_gate
+ 47.5 us/s;  1.7;;;;kWork;psi_avgs_work
+356.5 us/s;  1.6;;;;Interrupt;[0] HI_SOFTIRQ
+138.7 us/s;  1.4;;;;Process;[PID 55343] /proc/self/exe --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --
+  3.8 ms/s;;;;;Interrupt;[9] RCU(softirq)
+  0.7 ms/s;  1.2;;;;Process;[PID 49829] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --enable-features=VaapiVideoDe
+152.3 us/s;  1.3;;;;Interrupt;[134] i915
+ 60.5 us/s;  1.3;;;;kWork;intel_atomic_cleanup_work
+ 80.7 us/s;  1.2;;;;kWork;__intel_wakeref_put_work
+  1.7 ms/s;  0.3;;;;Process;[PID 55250] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote 
+  1.4 ms/s;  0.3;;;;Process;[PID 55325] /proc/self/exe --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --
+ 13.4 us/s;  0.9;;;;kWork;delayed_vfree_work
+  2.1 ms/s;;;;;Process;[PID 56580] sh
+189.3 us/s;  0.7;;;;Process;[PID 55288] /proc/self/exe --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --
+ 19.9 us/s;  0.7;;;;Process;[PID 794] [irq/135-iwlwifi]
+  1.4 ms/s; 0.20;;;;Process;[PID 55238] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote --no-zygo
+ 27.2 us/s;  0.6;;;;kWork;intel_display_power_put_async_w
+  1.4 ms/s; 0.05;;;;Process;[PID 35760] river -log-level error -c river-init 
+ 72.1 us/s;  0.5;;;;Process;[PID 55323] /proc/self/exe --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --
+167.9 us/s;  0.5;;;;kWork;ext4_end_io_rsv_work
+ 23.1 us/s;  0.5;;;;Process;[PID 18] [ksoftirqd/0]
+  1.2 ms/s; 0.05;;;;Interrupt;[3] net_rx(softirq)
+  1.2 ms/s; 0.05;;;;Process;[PID 56582] antigravity
+153.7 us/s;  0.4;;;;kWork;__i915_gem_free_work
+ 26.0 us/s;  0.5;;;;kWork;blk_mq_run_work_fn
+449.2 us/s; 0.30;;;;Process;[PID 50129] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=renderer --crashpad-han
+439.8 us/s; 0.30;;;;Process;[PID 50002] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=renderer --crashpad-han
+  6.6 us/s;  0.4;;;;Timer;watchdog_timer_fn
+693.3 us/s; 0.15;;;;Process;[PID 49889] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=utility --utility-sub-t
+252.3 us/s; 0.30;;;;kWork;wb_workfn
+  0.9 ms/s; 0.05;;;;Process;[PID 56579] antigravity
+ 12.6 us/s; 0.30;;;;kWork;kfree_rcu_monitor
+  4.3 us/s; 0.30;;;;Process;[PID 74] [kcompactd0]
+  0.7 ms/s;;;;;Interrupt;[1] timer(softirq)
+698.8 us/s;;;;;Timer;process_timeout
+293.7 us/s; 0.15;;;;kWork;delayed_fput
+ 39.1 us/s; 0.25;;;;kWork;handle_update
+668.1 us/s;;;;;Process;[PID 56582] cpuUsage.sh
+ 13.2 us/s; 0.25;;;;kWork;pci_pme_list_scan
+  1.0 us/s; 0.25;;;;kWork;yama_relation_cleanup
+589.6 us/s;;;;;kWork;vmstat_update
+461.6 us/s; 0.05;;;;Process;[PID 56583] cpuUsage.sh
+456.9 us/s; 0.05;;;;Process;[PID 56588] cpuUsage.sh
+427.9 us/s; 0.05;;;;Process;[PID 56580] antigravity
+427.6 us/s; 0.05;;;;Process;[PID 56598] battery-check
+ 25.4 us/s; 0.20;;;;Process;[PID 55644] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity /nix/store/znid5w5ca917
+212.3 us/s; 0.10;;;;Process;[PID 56535] /nix/store/ra8k5cz68df36vwdvq1zfwz18yc2j1jx-powertop-2.15/bin/powertop --csv=powertop_after.csv -t 20 
+449.6 us/s;;;;;Process;[PID 55175] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --ozone-platform-hint=a
+ 69.8 us/s; 0.15;;;;Process;[PID 53374] /nix/store/d3lghvfr1vaqbf6wxcyd2403dbpa0ihc-networkmanager-1.54.3/sbin/NetworkManager --no-daemon 
+312.1 us/s; 0.05;;;;Process;[PID 56576] antigravity
+288.7 us/s; 0.05;;;;Process;[PID 56577] antigravity
+ 24.7 us/s; 0.15;;;;Process;[PID 35096] /nix/store/p8lkynya12kzg2kry0bpipypilk11qln-syncthing-2.0.10/bin/syncthing --config=/home/jefaturico/.config/syncth
+ 23.8 us/s; 0.15;;;;Process;[PID 42772] /nix/store/kh9bhi45g6bn4k08rg8vfg1f87xbpk7n-xdg-desktop-portal-1.20.4/libexec/xdg-desktop-portal 
+ 14.9 us/s; 0.15;;;;Process;[PID 34915] /nix/store/d0y2xi6x65npxy2rh3jp1x7p31c9gk83-systemd-258.7/lib/systemd/systemd-oomd 
+  9.7 us/s; 0.15;;;;kWork;iwl_mvm_tcm_work
+256.6 us/s; 0.05;;;;Process;[PID 55202] /nix/store/znid5w5ca9170wb3ffx6ywccrj1v67v8-antigravity-1.11.14/lib/antigravity/antigravity --type=zygote --no-zygo
+249.3 us/s; 0.05;;;;Process;[PID 56575] antigravity
+244.8 us/s; 0.05;;;;Process;[PID 56596] cpuUsage.sh
+240.4 us/s; 0.05;;;;Process;[PID 56584] cpuUsage.sh
+100.2 us/s; 0.10;;;;Process;[PID 56568] cpuUsage.sh
+222.3 us/s; 0.05;;;;Process;[PID 56574] antigravity
+ 92.1 us/s; 0.10;;;;Process;[PID 35120] /nix/store/p8lkynya12kzg2kry0bpipypilk11qln-syncthing-2.0.10/bin/syncthing --config=/home/jefaturico/.config/syncth
+ 60.4 us/s; 0.10;;;;Process;[PID 55287] /proc/self/exe --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --
+181.1 us/s; 0.05;;;;Process;[PID 56565] cpuUsage.sh
+172.2 us/s; 0.05;;;;Process;[PID 56578] battery-check
+167.2 us/s; 0.05;;;;Process;[PID 56564] battery-check
+272.3 us/s;;;;;Timer;delayed_work_timer_fn
+ 17.2 us/s; 0.10;;;;Process;[PID 55219] /proc/self/exe --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=n
+ 15.3 us/s; 0.10;;;;Process;[PID 49881] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=utility --utility-sub-t
+ 14.3 us/s; 0.10;;;;Process;[PID 50120] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=gpu-process --ozone-pla
+  8.4 us/s; 0.10;;;;Process;[PID 53365] /nix/store/153qpr76bjvi5ikkcwvz3302bhirhw0i-polkit-126/lib/polkit-1/polkitd --no-debug 
+  6.2 us/s; 0.10;;;;kWork;cfg80211_wiphy_work
+  4.5 us/s; 0.10;;;;kWork;vmstat_shepherd
+  2.7 us/s; 0.10;;;;Process;[PID 34] [ksoftirqd/2]
+  1.9 us/s; 0.10;;;;Process;[PID 28] [ksoftirqd/1]
+  1.8 us/s; 0.10;;;;kWork;wb_update_bandwidth_workfn
+117.3 us/s; 0.05;;;;Process;[PID 49974] /nix/store/7bfr6s5fxisia47c4dadnfwza1drcy34-brave-1.89.145/opt/brave.com/brave/brave --type=renderer --crashpad-han
+239.5 us/s;;;;;Process;[PID 56587] cpuUsage.sh
+233.2 us/s;;;;;Process;[PID 56585] cpuUsage.sh
+ 98.2 us/s; 0.05;;;;Process;[PID 56572] cpuUsage.sh
+ 96.0 us/s; 0.05;;;;Process;[PID 56570] cpuUsage.sh
+
+
+The battery reports a discharge rate of:  14.2  W;
+
+The energy consumed was :  266  J;
+____________________________________________________________________
+ *  *  *   Device Power Report   *  *  *
+
+Usage;Device Name
+ 47.4%;CPU core
+ 47.4%;CPU misc
+ 47.4%;DRAM
+100.0%;Display backlight
+100.0%;PCI Device: Intel Corporation Sunrise Point-LP SATA Controller [AHCI mode]
+100.0%;Radio device: iwlwifi
+100.0%;PCI Device: Intel Corporation Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor Thermal Subsystem
+100.0%;PCI Device: Intel Corporation Wireless 8265 / 8275
+100.0%;PCI Device: Intel Corporation Xeon E3-1200 v6/7th Gen Core Processor Host Bridge/DRAM Registers
+100.0%;PCI Device: Intel Corporation Sunrise Point-LP Thermal subsystem
+100.0%;PCI Device: Intel Corporation UHD Graphics 620
+100.0%;PCI Device: Intel Corporation Sunrise Point-LP PCI Express Root Port #9
+ 32.8 pkts/s;Network interface: wlp1s0 (iwlwifi)
+  0.0%;USB device: xHCI Host Controller
+  0.0%;runtime-PNP0C14:00
+  0.0%;USB device: imx188_azurewave(p) (Azurewave)
+  0.0%;Audio codec hwC0D2: Intel
+  0.0%;Audio codec hwC0D0: Realtek
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP PMC
+  0.0%;PCI Device: Intel Corporation Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model
+  0.0%;runtime-alarmtimer.0.auto
+  0.0%;PCI Device: Intel Corporation Sunrise Point LPC/eSPI Controller
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP CSME HECI #1
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP HD Audio
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP Serial IO I2C Controller #0
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP USB 3.0 xHCI Controller
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP SMBus
+  0.0%;runtime-i2c_designware.1
+  0.0%;runtime-PNP0C0C:00
+  0.0%;USB device: xHCI Host Controller
+  0.0%;runtime-idma64.1
+  0.0%;runtime-reg-dummy
+  0.0%;runtime-iTCO_wdt
+  0.0%;runtime-PNP0C0D:00
+  0.0%;runtime-PNP0C09:00
+  0.0%;runtime-PNP0C0A:00
+  0.0%;runtime-ACPI0003:00
+  0.0%;runtime-acpi-cpufreq
+  0.0%;runtime-huawei-wmi
+  0.0%;runtime-intel_xhci_usb_sw
+  0.0%;runtime-INT3F0D:00
+  0.0%;runtime-microcode
+  0.0%;runtime-snd-soc-dummy
+  0.0%;runtime-intel_rapl_msr.0
+  0.0%;runtime-INT3403:01
+  0.0%;runtime-WDT0001:00
+  0.0%;runtime-ACPI000C:00
+  0.0%;runtime-rtc-efi.0
+  0.0%;runtime-INT0800:00
+  0.0%;runtime-PNP0C14:01
+  0.0%;runtime-intel_pmc_core.0
+  0.0%;runtime-INT344B:00
+  0.0%;runtime-i2c_designware.0
+  0.0%;runtime-INT3403:00
+  0.0%;runtime-INT0E0C:00
+  0.0%;runtime-regulatory.0
+  0.0%;runtime-PNP0103:00
+  0.0%;runtime-INT3403:02
+  0.0%;runtime-efivars.0
+  0.0%;runtime-serial8250
+  0.0%;runtime-i8042
+  0.0%;runtime-coretemp.0
+  0.0%;PCI Device: Intel Corporation Sunrise Point-LP Serial IO I2C Controller #1
+  0.0%;runtime-INT3400:00
+  0.0%;runtime-pcspkr
+  0.0%;runtime-idma64.0
+  0.0%;I2C Device (2-0050): ee1004
+  0.0%;I2C Adapter (i2c-0): Synopsys DesignWare I2C adapter
+  0.0%;I2C Adapter (i2c-5): i915 gmbus dpd
+  0.0%;I2C Device (2-0037): dummy
+  0.0%;I2C Adapter (i2c-2): SMBus I801 adapter at 3040
+  0.0%;I2C Adapter (i2c-3): i915 gmbus dpc
+  0.0%;I2C Device (2-0036): dummy
+  0.0%;I2C Device (i2c-ELAN2202:00): ELAN2202:00
+  0.0%;I2C Adapter (i2c-1): Synopsys DesignWare I2C adapter
+  0.0%;I2C Device (i2c-SMO8840:00): lis2dh12_accel
+  0.0%;I2C Adapter (i2c-6): AUX A/DDI A/PHY A
+  0.0%;I2C Adapter (i2c-4): i915 gmbus dpb
+____________________________________________________________________
+ *  *  *   Process Device Activity   *  *  *
+
+Process;Device
+systemd;/dev/dri/card1
+;/dev/input/event0
+;/dev/input/event1
+;/dev/input/event15
+;/dev/input/event16
+;/dev/input/event2
+;/dev/input/event3
+;/dev/input/event4
+;/dev/input/event5
+;/dev/input/event6
+;/dev/input/event7
+;/dev/input/event8
+;/dev/kmsg
+systemd-logind;/dev/dri/card1
+;/dev/input/event0
+;/dev/input/event0
+;/dev/input/event1
+;/dev/input/event1
+;/dev/input/event15
+;/dev/input/event15
+;/dev/input/event16
+;/dev/input/event2
+;/dev/input/event2
+;/dev/input/event3
+;/dev/input/event3
+;/dev/input/event4
+;/dev/input/event5
+;/dev/input/event6
+;/dev/input/event7
+;/dev/input/event8
+pipewire;/dev/snd/seq
+;/dev/snd/seq
+wireplumber;/dev/media0
+;/dev/snd/controlC0
+.xdg-document-p;/dev/fuse
+systemd-journal;/dev/kmsg
+;/dev/kmsg
+wpa_supplicant;/dev/rfkill
+;/dev/rfkill
+river;/dev/dri/card1
+;/dev/dri/card1
+;/dev/dri/card1
+;/dev/dri/card1
+;/dev/dri/card1
+;/dev/dri/card1
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/input/event0
+;/dev/input/event1
+;/dev/input/event15
+;/dev/input/event16
+;/dev/input/event2
+;/dev/input/event3
+;/dev/input/event4
+;/dev/input/event5
+;/dev/input/event6
+;/dev/input/event7
+;/dev/input/event8
+Xwayland;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+.xdg-desktop-po;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+keyd;/dev/input/event0
+;/dev/input/event15
+;/dev/input/event16
+;/dev/input/event4
+;/dev/input/event5
+;/dev/input/event6
+;/dev/input/event7
+;/dev/input/event8
+;/dev/uinput
+;/dev/uinput
+brave;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+thermald;/dev/input/event2
+antigravity;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+;/dev/dri/renderD128
+
+____________________________________________________________________
+ *  *  *   AHCI ALPM Residency Statistics - Not supported on this macine   *  *  *
+
+____________________________________________________________________
+ *  *  *   Software Settings in Need of Tuning   *  *  *
+
+Description;Script
+Enable SATA link power management for host0;echo 'med_power_with_dipm' > '/sys/class/scsi_host/host0/link_power_management_policy';
+VM writeback timeout;echo '1500' > '/proc/sys/vm/dirty_writeback_centisecs';
+____________________________________________________________________
+ *  *  *   Untunable Software Issues   *  *  *
+
+Description
+I2C Device 2-0037 has no runtime power management
+I2C Adapter i2c-3 has no runtime power management
+I2C Device i2c-ELAN2202:00 has no runtime power management
+I2C Adapter i2c-1 has no runtime power management
+I2C Device i2c-SMO8840:00 has no runtime power management
+I2C Adapter i2c-6 has no runtime power management
+I2C Adapter i2c-4 has no runtime power management
+I2C Device 2-0036 has no runtime power management
+I2C Adapter i2c-2 has no runtime power management
+I2C Adapter i2c-0 has no runtime power management
+I2C Device 2-0050 has no runtime power management
+I2C Adapter i2c-5 has no runtime power management
+____________________________________________________________________
+ *  *  *   Optimal Tuned Software Settings   *  *  *
+
+Description
+NMI watchdog should be turned off
+Enable Audio codec power management
+Enable SATA link power management for host1
+Enable SATA link power management for host2
+Autosuspend for USB device xHCI Host Controller [usb1]
+Autosuspend for USB device xHCI Host Controller [usb2]
+Autosuspend for USB device imx188_azurewave(p) [Azurewave]
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP SATA Controller [AHCI mode]
+Runtime PM for port ata1 of PCI device: Intel Corporation Sunrise Point-LP SATA Controller [AHCI mode]
+Runtime PM for port ata2 of PCI device: Intel Corporation Sunrise Point-LP SATA Controller [AHCI mode]
+Runtime PM for port ata3 of PCI device: Intel Corporation Sunrise Point-LP SATA Controller [AHCI mode]
+Runtime PM for disk sda
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP PMC
+Runtime PM for PCI Device Intel Corporation Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP Serial IO I2C Controller #1
+Runtime PM for PCI Device Intel Corporation Sunrise Point LPC/eSPI Controller
+Runtime PM for PCI Device Intel Corporation Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor Thermal Subsystem
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP CSME HECI #1
+Runtime PM for PCI Device Intel Corporation Wireless 8265 / 8275
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP HD Audio
+Runtime PM for PCI Device Intel Corporation Xeon E3-1200 v6/7th Gen Core Processor Host Bridge/DRAM Registers
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP Serial IO I2C Controller #0
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP PCI Express Root Port #9
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP Thermal subsystem
+Runtime PM for PCI Device Intel Corporation UHD Graphics 620
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP USB 3.0 xHCI Controller
+Runtime PM for PCI Device Intel Corporation Sunrise Point-LP SMBus
+
+____________________________________________________________________
+ *  *  *   Wake status of the devices   *  *  *
+
+Description;Script
+Wake-on-lan status for device wlp1s0;echo 'enabled' > '/sys/class/net/wlp1s0/device/power/wakeup';
+Wake status for USB device usb1;echo 'enabled' > '/sys/bus/usb/devices/usb1/power/wakeup';
+Wake status for USB device usb2;echo 'enabled' > '/sys/bus/usb/devices/usb2/power/wakeup';

@@ -55,25 +55,7 @@
       };
     };
 
-    # Manual creation of a Wayland session entry for dwl.
-    # This allows display managers like Ly to "see" and launch dwl.
     displayManager.sessionPackages = [
-      (pkgs.runCommand "dwl-session"
-        {
-          passthru.providedSessions = [ "dwl" ];
-        }
-        ''
-          mkdir -p $out/share/wayland-sessions
-          cat <<EOF > $out/share/wayland-sessions/dwl.desktop
-          [Desktop Entry]
-          Name=dwl
-          Comment=Dynamic Window Manager for Wayland
-          Exec=dwl-session
-          Type=Application
-          EOF
-        ''
-      )
-
       # Register River session for login managers.
       (pkgs.runCommand "river-session"
         {

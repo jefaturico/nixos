@@ -43,9 +43,9 @@
         "image/png" = [ "imv.desktop" ];
         "image/jpeg" = [ "imv.desktop" ];
         "image/gif" = [ "imv.desktop" ];
-        "text/plain" = [ "Helix.desktop" ];
-        "text/markdown" = [ "Helix.desktop" ];
-        "application/x-shellscript" = [ "Helix.desktop" ];
+        "text/plain" = [ "nvim.desktop" ];
+        "text/markdown" = [ "nvim.desktop" ];
+        "application/x-shellscript" = [ "nvim.desktop" ];
         "text/html" = "brave-browser.desktop";
         "x-scheme-handler/http" = "brave-browser.desktop";
         "x-scheme-handler/https" = "brave-browser.desktop";

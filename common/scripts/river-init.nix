@@ -7,6 +7,7 @@
   # ── Startup & Appearance ─────────────────────────────────────────────────
   # Set black background instantly to avoid River's default blue-green flash
   riverctl background-color 0x000000
+  river-state-init
   river-startup &
 
   # ── Layouts ──────────────────────────────────────────────────────────────
@@ -55,6 +56,8 @@
   riverctl rule-add -app-id "brave-browser" tags $((1 << 9))
   # foot-float always floats.
   riverctl rule-add -app-id "foot-float" float
+  # Global rule for floating window dimensions
+  riverctl rule-add -app-id "*" dimensions 960 720
 
   # ── App commands ─────────────────────────────────────────────────────────
   riverctl map normal Super Return    spawn foot
@@ -86,11 +89,11 @@
   riverctl map normal Super+Shift R  send-layout-cmd rivercarro "main-ratio +0.1"
   riverctl map normal Super Equal    send-layout-cmd rivercarro "main-count +1"
   riverctl map normal Super Minus    send-layout-cmd rivercarro "main-count -1"
-  riverctl map normal Super+Shift Space toggle-float
+  riverctl map normal Super+Shift Space spawn river-toggle-float
   riverctl map normal Super Space       zoom
   riverctl map normal Super E           toggle-fullscreen
   riverctl map normal Super Q close
-  riverctl map normal Super Tab focus-previous-tags
+  riverctl map normal Super Tab spawn river-focus-previous-tags
 
   # ── Layout switching ─────────────────────────────────────────────────────
   riverctl map normal Super L        send-layout-cmd rivercarro "main-location left"
@@ -106,16 +109,16 @@
   # ── Tags (workspaces) ────────────────────────────────────────────────────
   for i in $(seq 1 9); do
       tags=$(( 1 << (i - 1) ))
-      riverctl map normal "Super"               "$i" set-focused-tags  "$tags"
+      riverctl map normal "Super" "$i" spawn "river-set-focused-tags $tags"
       riverctl map normal "Super+Shift"         "$i" set-view-tags     "$tags"
-      riverctl map normal "Super+Control"       "$i" toggle-focused-tags "$tags"
+      riverctl map normal "Super+Control"       "$i" spawn "river-toggle-focused-tags $tags"
       riverctl map normal "Super+Shift+Control" "$i" toggle-view-tags  "$tags"
   done
 
   # Super+0 → switch to tag 10 AND launch Brave if not running (spawn_and_view).
-  riverctl map normal Super 0 spawn 'riverctl set-focused-tags 512; single-instance brave\ .brave-wrapped brave'
+  riverctl map normal Super 0 spawn "river-set-focused-tags 512; single-instance brave\ .brave-wrapped brave"
   riverctl map normal Super+Shift 0 set-view-tags 512
-  riverctl map normal Super+Control 0 toggle-focused-tags 512
+  riverctl map normal Super+Control 0 spawn "river-toggle-focused-tags 512"
   riverctl map normal Super+Shift+Control 0 toggle-view-tags 512
 
   # ── Pointer bindings (mod + mouse drag) ──────────────────────────────────

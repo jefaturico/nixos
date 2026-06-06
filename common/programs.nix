@@ -1,55 +1,12 @@
 {
   pkgs,
+  pkgs-unstable,
   osConfig,
   lib,
   ...
 }:
 
 let
-  # Customized dwl build using local config headers.
-  dwl-custom = pkgs.stdenv.mkDerivation {
-    name = "dwl-custom";
-    src = ../dots/dwl;
-    nativeBuildInputs = with pkgs; [
-      pkg-config
-      wayland-scanner
-    ];
-    buildInputs = with pkgs; [
-      libinput
-      wayland
-      wlroots
-      wayland-protocols
-      libxkbcommon
-      pixman
-      xorg.libxcb
-      xorg.xcbutilwm
-      xwayland
-    ];
-    enableParallelBuilding = true;
-
-    preBuild = ''
-      # Inject our personal configuration headers into the build.
-      cp ${../dots/dwl/config.def.h} config.h
-      cp ${../dots/dwl/config.mk} config.mk
-
-      # Dynamic wlroots version detection to ensure compatibility with future nixpkgs updates.
-      echo "Checking for wlroots pkg-config..."
-      if pkg-config --exists wlroots; then
-        echo "Using wlroots.pc"
-        substituteInPlace config.mk --replace "wlroots-0.19" "wlroots"
-      elif pkg-config --exists wlroots-0.19; then
-        echo "Using wlroots-0.19.pc"
-      else
-        echo "Error: wlroots pkg-config not found!"
-        pkg-config --list-all | grep wlroots
-        exit 1
-      fi
-    '';
-
-    installPhase = ''
-      make PREFIX=$out install
-    '';
-  };
 
   calendarDirs = {
     Scheduled = "~/.calendars/emiliohurtadosr@gmail.com/";
@@ -70,6 +27,7 @@ in
         EDITOR = "nvim";
         BROWSER = "brave";
         DEFAULT_BROWSER = "brave";
+        LEDGER_FILE = "$HOME/finances/main.journal";
       };
 
       initExtra = ''
@@ -182,7 +140,6 @@ in
       bookmarks = {
         d = "~/downloads";
         n = "~/nixos";
-        w = "~/workbench";
       };
     };
 
@@ -190,7 +147,19 @@ in
 
     vscode = {
       enable = true;
-      package = pkgs.vscode-fhs;
+      package =
+        (pkgs.symlinkJoin {
+          name = "vscode";
+          paths = [ pkgs.vscode-fhs ];
+          buildInputs = [ pkgs.makeWrapper ];
+          postBuild = ''
+            wrapProgram $out/bin/code \
+              --add-flags "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing"
+          '';
+        }) // {
+          pname = pkgs.vscode-fhs.pname or "vscode";
+          version = pkgs.vscode-fhs.version or "latest";
+        };
     };
   };
 
@@ -251,11 +220,9 @@ in
   home.packages =
     with pkgs;
     [
-      dwl-custom
       river-classic
       rivercarro
       bat
-      bc
       brightnessctl
       calibre
       fd
@@ -272,10 +239,8 @@ in
           "--ozone-platform=wayland"
         ];
       })
-      tor-browser
       libnotify
       libreoffice
-      lswt
       neovim
       mpv
       obsidian
@@ -286,10 +251,12 @@ in
       bitwarden-desktop
       pwvucontrol
       hugo
+      hledger
+      hledger-iadd
+      hledger-web
       markdown-oxide
       nil
       nixfmt-rfc-style
-      texlab
       ripgrep
       uget # minimal alternative: aria2
       wbg
@@ -306,11 +273,21 @@ in
       zoxide
       taskwarrior-tui
       vdirsyncer
+      visidata
     ]
     # Conditional package inclusion: only install heavy apps on non-laptop hosts.
     ++ lib.optionals (osConfig.networking.hostName != "coriolis") [
       (antigravity.override {
-        commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing";
+        commandLineArgs =
+          let
+            baseFlags = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
+            nvidiaFlags = "--disable-gpu-memory-buffer-video-frames --use-gl=egl";
+            intelFlags = "--enable-gpu-rasterization --enable-zero-copy";
+          in
+          if osConfig.networking.hostName == "galileo" then
+            "${baseFlags} ${nvidiaFlags}"
+          else
+            "${baseFlags} ${intelFlags}";
       })
       obs-studio
       qgis
