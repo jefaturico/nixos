@@ -31,7 +31,17 @@ return {
             },
           },
         },
-        nil_ls = {},
+        nil_ls = {
+          settings = {
+            ["nil"] = {
+              nix = {
+                flake = {
+                  autoArchive = true,
+                },
+              },
+            },
+          },
+        },
         pyright = {},
         tinymist = {}, -- for typst
       }

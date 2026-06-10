@@ -1,12 +1,10 @@
 {
-  inputs,
   pkgs,
   lib,
   config,
   ...
 }:
 {
-  # Bootloader and system-level localization.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
@@ -18,7 +16,6 @@
     firewall.allowedTCPPorts = [ 22 ];
   };
 
-  # System-wide keyboard layout for TTY and X11 (though we mostly use Wayland).
   services.xserver.xkb = {
     layout = "us";
     variant = "altgr-intl";
@@ -35,7 +32,6 @@
   };
 
   services = {
-    # Ly is a TUI display manager.
     displayManager.ly = {
       enable = true;
       settings = {
@@ -55,29 +51,9 @@
       };
     };
 
-    displayManager.sessionPackages = [
-      # Register River (rill) session.
-      (pkgs.runCommand "river-rill-session"
-        {
-          passthru.providedSessions = [ "rill" ];
-        }
-        ''
-          mkdir -p $out/share/wayland-sessions
-          cat <<EOF > $out/share/wayland-sessions/rill.desktop
-          [Desktop Entry]
-          Name=River (rill)
-          Comment=River with rill layout generator
-          Exec=rill-session
-          Type=Application
-          EOF
-        ''
-      )
-    ];
-
     udisks2.enable = true;
     dbus.enable = true;
 
-    # Declarative Flatpak management via nix-flatpak.
     flatpak = {
       enable = true;
       packages = [
@@ -116,7 +92,6 @@
       settings.KbdInteractiveAuthentication = false;
     };
 
-    # Keyd handles low-level keyboard remapping (Caps Lock as Control/Esc).
     keyd = {
       enable = true;
       keyboards = {
@@ -139,28 +114,23 @@
   '';
 
   programs.dconf.enable = true;
+  programs.niri.enable = true;
 
-  # XDG Portals enable features like screen sharing and file pickers in Wayland.
   xdg.portal = {
     enable = true;
     extraPortals = [
       pkgs.xdg-desktop-portal-gtk
-      pkgs.xdg-desktop-portal-wlr
       pkgs.xdg-desktop-portal-gnome
     ];
     config = {
       common.default = [ "gtk" ];
-      wlroots = {
-        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-      };
     };
   };
 
   users.users.jefaturico = {
     isNormalUser = true;
     extraGroups = [
-      "wheel" # Sudo access
+      "wheel"
       "networkmanager"
       "video"
       "render"
@@ -185,18 +155,15 @@
       "nix-command"
       "flakes"
     ];
-    # Automatically links identical files in the Nix store to save space.
     auto-optimise-store = true;
   };
 
-  # Periodic cleanup of old system generations.
   nix.gc = {
     automatic = true;
     dates = "weekly";
     options = "--delete-older-than 7d";
   };
 
-  # Performance and lifecycle optimizations.
   zramSwap.enable = true;
   services.fstrim.enable = true;
   boot.kernel.sysctl = {

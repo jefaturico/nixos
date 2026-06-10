@@ -3,8 +3,6 @@
   home.packages = [ pkgs.wallust ];
 
   home.file = {
-    # ── Wallust Config ──────────────────────────────────────────────────
-
     ".config/wallust/wallust.toml".text = ''
       backend = "wal"
       palette = "dark16"
@@ -18,10 +16,10 @@
       zathura = { template = 'colors-zathura', target = '~/.cache/wallust/colors-zathura' }
       obsidian = { template = 'colors-obsidian.css', target = '~/zettelkasten/.obsidian/snippets/wallust.css' }
       neopywal = { template = 'colors_neopywal.vim', target = '~/.cache/wallust/colors_neopywal.vim' }
+      colors_sh = { template = 'colors.sh', target = '~/.cache/wallust/colors.sh' }
 
     '';
 
-    # ── Wallust Templates ───────────────────────────────────────────────
     # These Mustache-style templates are processed by wallust to generate
     # program-specific color configs from the current wallpaper palette.
 
@@ -46,10 +44,6 @@
       let color14 = "{{color14}}"
       let color15 = "{{color15}}"
     '';
-
-    # ── Wallust Templates ───────────────────────────────────────────────
-    # These Mustache-style templates are processed by wallust to generate
-    # program-specific color configs from the current wallpaper palette.
 
     ".config/wallust/templates/colors-foot.ini".text = ''
       [colors]
@@ -137,6 +131,11 @@
         --titlebar-background-focused: {{background}} !important;
         --tab-text-color-focused-active: {{foreground}} !important;
       }
+    '';
+
+    ".config/wallust/templates/colors.sh".text = ''
+      color3="{{color3}}"
+      color4="{{color4}}"
     '';
 
   };

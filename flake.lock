@@ -51,44 +51,11 @@
         "type": "indirect"
       }
     },
-    "nixpkgs-unstable": {
-      "locked": {
-        "lastModified": 1780243769,
-        "narHash": "sha256-x5UQuRsH3MqI0U9afaXSNqzTPSeZlRLvFAav2Ux1pNw=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
-        "type": "github"
-      },
-      "original": {
-        "id": "nixpkgs",
-        "ref": "nixos-unstable",
-        "type": "indirect"
-      }
-    },
-    "rill": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1779360553,
-        "narHash": "sha256-sIrzqbTmCbulZgtyY1jD+F/Y0GCp4fL53t1iv0aViiw=",
-        "ref": "refs/heads/main",
-        "rev": "892f3af613d3e375c063fd5a95ef3a2fa7f599f5",
-        "revCount": 90,
-        "type": "git",
-        "url": "https://codeberg.org/lzj15/rill.git"
-      },
-      "original": {
-        "type": "git",
-        "url": "https://codeberg.org/lzj15/rill.git"
-      }
-    },
     "root": {
       "inputs": {
         "home-manager": "home-manager",
         "nix-flatpak": "nix-flatpak",
-        "nixpkgs": "nixpkgs",
-        "nixpkgs-unstable": "nixpkgs-unstable",
-        "rill": "rill"
+        "nixpkgs": "nixpkgs"
       }
     }
   },

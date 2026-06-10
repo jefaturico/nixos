@@ -1,6 +1,5 @@
 {
   pkgs,
-  pkgs-unstable,
   osConfig,
   lib,
   ...
@@ -36,7 +35,6 @@ in
 
         bind "set completion-ignore-case on"
 
-        # Use a lambda prompt in graphical sessions, otherwise a standard '$'.
         if [[ -n "$WAYLAND_DISPLAY" || -n "$DISPLAY" ]]; then
           _prompt_char="λ"
         else
@@ -44,7 +42,6 @@ in
         fi
         PS1='\[\e[34m\]\w\[\e[0m\] \[\e[32m\]'"$_prompt_char"'\[\e[0m\] '
 
-        # Bash quality-of-life shell options.
         shopt -s autocd     # 'cd' is optional for directories
         shopt -s cdspell    # fix minor typos in 'cd'
         shopt -s checkwinsize
@@ -220,7 +217,6 @@ in
   home.packages =
     with pkgs;
     [
-      pkgs-unstable.river
       bat
       brightnessctl
       calibre
@@ -246,6 +242,7 @@ in
       kdePackages.okular
       typst
       pandoc
+      playerctl
       gsettings-desktop-schemas
       bitwarden-desktop
       pwvucontrol
@@ -257,41 +254,31 @@ in
       nil
       nixfmt-rfc-style
       ripgrep
-      uget # minimal alternative: aria2
+      ruff
+      ripdrag
+      shfmt
+      stylua
+      uget
       wbg
       wireplumber
       wl-clipboard
-      qbittorrent # minimal alternative: tremc
+      subsurface
+      qbittorrent
       slurp
       grim
       wlrctl
       tinymist
       khal
-      xwayland
+      xwayland-satellite
       python3
       zoxide
       taskwarrior-tui
       vdirsyncer
       visidata
-    ]
-    # Conditional package inclusion: only install heavy apps on non-laptop hosts.
-    ++ lib.optionals (osConfig.networking.hostName != "coriolis") [
-      (antigravity.override {
-        commandLineArgs =
-          let
-            baseFlags = "--enable-features=UseOzonePlatform,WebUIDarkMode --ozone-platform=wayland";
-            nvidiaFlags = "--disable-gpu-memory-buffer-video-frames --use-gl=egl";
-            intelFlags = "--enable-gpu-rasterization --enable-zero-copy";
-          in
-          if osConfig.networking.hostName == "galileo" then
-            "${baseFlags} ${nvidiaFlags}"
-          else
-            "${baseFlags} ${intelFlags}";
-      })
       obs-studio
       qgis
     ]
-    # Logitech mouse configuration tool: only needed on Galileo.
+
     ++ lib.optionals (osConfig.networking.hostName == "galileo") [
       piper
     ];

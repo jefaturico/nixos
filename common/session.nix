@@ -14,7 +14,7 @@
       MOZ_ENABLE_WAYLAND = "1";
       GTK_CSD = "0";
       XDG_SESSION_TYPE = "wayland";
-      XDG_CURRENT_DESKTOP = "wlroots";
+      XDG_CURRENT_DESKTOP = "niri";
       NIXOS_OZONE_WL = "1";
       NNN_OPTS = "eEHR"; # entry, exit on q, hidden, relative
       PATH = "$HOME/.local/bin:$PATH";
@@ -83,6 +83,4 @@
       }
     '';
   };
-
-
 }
