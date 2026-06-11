@@ -3,12 +3,17 @@ let
   prepareVdirsyncerConfig = pkgs.writeShellScript "prepare-vdirsyncer-config" ''
     set -eu
 
-    secret_file="$HOME/nixos/secrets/vdirsyncer-google-calendar.env"
+    sops_secret_file="/run/secrets/vdirsyncer-google-calendar.env"
+    legacy_secret_file="$HOME/nixos/secrets/vdirsyncer-google-calendar.env"
     runtime_dir="''${XDG_RUNTIME_DIR:-/run/user/$(${pkgs.coreutils}/bin/id -u)}/vdirsyncer"
     config_file="$runtime_dir/config"
 
-    if [ ! -r "$secret_file" ]; then
-      echo "Missing vdirsyncer OAuth secrets: $secret_file" >&2
+    if [ -r "$sops_secret_file" ]; then
+      secret_file="$sops_secret_file"
+    elif [ -r "$legacy_secret_file" ]; then
+      secret_file="$legacy_secret_file"
+    else
+      echo "Missing vdirsyncer OAuth secrets: $sops_secret_file or $legacy_secret_file" >&2
       exit 1
     fi
 

@@ -8,6 +8,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nix-flatpak.url = "github:gmodena/nix-flatpak";
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -22,13 +26,15 @@
         };
       };
 
-      mkHost = host:
+      mkHost =
+        host:
         nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
             (./hosts + "/${host}/software.nix")
             home-manager.nixosModules.home-manager
             inputs.nix-flatpak.nixosModules.nix-flatpak
+            inputs.sops-nix.nixosModules.sops
             homeManagerConf
           ];
         };

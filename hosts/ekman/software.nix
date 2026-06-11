@@ -1,4 +1,4 @@
-{ ... }: {
+{ pkgs, ... }: {
   imports = [
     ./hardware.nix
     ../../common/configuration.nix
@@ -40,4 +40,8 @@
     enable = true;
     enable32Bit = true;
   };
+
+  environment.systemPackages = with pkgs; [
+    moonlight-qt
+  ];
 }

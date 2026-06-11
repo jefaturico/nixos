@@ -28,6 +28,12 @@
   };
 
   services.ratbagd.enable = true;
+  services.sunshine = {
+    enable = true;
+    autoStart = true;
+    capSysAdmin = true;
+    openFirewall = true;
+  };
 
   security.polkit.enable = true;
   services.xserver.videoDrivers = [ "nvidia" ];
