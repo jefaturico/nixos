@@ -21,7 +21,6 @@ return {
         map("gD", vim.lsp.buf.declaration, "[G]oto [D]eclaration")
       end
 
-      -- Servers to configure
       local servers = {
         lua_ls = {
           settings = {
@@ -43,7 +42,7 @@ return {
           },
         },
         pyright = {},
-        tinymist = {}, -- for typst
+        tinymist = {},
       }
 
       for server, config in pairs(servers) do

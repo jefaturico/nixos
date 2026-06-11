@@ -1,4 +1,52 @@
-{ pkgs, config, ... }:
+{ pkgs, lib, ... }:
+let
+  prepareVdirsyncerConfig = pkgs.writeShellScript "prepare-vdirsyncer-config" ''
+    set -eu
+
+    secret_file="$HOME/nixos/secrets/vdirsyncer-google-calendar.env"
+    runtime_dir="''${XDG_RUNTIME_DIR:-/run/user/$(${pkgs.coreutils}/bin/id -u)}/vdirsyncer"
+    config_file="$runtime_dir/config"
+
+    if [ ! -r "$secret_file" ]; then
+      echo "Missing vdirsyncer OAuth secrets: $secret_file" >&2
+      exit 1
+    fi
+
+    . "$secret_file"
+    : "''${GOOGLE_CALENDAR_CLIENT_ID:?Missing GOOGLE_CALENDAR_CLIENT_ID}"
+    : "''${GOOGLE_CALENDAR_CLIENT_SECRET:?Missing GOOGLE_CALENDAR_CLIENT_SECRET}"
+
+    ${pkgs.coreutils}/bin/install -m 700 -d "$runtime_dir"
+    ${pkgs.coreutils}/bin/cat > "$config_file" <<EOF
+    [general]
+    status_path = "~/.local/share/vdirsyncer/status/"
+
+    [pair calendars]
+    a = "local_calendars"
+    b = "google_calendars"
+    collections = ["from b"]
+    metadata = ["color"]
+    conflict_resolution = "b wins"
+
+    [storage local_calendars]
+    type = "filesystem"
+    path = "~/.calendars/"
+    fileext = ".ics"
+
+    [storage google_calendars]
+    type = "google_calendar"
+    token_file = "~/.local/share/vdirsyncer/google_calendar_token"
+    client_id = "$GOOGLE_CALENDAR_CLIENT_ID"
+    client_secret = "$GOOGLE_CALENDAR_CLIENT_SECRET"
+    item_types = ["VEVENT"]
+    EOF
+    ${pkgs.coreutils}/bin/chmod 600 "$config_file"
+  '';
+
+  runVdirsyncer = pkgs.writeShellScript "run-vdirsyncer" ''
+    exec ${pkgs.vdirsyncer}/bin/vdirsyncer --config "''${XDG_RUNTIME_DIR:-/run/user/$(${pkgs.coreutils}/bin/id -u)}/vdirsyncer/config" sync
+  '';
+in
 {
   services = {
 
@@ -51,14 +99,17 @@
   systemd.user.services.mako = {
     Service = {
       Restart = "always";
-      ExecStart = "${pkgs.mako}/bin/mako";
       ExecStartPre = "${pkgs.writeShellScript "mako-pre" ''
         mkdir -p "$HOME/.cache/wallust"
         touch "$HOME/.cache/wallust/colors-mako"
         touch "$HOME/.cache/wallust/colors-foot.ini"
         touch "$HOME/.cache/wallust/colors-fuzzel.ini"
-        ${pkgs.procps}/bin/pkill -x mako || true
       ''}";
     };
+  };
+
+  systemd.user.services.vdirsyncer.Service = {
+    ExecStartPre = prepareVdirsyncerConfig;
+    ExecStart = lib.mkForce runVdirsyncer;
   };
 }

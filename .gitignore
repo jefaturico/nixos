@@ -6,6 +6,7 @@ build.log
 dump.json
 mako_status.txt
 *.sync-conflict-*
+secrets/*.env
 
 # dwl build artifacts
 dots/dwl/dwl

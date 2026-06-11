@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs }:
 let
   fuzzel = "${pkgs.fuzzel}/bin/fuzzel";
 in

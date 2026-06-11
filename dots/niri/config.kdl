@@ -63,7 +63,7 @@ layout {
   focus-ring {
     off
     width 1
-    active-color "#5F8700" // {color3}
+    active-color "#916C56" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -71,7 +71,7 @@ layout {
   border {
     off
     width 1
-    active-color "#5F8700" // {color3}
+    active-color "#916C56" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -92,7 +92,6 @@ overview {
   }
 }
 
-spawn-at-startup "mako"
 spawn-at-startup "xwayland-satellite"
 spawn-sh-at-startup "~/.wbg"
 
@@ -258,13 +257,13 @@ binds {
 
   Mod+M { toggle-column-tabbed-display; }
 
-    Mod+S { screenshot; }
-    Mod+Shift+S { screenshot-screen; }
-    Mod+Ctrl+S { screenshot-window; }
+  Mod+S { screenshot; }
+  Mod+Shift+S { screenshot-screen; }
+  Mod+Ctrl+S { screenshot-window; }
 
-    Mod+Ctrl+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+  Mod+Ctrl+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-    Mod+Escape { quit; }
+  Mod+Escape { quit; }
 
-    Mod+Shift+Escape { power-off-monitors; }
+  Mod+Shift+Escape { power-off-monitors; }
 }

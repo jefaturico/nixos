@@ -1,31 +1,25 @@
-{
-  pkgs,
-  ...
-}:
+{ pkgs, ... }:
 
 let
-  batteryCheck = pkgs.writeScriptBin "battery-check" (import ./scripts/battery-check.nix { inherit pkgs; });
+  mkScript = name: pkgs.writeScriptBin name (import (./scripts + "/${name}.nix") { inherit pkgs; });
+  batteryCheck = mkScript "battery-check";
 in
 {
-  home.packages =
-    with pkgs;
-    [
-      (pkgs.writeScriptBin "wlsetbg" (import ./scripts/wlsetbg.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "wlsettheme" (import ./scripts/wlsettheme.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "wldaynight" (import ./scripts/wldaynight.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "wdoc-find" (import ./scripts/wdoc-find.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "fuzzel-bookmarks" (import ./scripts/fuzzel-bookmarks.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "systeminfo" (import ./scripts/systeminfo.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "wlbrightness" (import ./scripts/wlbrightness.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "wlvolume" (import ./scripts/wlvolume.nix { inherit pkgs; }))
-      (pkgs.writeScriptBin "wlscreenshot" (import ./scripts/wlscreenshot.nix { inherit pkgs; }))
-    ]
-    ++ [
-      batteryCheck
-    ];
+  home.packages = [
+    (mkScript "wlsetbg")
+    (mkScript "wlsettheme")
+    (mkScript "wldaynight")
+    (mkScript "wdoc-find")
+    (mkScript "fuzzel-bookmarks")
+    (mkScript "systeminfo")
+    (mkScript "wlbrightness")
+    (mkScript "wlvolume")
+    (mkScript "wlscreenshot")
+    batteryCheck
+  ];
 
   systemd.user.services.battery-check = {
-    Unit.Description = "Battery Status Monitor Service";
+    Unit.Description = "Battery status monitor";
     Service = {
       Type = "simple";
       ExecStart = "${batteryCheck}/bin/battery-check";
@@ -34,5 +28,4 @@ in
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
-
 }

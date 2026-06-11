@@ -118,7 +118,7 @@
         --background-modifier-border: {{color8}}44 !important;
         --text-normal: {{foreground}} !important;
         --text-muted: {{color7}} !important;
-        --text- faint: {{color8}} !important;
+        --text-faint: {{color8}} !important;
         --text-accent: {{color4}} !important;
         --text-accent-hover: {{color12}} !important;
         --interactive-normal: {{color0 | lighten(0.05)}} !important;

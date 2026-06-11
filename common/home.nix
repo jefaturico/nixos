@@ -5,7 +5,6 @@
 
 let
   symlinks = {
-    vdirsyncer = "vdirsyncer";
     nvim = "nvim";
     niri = "niri";
   };

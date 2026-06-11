@@ -29,6 +29,13 @@
 
   services.thermald.enable = true;
 
+  zramSwap = {
+    memoryPercent = 100;
+    priority = 100;
+  };
+
+  boot.kernel.sysctl."vm.page-cluster" = 0;
+
   hardware.graphics = {
     enable = true;
     enable32Bit = true;

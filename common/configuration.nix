@@ -1,7 +1,6 @@
 {
   pkgs,
   lib,
-  config,
   ...
 }:
 {
@@ -57,9 +56,8 @@
     flatpak = {
       enable = true;
       packages = [
+        "com.bitwarden.desktop"
         "org.jamovi.jamovi"
-      ]
-      ++ lib.optionals (config.networking.hostName != "coriolis") [
         "com.stremio.Stremio"
       ];
       remotes = [
@@ -149,7 +147,20 @@
     nerd-fonts.jetbrains-mono
   ];
 
-  nixpkgs.config.allowUnfree = true;
+  nixpkgs.config = {
+    allowUnfree = false;
+    allowUnfreePredicate = pkg:
+      builtins.elem (lib.getName pkg) [
+        "brave"
+        "brave-unwrapped"
+        "code"
+        "nvidia-settings"
+        "nvidia-x11"
+        "obsidian"
+        "vscode"
+        "vscode-fhs"
+      ];
+  };
   nix.settings = {
     experimental-features = [
       "nix-command"

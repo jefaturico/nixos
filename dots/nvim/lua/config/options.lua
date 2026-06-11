@@ -4,31 +4,30 @@ vim.g.maplocalleader = " "
 
 local opt = vim.opt
 
-opt.number = true         -- Show line numbers
-opt.relativenumber = true -- Relative line numbers
-opt.mouse = "a"           -- Enable mouse support
-opt.showmode = false      -- Don't show mode since we'll use a statusline
-opt.termguicolors = true -- Use GUI colors
-opt.clipboard = "unnamedplus" -- Sync with system clipboard
-opt.breakindent = true    -- Wrap indent
-opt.wrap = true           -- Enable soft wrap
-opt.linebreak = true      -- Wrap at word boundaries
-opt.undofile = true       -- Save undo history
-opt.ignorecase = true     -- Case-insensitive searching
-opt.smartcase = true      -- Smart case
-opt.signcolumn = "yes"    -- Always show sign column
-opt.updatetime = 250      -- Faster completion
-opt.timeoutlen = 300      -- Time to wait for a mapped sequence
-opt.splitright = true     -- Split vertical window to the right
-opt.splitbelow = true     -- Split horizontal window to the bottom
-opt.list = true           -- Show certain invisible characters
+opt.number = true
+opt.relativenumber = true
+opt.mouse = "a"
+opt.showmode = false
+opt.termguicolors = true
+opt.clipboard = "unnamedplus"
+opt.breakindent = true
+opt.wrap = true
+opt.linebreak = true
+opt.undofile = true
+opt.ignorecase = true
+opt.smartcase = true
+opt.signcolumn = "yes"
+opt.updatetime = 250
+opt.timeoutlen = 300
+opt.splitright = true
+opt.splitbelow = true
+opt.list = true
 opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
-opt.inccommand = "split"  -- Preview substitutions live
-opt.cursorline = true    -- Highlight the current line
+opt.inccommand = "split"
+opt.cursorline = true
 opt.scrolloff = 10        -- Minimal number of screen lines to keep above and below the cursor
 opt.conceallevel = 2      -- Hide formatting symbols to support Obsidian UI features
-opt.background = "dark"    -- Always use dark mode
-
+opt.background = "dark"
 
 -- Indentation
 opt.expandtab = true

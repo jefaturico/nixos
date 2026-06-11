@@ -126,7 +126,7 @@ in
         continuous-hist-save = true;
         selection-clipboard = "clipboard";
         database = "sqlite";
-        sandbox = "none";
+        sandbox = "normal";
         include = "~/.cache/wallust/colors-zathura";
       };
     };
@@ -244,7 +244,6 @@ in
       pandoc
       playerctl
       gsettings-desktop-schemas
-      bitwarden-desktop
       pwvucontrol
       hugo
       hledger
