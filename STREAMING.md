@@ -20,7 +20,7 @@ Run the host-specific rebuild command on each machine.
 After the first rebuild:
 
 - `galileo` should use SDDM and offer/start the `niri` session.
-- `galileo` should run `sunshine.service`.
+- `galileo` should run the user-level `sunshine.service`.
 - `ekman` should have the `moonlight`/`moonlight-qt` launcher available.
 - Both hosts should have `tailscaled.service` available.
 
@@ -29,10 +29,11 @@ Useful checks:
 ```sh
 systemctl status display-manager
 systemctl status tailscaled
-systemctl status sunshine
+systemctl --user status sunshine
 ```
 
-`sunshine.service` only exists on `galileo`.
+The Sunshine unit only exists on `galileo`, and it is a user service. Use
+`systemctl --user ...`, not plain `systemctl ...`.
 
 ## 2. Tailscale Login
 
@@ -98,12 +99,22 @@ Initial GUI steps:
 Useful CLI checks on `galileo`:
 
 ```sh
-systemctl status sunshine
-journalctl -u sunshine -b --no-pager
+systemctl --user status sunshine
+journalctl --user -u sunshine -b --no-pager
 ```
 
 If capture fails, check Sunshine logs first. The NixOS config enables Sunshine
 with `CAP_SYS_ADMIN`, which is required for DRM/KMS capture.
+
+Do not start `sunshine` manually while the user service is running. If a manual
+run exits with `Couldn't bind RTSP server to port [48010], Address already in
+use`, another Sunshine process is already listening. Check/restart the user
+service instead:
+
+```sh
+systemctl --user restart sunshine
+systemctl --user status sunshine
+```
 
 ## 4. Moonlight Setup on Ekman
 
@@ -147,7 +158,7 @@ Before leaving home:
 
 - `galileo` is powered on and not asleep.
 - `tailscale status` shows `galileo` online.
-- `systemctl status sunshine` is healthy on `galileo`.
+- `systemctl --user status sunshine` is healthy on `galileo`.
 - Sunshine has already been paired with Moonlight at least once.
 - No router port forwarding is required.
 
@@ -190,9 +201,28 @@ key path in `common/secrets.nix`.
 Sunshine not reachable:
 
 ```sh
-systemctl status sunshine
-journalctl -u sunshine -b --no-pager
+systemctl --user status sunshine
+journalctl --user -u sunshine -b --no-pager
+systemctl --user restart sunshine
 ```
+
+If `systemctl status sunshine` says the unit does not exist, that is expected:
+Sunshine is a user service. Use `systemctl --user status sunshine`.
+
+If `systemctl --user status sunshine` says the unit does not exist after a
+successful rebuild, reload user units or log out and back in:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user start sunshine
+```
+
+If a manual `sunshine` run reports input permission warnings, prefer the user
+service. The NixOS module sets up the wrapper/permissions expected by Sunshine.
+
+If a manual `sunshine` run reports `Cannot load libcuda.so.1` or VAAPI encode
+failures but software encoding works, first test through the user service logs.
+Manual runs do not necessarily match the service environment.
 
 Tailscale not connected:
 
