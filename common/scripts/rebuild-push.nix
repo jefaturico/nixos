@@ -28,6 +28,9 @@
 
   cd "$repo"
 
+  ${pkgs.git}/bin/git add .
+  printf 'Staged current repo changes for flake evaluation.\n'
+
   "$sudo" ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$repo/#$HOSTNAME"
 
   printf 'Commit and push changes? [y/N] '
@@ -41,8 +44,6 @@
           exit 0
           ;;
   esac
-
-  ${pkgs.git}/bin/git add .
 
   if ${pkgs.git}/bin/git diff --cached --quiet; then
       printf 'No changes to commit.\n'
