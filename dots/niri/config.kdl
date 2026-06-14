@@ -154,6 +154,7 @@ binds {
 
   Mod+I { spawn "systeminfo"; }
   Mod+U { spawn "usb-open"; }
+  Mod+F { spawn "niri-window-switch"; }
 
   Mod+B { spawn "brave"; }
   Mod+Shift+B { spawn "fuzzel-bookmarks"; }

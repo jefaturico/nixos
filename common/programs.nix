@@ -275,6 +275,8 @@ in
           "--disable-features=UseChromeOSDirectVideoDecoder"
           "--use-gl=egl"
           "--ozone-platform=wayland"
+          "--remote-debugging-address=127.0.0.1"
+          "--remote-debugging-port=9222"
         ];
       })
       libnotify

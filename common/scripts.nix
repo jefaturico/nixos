@@ -11,6 +11,7 @@ in
     (mkScript "wldaynight")
     (mkScript "wdoc-find")
     (mkScript "fuzzel-bookmarks")
+    (mkScript "niri-window-switch")
     (mkScript "rebuild-push")
     (mkScript "systeminfo")
     (mkScript "usb-open")
