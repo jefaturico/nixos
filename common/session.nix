@@ -19,6 +19,7 @@
       NNN_OPTS = "eEHR"; # entry, exit on q, hidden, relative
       PATH = "$HOME/.local/bin:$PATH";
       XDG_DATA_DIRS = "$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS";
+      WLR_NO_HARDWARE_CURSORS = "1";
     };
   };
 
@@ -26,6 +27,7 @@
     userDirs = {
       enable = true;
       createDirectories = true;
+      setSessionVariables = true;
       desktop = "$HOME";
       documents = "$HOME";
       download = "$HOME/downloads";

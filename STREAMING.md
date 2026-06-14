@@ -106,6 +106,9 @@ journalctl --user -u sunshine -b --no-pager
 If capture fails, check Sunshine logs first. The NixOS config enables Sunshine
 with `CAP_SYS_ADMIN`, which is required for DRM/KMS capture.
 
+For this setup, Sunshine has been tested with capture mode set to `KMS` in the
+Sunshine web UI.
+
 Do not start `sunshine` manually while the user service is running. If a manual
 run exits with `Couldn't bind RTSP server to port [48010], Address already in
 use`, another Sunshine process is already listening. Check/restart the user
@@ -151,6 +154,24 @@ moonlight stream galileo
 ```
 
 If MagicDNS does not resolve, replace `galileo` with the Tailscale IPv4 address.
+
+Moonlight input capture:
+
+- Click inside the stream window first; on some Wayland sessions, unfocused
+  windows will not forward keyboard/mouse input.
+- Use fullscreen or borderless fullscreen for the most reliable keyboard capture.
+- On `ekman`, Niri normally keeps `Mod`/Super shortcuts for the local compositor.
+  With the Moonlight window focused, press `Mod+Ctrl+Escape` to toggle Niri
+  keyboard-shortcut inhibition for that window. After that, Super-based shortcuts
+  should be forwarded to `galileo`.
+- Press `Ctrl+Alt+Shift+L` to lock/unlock the mouse cursor to the Moonlight
+  window.
+- Press `Ctrl+Alt+Shift+M` to toggle Moonlight mouse mode.
+- If you get stuck with local shortcuts inhibited, press `Mod+Ctrl+Escape` again.
+  This binding is deliberately configured with `allow-inhibiting=false`, so it
+  remains available as the escape hatch.
+- If the stream is visible but no host input works, check Sunshine logs on
+  `galileo` for virtual input errors before debugging Moonlight further.
 
 ## 5. Remote Streaming Checklist
 
@@ -220,9 +241,44 @@ systemctl --user start sunshine
 If a manual `sunshine` run reports input permission warnings, prefer the user
 service. The NixOS module sets up the wrapper/permissions expected by Sunshine.
 
+If the stream works but Moonlight cannot control mouse/keyboard, check
+`/dev/uinput` permissions on `galileo`:
+
+```sh
+ls -l /dev/uinput
+id
+```
+
+The repo config enables NixOS `hardware.uinput` support and adds `jefaturico` to
+the `uinput` group. Group membership is captured at login, so after applying this
+change, fully log out and back in or reboot:
+
+```sh
+sudo nixos-rebuild switch --flake ~/nixos/#galileo
+reboot
+```
+
+After logging back in, verify `id` includes `uinput` and `/dev/uinput` is owned
+by group `uinput`.
+
 If a manual `sunshine` run reports `Cannot load libcuda.so.1` or VAAPI encode
 failures but software encoding works, first test through the user service logs.
 Manual runs do not necessarily match the service environment.
+
+If the user service log reports `Cannot load libnvidia-encode.so.1`, rebuild
+`galileo` from this repo and restart Sunshine. The config exposes
+`/run/opengl-driver/lib` to Sunshine’s user unit so NVENC can find NVIDIA driver
+libraries:
+
+```sh
+sudo nixos-rebuild switch --flake ~/nixos/#galileo
+systemctl --user restart sunshine
+journalctl --user -u sunshine -b --no-pager | grep -E 'nvenc|libnvidia-encode|Found H.264 encoder'
+```
+
+Warnings about virtual touch screen or pen tablet creation are not blocking for
+normal mouse/keyboard streaming. Treat them as actionable only if touch or pen
+input is required.
 
 Tailscale not connected:
 

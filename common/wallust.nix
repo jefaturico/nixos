@@ -46,7 +46,7 @@
     '';
 
     ".config/wallust/templates/colors-foot.ini".text = ''
-      [colors]
+      [colors-dark]
       foreground={{foreground | strip}}
       background={{background | strip}}
       regular0={{color0 | strip}}

@@ -96,6 +96,13 @@ in
       };
     };
 
+    udiskie = {
+      enable = true;
+      automount = true;
+      notify = true;
+      tray = "never";
+    };
+
     vdirsyncer = {
       enable = true;
       frequency = "*:0/15";

@@ -8,7 +8,10 @@
     ./secrets.nix
   ];
 
-  boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot = {
+    enable = true;
+    configurationLimit = 5;
+  };
   boot.loader.efi.canTouchEfiVariables = true;
 
   time.timeZone = "Europe/Madrid";
@@ -32,14 +35,36 @@
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
+    settings = {
+      General = {
+        FastConnectable = true;
+      };
+      Policy = {
+        AutoEnable = true;
+      };
+    };
   };
 
   services = {
     displayManager = {
       defaultSession = "niri";
-      sddm = {
+      ly = {
         enable = true;
-        wayland.enable = true;
+        settings = {
+          background = "0x00000000";
+          foreground = "0x00AAAAAA";
+          full_color = true;
+          animation = "none";
+          animation_frame_delay = 10;
+          colormix_col1 = "0x40FFFFFF";
+          colormix_col2 = "0x40AAAAAA";
+          colormix_col3 = "0x20000000";
+          restore = true;
+          session_log = "null";
+          hide_version_string = true;
+          hide_key_hints = true;
+          hide_borders = false;
+        };
       };
     };
 
@@ -97,6 +122,7 @@
           settings = {
             main = {
               capslock = "overload(control, esc)";
+              menu = "leftmeta";
             };
           };
         };
@@ -154,8 +180,9 @@
         "brave"
         "brave-unwrapped"
         "code"
-        "nvidia-settings"
         "nvidia-x11"
+        "nvidia-kernel-modules"
+        "nvidia-settings"
         "obsidian"
         "vscode"
         "vscode-fhs"
@@ -172,7 +199,7 @@
   nix.gc = {
     automatic = true;
     dates = "weekly";
-    options = "--delete-older-than 7d";
+    options = "--delete-generations +10";
   };
 
   zramSwap.enable = true;

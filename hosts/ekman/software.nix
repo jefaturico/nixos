@@ -39,8 +39,12 @@
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
+    extraPackages = with pkgs; [
+      intel-media-driver # Modern driver (iHD)
+      intel-vaapi-driver # Broadwell/KabyLake media driver backend
+      libvdpau-va-gl
+    ];
   };
-
   environment.systemPackages = with pkgs; [
     moonlight-qt
   ];

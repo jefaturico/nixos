@@ -12,6 +12,7 @@ in
     (mkScript "wdoc-find")
     (mkScript "fuzzel-bookmarks")
     (mkScript "systeminfo")
+    (mkScript "usb-open")
     (mkScript "wlbrightness")
     (mkScript "wlvolume")
     (mkScript "wlscreenshot")
