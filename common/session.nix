@@ -28,14 +28,15 @@
       enable = true;
       createDirectories = true;
       setSessionVariables = true;
-      desktop = "$HOME";
-      documents = "$HOME";
+      desktop = "$HOME/misc";
+      documents = "$HOME/misc";
       download = "$HOME/downloads";
-      music = "$HOME";
-      pictures = "$HOME";
-      publicShare = "$HOME";
-      templates = "$HOME";
-      videos = "$HOME";
+      projects = "$HOME/misc";
+      music = "$HOME/misc";
+      pictures = "$HOME/misc";
+      publicShare = "$HOME/misc";
+      templates = "$HOME/misc";
+      videos = "$HOME/misc";
     };
 
     mimeApps = {

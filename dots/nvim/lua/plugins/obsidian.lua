@@ -10,7 +10,7 @@ return {
       workspaces = {
         {
           name = "personal",
-          path = "~/zettelkasten",
+          path = "~/documents/notes",
         },
       },
       picker = {

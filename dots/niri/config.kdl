@@ -158,7 +158,7 @@ binds {
   Mod+B { spawn "brave"; }
   Mod+Shift+B { spawn "fuzzel-bookmarks"; }
 
-  Mod+N { spawn-sh "foot -D ~/zettelkasten -e nvim -c ObsidianSearch"; }
+  Mod+N { spawn-sh "foot -D ~/documents/notes -e nvim -c ObsidianSearch"; }
 
   Mod+C { spawn "foot" "-e" "taskwarrior-tui"; }
   Mod+Shift+C { spawn "foot" "-e" "ikhal"; }

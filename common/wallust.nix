@@ -14,7 +14,7 @@
       fuzzel = { template = 'colors-fuzzel.ini', target = '~/.cache/wallust/colors-fuzzel.ini' }
       mako = { template = 'colors-mako', target = '~/.cache/wallust/colors-mako' }
       zathura = { template = 'colors-zathura', target = '~/.cache/wallust/colors-zathura' }
-      obsidian = { template = 'colors-obsidian.css', target = '~/zettelkasten/.obsidian/snippets/wallust.css' }
+      obsidian = { template = 'colors-obsidian.css', target = '~/documents/notes/.obsidian/snippets/wallust.css' }
       neopywal = { template = 'colors_neopywal.vim', target = '~/.cache/wallust/colors_neopywal.vim' }
       colors_sh = { template = 'colors.sh', target = '~/.cache/wallust/colors.sh' }
 
