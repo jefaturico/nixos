@@ -1,6 +1,7 @@
 *~
 #*
 dotfiles/*
+.stfolder/
 result
 build.log
 dump.json
@@ -8,12 +9,3 @@ mako_status.txt
 *.sync-conflict-*
 secrets/*.env
 
-# dwl build artifacts
-dots/dwl/dwl
-dots/dwl/*.o
-dots/dwl/*.orig
-dots/dwl/*.rej
-dots/dwl/*-protocol.h
-
-# emacs state
-dots/emacs/recentf
