@@ -63,7 +63,7 @@ layout {
   focus-ring {
     off
     width 1
-    active-color "#5D78A8" // {color3}
+    active-color "#797375" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -71,7 +71,7 @@ layout {
   border {
     off
     width 1
-    active-color "#5D78A8" // {color3}
+    active-color "#797375" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -127,7 +127,7 @@ window-rule {
 binds {
   Mod+Shift+Slash { show-hotkey-overlay; }
 
-  Mod+Return { spawn "foot"; }
+  Mod+Return { spawn "footclient"; }
   Mod+P { spawn-sh "fuzzel -p 'λ '"; }
 
   XF86AudioRaiseVolume allow-when-locked=true { spawn "wlvolume" "0.1+"; }
@@ -159,10 +159,10 @@ binds {
   Mod+B { spawn "brave"; }
   Mod+Shift+B { spawn "fuzzel-bookmarks"; }
 
-  Mod+N { spawn-sh "foot -D ~/documents/notes -e nvim -c ObsidianSearch"; }
+  Mod+N { spawn-sh "footclient -D ~/documents/notes -e nvim -c ObsidianSearch"; }
 
-  Mod+C { spawn "foot" "-e" "taskwarrior-tui"; }
-  Mod+Shift+C { spawn "foot" "-e" "ikhal"; }
+  Mod+C { spawn "footclient" "-e" "taskwarrior-tui"; }
+  Mod+Shift+C { spawn "footclient" "-e" "ikhal"; }
 
   Mod+Q repeat=false { close-window; }
 

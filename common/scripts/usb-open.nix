@@ -31,5 +31,5 @@
       exit 0
   fi
 
-  exec ${pkgs.foot}/bin/foot -D "$target"
+  exec ${pkgs.foot}/bin/footclient -D "$target"
 ''

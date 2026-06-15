@@ -108,6 +108,19 @@ in
       frequency = "*:0/15";
     };
   };
+  systemd.user.services.foot-server = {
+    Unit = {
+      Description = "Foot terminal server";
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "simple";
+      ExecStart = "${pkgs.foot}/bin/foot --server";
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   systemd.user.services.mako = {
     Service = {
       Restart = "always";
