@@ -26,7 +26,7 @@ in
         EDITOR = "nvim";
         BROWSER = "brave";
         DEFAULT_BROWSER = "brave";
-        LEDGER_FILE = "$HOME/finances/main.journal";
+        LEDGER_FILE = "$HOME/documents/personal/finance/main.journal";
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
