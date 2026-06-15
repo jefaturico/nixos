@@ -63,7 +63,7 @@ layout {
   focus-ring {
     off
     width 1
-    active-color "#797375" // {color3}
+    active-color "#916C56" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -71,7 +71,7 @@ layout {
   border {
     off
     width 1
-    active-color "#797375" // {color3}
+    active-color "#916C56" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
