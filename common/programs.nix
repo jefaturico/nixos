@@ -21,6 +21,9 @@ in
 
     bash = {
       enable = true;
+      shellAliases = {
+        vim = "nvim";
+      };
       sessionVariables = {
         TERM = "foot";
         EDITOR = "nvim";
