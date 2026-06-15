@@ -30,7 +30,7 @@ in
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
-        eval "$(zoxide init bash)"
+        eval "$(zoxide init bash --cmd cd)"
 
         usb() {
           local media_root target
