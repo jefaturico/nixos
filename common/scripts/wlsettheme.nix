@@ -85,7 +85,7 @@ Tokyo-Night-Light"
             PROMPT="Dark Theme: "
         fi
 
-        SELECTED=$(echo "$THEMES" | ${pkgs.fuzzel}/bin/fuzzel -d -p "$PROMPT" -w 30)
+        SELECTED=$(printf '%s\n' "$THEMES" | ${pkgs.fuzzel}/bin/fuzzel -d --no-sort -p "$PROMPT" -w 30)
         [ -z "$SELECTED" ] && exit 0
 
         # Update the theme state file to remember the choice for this mode (LIGHT/DARK).

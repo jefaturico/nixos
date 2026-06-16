@@ -63,7 +63,7 @@ layout {
   focus-ring {
     off
     width 1
-    active-color "#8E7B64" // {color3}
+    active-color "#E8AE5B" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -71,7 +71,7 @@ layout {
   border {
     off
     width 1
-    active-color "#8E7B64" // {color3}
+    active-color "#E8AE5B" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -132,7 +132,7 @@ binds {
   Mod+Shift+Slash { show-hotkey-overlay; }
 
   Mod+Return { spawn "footclient"; }
-  Mod+P { spawn-sh "fuzzel -p 'λ '"; }
+  Mod+P { spawn "fuzzel" "-p" "λ "; }
 
   XF86AudioRaiseVolume allow-when-locked=true { spawn "wlvolume" "0.1+"; }
   XF86AudioLowerVolume allow-when-locked=true { spawn "wlvolume" "0.1-"; }
