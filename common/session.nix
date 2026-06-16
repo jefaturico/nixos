@@ -11,6 +11,7 @@
     sessionVariables = {
       GDK_SCALE = "1";
       QT_AUTO_SCREEN_SCALE_FACTOR = "0";
+      QT_QPA_PLATFORM = "wayland";
       MOZ_ENABLE_WAYLAND = "1";
       GTK_CSD = "0";
       XDG_SESSION_TYPE = "wayland";
@@ -49,11 +50,11 @@
         "text/plain" = [ "nvim.desktop" ];
         "text/markdown" = [ "nvim.desktop" ];
         "application/x-shellscript" = [ "nvim.desktop" ];
-        "text/html" = "brave-browser.desktop";
-        "x-scheme-handler/http" = "brave-browser.desktop";
-        "x-scheme-handler/https" = "brave-browser.desktop";
-        "x-scheme-handler/about" = "brave-browser.desktop";
-        "x-scheme-handler/unknown" = "brave-browser.desktop";
+        "text/html" = "chromium.desktop";
+        "x-scheme-handler/http" = "chromium.desktop";
+        "x-scheme-handler/https" = "chromium.desktop";
+        "x-scheme-handler/about" = "chromium.desktop";
+        "x-scheme-handler/unknown" = "chromium.desktop";
       };
     };
   };

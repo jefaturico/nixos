@@ -6,11 +6,11 @@ let
 in
 {
   home.packages = [
+    (mkScript "browser-palette")
     (mkScript "wlsetbg")
     (mkScript "wlsettheme")
     (mkScript "wldaynight")
     (mkScript "wdoc-find")
-    (mkScript "fuzzel-bookmarks")
     (mkScript "niri-window-switch")
     (mkScript "rebuild-push")
     (mkScript "systeminfo")

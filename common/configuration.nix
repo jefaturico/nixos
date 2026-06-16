@@ -177,8 +177,6 @@
     allowUnfreePredicate =
       pkg:
       builtins.elem (lib.getName pkg) [
-        "brave"
-        "brave-unwrapped"
         "code"
         "nvidia-x11"
         "nvidia-kernel-modules"

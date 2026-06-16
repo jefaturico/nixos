@@ -57,6 +57,7 @@
             [ "$CUR_MODE" = "'prefer-dark'" ] && THEME="$DARK_THEME" || THEME="$LIGHT_THEME"
             if [ "$THEME" = "Dynamic" ]; then
                 ${pkgs.wallust}/bin/wallust run -q "$FULL_PATH" && \
+                { ${pkgs.systemd}/bin/systemctl --user kill --kill-whom=main --signal=SIGUSR1 foot-server.service 2>/dev/null || true; } && \
                 ${pkgs.mako}/bin/makoctl reload && \
                 {
                     COLOR_SH="$HOME/.cache/wallust/colors.sh"

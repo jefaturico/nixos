@@ -27,6 +27,7 @@
             ${pkgs.wallust}/bin/wallust theme -q "$THEME"
         fi
         
+        ${pkgs.systemd}/bin/systemctl --user kill --kill-whom=main --signal=SIGUSR1 foot-server.service 2>/dev/null || true
         ${pkgs.mako}/bin/makoctl reload
 
         # Update Niri colors directly in the config file

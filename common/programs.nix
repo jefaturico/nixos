@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   osConfig,
   lib,
@@ -6,6 +7,65 @@
 }:
 
 let
+
+  chromiumApp = pkgs.writeShellApplication {
+    name = "chromium-app";
+    runtimeInputs = [
+      pkgs.jq
+    ];
+    text = ''
+      set -u
+
+      trim() {
+          local value="$1"
+          value="''${value#"''${value%%[![:space:]]*}"}"
+          value="''${value%"''${value##*[![:space:]]}"}"
+          printf '%s' "$value"
+      }
+
+      search_url() {
+          local query encoded
+          query="$1"
+          encoded="$(jq -rn --arg q "$query" '$q | @uri')"
+          printf 'https://duckduckgo.com/?q=%s' "$encoded"
+      }
+
+      normalize_target() {
+          local target
+          target="$(trim "$1")"
+
+          if [ -z "$target" ]; then
+              printf 'about:blank'
+              return
+          fi
+
+          case "$target" in
+              *[[:space:]]*)
+                  search_url "$target"
+                  return
+                  ;;
+          esac
+
+          case "$target" in
+              [a-zA-Z][a-zA-Z0-9+.-]*:*)
+                  printf '%s' "$target"
+                  ;;
+              localhost|localhost/*|localhost:*)
+                  printf 'http://%s' "$target"
+                  ;;
+              *.*)
+                  printf 'https://%s' "$target"
+                  ;;
+              *)
+                  search_url "$target"
+                  ;;
+          esac
+      }
+
+      url="$(normalize_target "$*")"
+      exec ${lib.getExe config.programs.chromium.finalPackage} --app="$url"
+    '';
+  };
 
   calendarDirs = {
     Scheduled = "~/.calendars/emiliohurtadosr@gmail.com/";
@@ -18,6 +78,22 @@ in
 {
 
   programs = {
+    chromium = {
+      enable = true;
+      package = pkgs.ungoogled-chromium;
+      commandLineArgs = [
+        "--ozone-platform=wayland"
+        "--no-first-run"
+        "--no-default-browser-check"
+        "--remote-debugging-address=127.0.0.1"
+        "--remote-debugging-port=9222"
+      ];
+      # Install these manually for now; ungoogled Chromium does not reliably
+      # consume Chrome Web Store update URLs from declarative extension entries.
+      # Vimium C: hfjbmagddngcpeloejdejnfgbamkjaeg
+      # uBlock Origin Lite: ddkjiahejlhfcafbddmgiahcphecmpfh
+      extensions = [ ];
+    };
 
     bash = {
       enable = true;
@@ -27,13 +103,27 @@ in
       sessionVariables = {
         TERM = "foot";
         EDITOR = "nvim";
-        BROWSER = "brave";
-        DEFAULT_BROWSER = "brave";
+        BROWSER = "chromium-app";
+        DEFAULT_BROWSER = "chromium-app";
         LEDGER_FILE = "$HOME/documents/personal/finance/main.journal";
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
-        eval "$(zoxide init bash --cmd cd)"
+
+        __lazy_zoxide_init() {
+          unset -f cd cdi __lazy_zoxide_init
+          eval "$(${pkgs.zoxide}/bin/zoxide init bash --cmd cd)"
+        }
+
+        cd() {
+          __lazy_zoxide_init
+          cd "$@"
+        }
+
+        cdi() {
+          __lazy_zoxide_init
+          cdi "$@"
+        }
 
         usb() {
           local media_root target
@@ -244,6 +334,17 @@ in
     export = meta E
   '';
 
+  xdg.dataFile."applications/chromium.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Chromium
+    GenericName=Web Browser
+    Exec=chromium-app %U
+    Terminal=false
+    Categories=Network;WebBrowser;
+    MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
+  '';
+
   programs.taskwarrior = {
     enable = true;
     package = pkgs.taskwarrior3;
@@ -271,17 +372,7 @@ in
       gimp
       imagemagick
       imv
-      librewolf
-      (brave.override {
-        commandLineArgs = [
-          "--enable-features=VaapiVideoDecodeLinuxGL,PipeWireWebRTCScreensharing"
-          "--disable-features=UseChromeOSDirectVideoDecoder"
-          "--use-gl=egl"
-          "--ozone-platform=wayland"
-          "--remote-debugging-address=127.0.0.1"
-          "--remote-debugging-port=9222"
-        ];
-      })
+      chromiumApp
       libnotify
       libreoffice
       neovim
@@ -314,7 +405,6 @@ in
       wl-clipboard
       subsurface
       qbittorrent
-      qutebrowser
       slurp
       grim
       wlrctl

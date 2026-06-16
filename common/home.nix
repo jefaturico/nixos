@@ -1,5 +1,6 @@
 {
   config,
+  pkgs,
   ...
 }:
 
@@ -33,6 +34,29 @@ in
         $pdf_previewer = 'zathura';
         $pdf_update_method = 0;
       '';
+      ".local/bin/footclient" = {
+        executable = true;
+        text = ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+
+          overrides_file="''${XDG_CACHE_HOME:-$HOME/.cache}/wallust/footclient-overrides.bash"
+          footclient_color_args=()
+          [[ -r "$overrides_file" ]] && source "$overrides_file"
+
+          set +e
+          ${pkgs.foot}/bin/footclient "''${footclient_color_args[@]}" "$@"
+          status=$?
+          set -e
+
+          if [[ "$status" -eq 220 ]]; then
+            ${pkgs.systemd}/bin/systemctl --user start foot-server.service 2>/dev/null || true
+            exec ${pkgs.foot}/bin/footclient "''${footclient_color_args[@]}" "$@"
+          fi
+
+          exit "$status"
+        '';
+      };
     }
     // (
       # Automatically symlink directories in ./dots/ to ~/.config/

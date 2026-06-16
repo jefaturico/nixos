@@ -63,7 +63,7 @@ layout {
   focus-ring {
     off
     width 1
-    active-color "#916C56" // {color3}
+    active-color "#8E7B64" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -71,7 +71,7 @@ layout {
   border {
     off
     width 1
-    active-color "#916C56" // {color3}
+    active-color "#8E7B64" // {color3}
     inactive-color "#000000"
     urgent-color "#9b0000"
   }
@@ -112,8 +112,12 @@ layer-rule {
 }
 
 window-rule {
-  match app-id="brave"
-  default-column-width { proportion 1.0; }
+  match app-id="chromium"
+  match app-id="chromium-browser"
+  match app-id="ungoogled-chromium"
+  match app-id="chromium-app"
+  match app-id="^chrome-.*"
+  // default-column-width { proportion 1.0; }
   open-focused true
 }
 
@@ -156,8 +160,7 @@ binds {
   Mod+U { spawn "usb-open"; }
   Mod+F { spawn "niri-window-switch"; }
 
-  Mod+B { spawn "brave"; }
-  Mod+Shift+B { spawn "fuzzel-bookmarks"; }
+  Mod+B { spawn "browser-palette"; }
 
   Mod+N { spawn-sh "footclient -D ~/documents/notes -e nvim -c ObsidianSearch"; }
 
