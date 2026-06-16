@@ -288,7 +288,6 @@ in
       mpv
       obsidian
       blanket
-      solanum
       pdfarranger
       kdePackages.okular
       typst
@@ -308,12 +307,14 @@ in
       ripdrag
       shfmt
       stylua
+      gnome-solanum
       uget
       wbg
       wireplumber
       wl-clipboard
       subsurface
       qbittorrent
+      qutebrowser
       slurp
       grim
       wlrctl

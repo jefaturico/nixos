@@ -5,15 +5,50 @@ let
   niri = "${pkgs.niri}/bin/niri";
   notifySend = "${pkgs.libnotify}/bin/notify-send";
   curl = "${pkgs.curl}/bin/curl";
+  awk = "${pkgs.gawk}/bin/awk";
+  stat = "${pkgs.coreutils}/bin/stat";
 in
 ''
   #!${pkgs.bash}/bin/bash
 
   BRAVE_DEBUG_URL="http://127.0.0.1:9222"
+  CACHE_DIR="''${XDG_RUNTIME_DIR:-/tmp}/niri-window-switch"
+  BRAVE_TABS_CACHE="$CACHE_DIR/brave-tabs.tsv"
+  BRAVE_TABS_TTL=30
 
   notify() {
       ${notifySend} -h string:x-canonical-private-synchronous:status "Window Switcher" "$1"
   }
+
+  clean_cache() {
+      local now mtime
+      [ -s "$BRAVE_TABS_CACHE" ] || return 1
+      now=$(${pkgs.coreutils}/bin/date +%s)
+      mtime=$(${stat} -c %Y "$BRAVE_TABS_CACHE" 2>/dev/null || printf 0)
+      [ $((now - mtime)) -le "$BRAVE_TABS_TTL" ]
+  }
+
+  refresh_brave_tabs() (
+      local workspace="$1"
+      local tmp="$BRAVE_TABS_CACHE.$$"
+
+      ${pkgs.coreutils}/bin/mkdir -p "$CACHE_DIR"
+      ${curl} -fsS --connect-timeout 0.08 --max-time 0.35 "$BRAVE_DEBUG_URL/json" 2>/dev/null \
+          | ${jq} -r --arg workspace "''${workspace:-?}" '
+              def clean:
+                  tostring
+                  | gsub("[\t\r\n]+"; " ")
+                  | gsub("^ +| +$"; "");
+
+              .[]
+              | select(.type == "page")
+              | (.title // .url // "Untitled" | clean) as $title
+              | "\(.id)\tbrave-tab\t[\($workspace)] Brave - \($title)"
+          ' > "$tmp" 2>/dev/null \
+          && [ -s "$tmp" ] \
+          && ${pkgs.coreutils}/bin/mv "$tmp" "$BRAVE_TABS_CACHE"
+      ${pkgs.coreutils}/bin/rm -f "$tmp"
+  )
 
   WINDOWS_JSON="$(${niri} msg -j windows 2>/dev/null)"
   if [ -z "$WINDOWS_JSON" ]; then
@@ -21,32 +56,26 @@ in
       exit 1
   fi
 
-  BRAVE_WINDOW="$(printf '%s\n' "$WINDOWS_JSON" | ${jq} -r '
+  BRAVE_INFO="$(printf '%s\n' "$WINDOWS_JSON" | ${jq} -r '
       [
           (.windows? // .)[]
           | select(.app_id == "brave-browser" or .app_id == "brave")
       ]
       | sort_by(.focus_timestamp.secs // 0, .focus_timestamp.nanos // 0)
       | last
-      | if . == null then empty else "\(.id)\t\(.workspace_id // "?")" end
+      | if . == null then "\t" else "\(.id)\t\(.workspace_id // "?")" end
   ')"
-  BRAVE_WINDOW_ID="$(printf '%s\n' "$BRAVE_WINDOW" | ${pkgs.gawk}/bin/awk -F '\t' '{ print $1 }')"
-  BRAVE_WORKSPACE="$(printf '%s\n' "$BRAVE_WINDOW" | ${pkgs.gawk}/bin/awk -F '\t' '{ print $2 }')"
+  IFS=$'\t' read -r BRAVE_WINDOW_ID BRAVE_WORKSPACE <<< "$BRAVE_INFO"
 
-  BRAVE_TABS_JSON="$(${curl} -fsS --max-time 0.4 "$BRAVE_DEBUG_URL/json" 2>/dev/null || true)"
+  # Never block the launcher on Brave's remote-debugging endpoint. Use the latest
+  # warm cache for this invocation and refresh it in the background for the next.
+  if [ -n "$BRAVE_WINDOW_ID" ]; then
+      refresh_brave_tabs "$BRAVE_WORKSPACE" >/dev/null 2>&1 &
+  fi
+
   BRAVE_TABS=""
-  if [ -n "$BRAVE_TABS_JSON" ]; then
-      BRAVE_TABS="$(printf '%s\n' "$BRAVE_TABS_JSON" | ${jq} -r --arg workspace "''${BRAVE_WORKSPACE:-?}" '
-          def clean:
-              tostring
-              | gsub("[\t\r\n]+"; " ")
-              | gsub("^ +| +$"; "");
-
-          .[]
-          | select(.type == "page")
-          | (.title // .url // "Untitled" | clean) as $title
-          | "\(.id)\tbrave-tab\t[\($workspace)] Brave - \($title)"
-      ' 2>/dev/null || true)"
+  if clean_cache; then
+      BRAVE_TABS="$(cat "$BRAVE_TABS_CACHE")"
   fi
 
   WINDOWS="$(printf '%s\n' "$WINDOWS_JSON" | ${jq} -r --arg hide_brave "$([ -n "$BRAVE_TABS" ] && printf true || printf false)" '
@@ -55,19 +84,17 @@ in
           | gsub("[\t\r\n]+"; " ")
           | gsub("^ +| +$"; "");
 
-      (.windows? // .) as $raw
-      | $raw[]
-      | . as $window
+      (.windows? // .)[]
       | select(
           $hide_brave != "true"
-          or (($window.app_id == "brave-browser" or $window.app_id == "brave") | not)
+          or ((.app_id == "brave-browser" or .app_id == "brave") | not)
         )
-      | ($window.workspace_id // "?" | tostring) as $workspace
-      | (($window.title // "Untitled") | clean) as $title
-      | "\($window.id)\twindow\t[\($workspace)] \($title)"
+      | (.workspace_id // "?" | tostring) as $workspace
+      | ((.title // "Untitled") | clean) as $title
+      | "\(.id)\twindow\t[\($workspace)] \($title)"
   ')"
 
-  ENTRIES="$(printf '%s\n%s\n' "$WINDOWS" "$BRAVE_TABS" | ${pkgs.gawk}/bin/awk -F '\t' '
+  ENTRIES="$(printf '%s\n%s\n' "$WINDOWS" "$BRAVE_TABS" | ${awk} -F '\t' '
       NF >= 3 {
           rows[++n] = $0
           labels[n] = $3
@@ -90,19 +117,18 @@ in
       exit 0
   fi
 
-  SELECTED="$(printf '%s\n' "$ENTRIES" | ${pkgs.coreutils}/bin/cut -f3- | ${fuzzel} -d --no-sort -p "Focus a window: " -w 80 || true)"
+  SELECTED="$(printf '%s\n' "$ENTRIES" | ${awk} -F '\t' '{ print $3 }' | ${fuzzel} -d --no-sort -p "Focus a window: " -w 80 || true)"
   if [ -z "$SELECTED" ]; then
       exit 0
   fi
 
-  SELECTED_ENTRY="$(printf '%s\n' "$ENTRIES" | ${pkgs.gawk}/bin/awk -F '\t' -v selected="$SELECTED" '$3 == selected { print; exit }')"
+  SELECTED_ENTRY="$(printf '%s\n' "$ENTRIES" | ${awk} -F '\t' -v selected="$SELECTED" '$3 == selected { print; exit }')"
   if [ -z "$SELECTED_ENTRY" ]; then
       notify "Could not parse selection"
       exit 1
   fi
 
-  TARGET_ID="$(printf '%s\n' "$SELECTED_ENTRY" | ${pkgs.gawk}/bin/awk -F '\t' '{ print $1 }')"
-  TARGET_KIND="$(printf '%s\n' "$SELECTED_ENTRY" | ${pkgs.gawk}/bin/awk -F '\t' '{ print $2 }')"
+  IFS=$'\t' read -r TARGET_ID TARGET_KIND _ <<< "$SELECTED_ENTRY"
 
   case "$TARGET_KIND" in
       window)
@@ -112,7 +138,7 @@ in
           if [ -n "$BRAVE_WINDOW_ID" ]; then
               ${niri} msg action focus-window --id "$BRAVE_WINDOW_ID"
           fi
-          ${curl} -fsS --max-time 1 -X PUT "$BRAVE_DEBUG_URL/json/activate/$TARGET_ID" >/dev/null \
+          ${curl} -fsS --connect-timeout 0.08 --max-time 1 -X PUT "$BRAVE_DEBUG_URL/json/activate/$TARGET_ID" >/dev/null \
               || notify "Could not activate Brave tab"
           ;;
       *)
