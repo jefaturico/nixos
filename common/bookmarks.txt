@@ -1,5 +1,6 @@
 CampusDocencia UCV https://campusdocencia.ucv.es/my/
 PGMwin https://ciclaguainima.egeotec.com/
+ChatGPT https://chatgpt.com
 GitHub https://github.com
 Gmail https://mail.google.com/mail/u/0/#inbox
 Google Gemini https://gemini.google.com/app

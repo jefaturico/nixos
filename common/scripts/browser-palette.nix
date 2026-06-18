@@ -75,7 +75,7 @@ in
       exit 0
   fi
 
-  IFS=$'\t' read -r ACTION TARGET LABEL <<< "$SELECTED"
+  IFS=$'\t' read -r ACTION TARGET _LABEL <<< "$SELECTED"
 
   case "$ACTION" in
       window)
