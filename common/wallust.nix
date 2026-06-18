@@ -17,7 +17,6 @@
       zathura = { template = 'colors-zathura', target = '~/.cache/wallust/colors-zathura' }
       obsidian = { template = 'colors-obsidian.css', target = '~/documents/notes/.obsidian/snippets/wallust.css' }
       neopywal = { template = 'colors_neopywal.vim', target = '~/.cache/wallust/colors_neopywal.vim' }
-      colors_sh = { template = 'colors.sh', target = '~/.cache/wallust/colors.sh' }
 
     '';
 
@@ -173,11 +172,6 @@
         --titlebar-background-focused: {{background}} !important;
         --tab-text-color-focused-active: {{foreground}} !important;
       }
-    '';
-
-    ".config/wallust/templates/colors.sh".text = ''
-      color3="{{color3}}"
-      color4="{{color4}}"
     '';
 
   };

@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Global Hide Scrollbars",
+  "version": "1.0",
+  "description": "Hides scrollbars globally via CSS injection.",
+  "content_scripts": [
+    {
+      "matches": [ "<all_urls>" ],
+      "css": [ "inject.css" ],
+      "run_at": "document_start"
+    }
+  ]
+}

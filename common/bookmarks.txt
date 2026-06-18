@@ -1,13 +1,14 @@
-GitHub https://github.com
-NixOS-Search https://search.nixos.org/packages
-YouTube https://youtube.com
-Google Gemini https://gemini.google.com/app
-YouTube Music https://music.youtube.com/
-YouTube Creator Studio https://studio.youtube.com/channel/UCNYr8wbLHiDtMebn8UL-1MA
-Syncthing http://localhost:8384/
 CampusDocencia UCV https://campusdocencia.ucv.es/my/
-Google NotebookLM https://notebooklm.google.com/
-WhatsApp Web https://web.whatsapp.com/
-Outlook - UCV https://outlook.office.com/mail/
+PGMwin https://ciclaguainima.egeotec.com/
+GitHub https://github.com
 Gmail https://mail.google.com/mail/u/0/#inbox
+Google Gemini https://gemini.google.com/app
+Google NotebookLM https://notebooklm.google.com/
+NixOS-Search https://search.nixos.org/packages
+Outlook - UCV https://outlook.office.com/mail/
+Syncthing http://localhost:8384/
 Tutanota https://app.tuta.com/mail/OOg6IOX--J-9
+WhatsApp Web https://web.whatsapp.com/
+YouTube Creator Studio https://studio.youtube.com/channel/UCNYr8wbLHiDtMebn8UL-1MA
+YouTube Music https://music.youtube.com/
+YouTube https://youtube.com

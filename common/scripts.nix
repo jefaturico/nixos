@@ -8,6 +8,7 @@ in
 {
   home.packages = [
     (mkScript "browser-palette")
+    (mkScript "niri-launch-or-focus")
     (mkScript "wlsetbg")
     (mkScript "wlsettheme")
     (mkScript "wldaynight")

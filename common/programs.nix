@@ -8,6 +8,18 @@
 
 let
 
+  chromiumExtensions = {
+    chromiumWebStore = "ocaahdebbfolfmndjeplogmgcagdmblk";
+    bitwarden = "nngceckbapebfimnlniiiahkandclblb";
+    sponsorBlock = "mnjggcdmjocbbbhaepdhchncahnbgone";
+    vimiumC = "hfjbmagddngcpeloejdejnfgbamkjaeg";
+    unhook = "khncfooichmfjbepaaaebmommgaepoid";
+    ublockOriginLite = "ddkjiahejlhfcafbddmgiahcphecmpfh";
+  };
+
+  chromiumExtensionIds = builtins.attrValues chromiumExtensions;
+  hideScrollbarsExtensionPath = "${config.home.homeDirectory}/.config/chromium/hide-scrollbars";
+
   chromiumApp = pkgs.writeShellApplication {
     name = "chromium-app";
     runtimeInputs = [
@@ -85,18 +97,17 @@ in
         "--ozone-platform=wayland"
         "--no-first-run"
         "--no-default-browser-check"
+        "--enable-features=ExtensionMimeRequestHandling,OverlayScrollbar,ScrollableTabStrip"
+        "--load-extension=${hideScrollbarsExtensionPath}"
         "--remote-debugging-address=127.0.0.1"
         "--remote-debugging-port=9222"
       ];
-      # Install these manually for now; ungoogled Chromium does not reliably
-      # consume Chrome Web Store update URLs from declarative extension entries.
-      # Vimium C: hfjbmagddngcpeloejdejnfgbamkjaeg
-      # uBlock Origin Lite: ddkjiahejlhfcafbddmgiahcphecmpfh
-      extensions = [ ];
+      extensions = chromiumExtensionIds;
     };
 
     bash = {
       enable = true;
+      enableCompletion = false;
       shellAliases = {
         vim = "nvim";
       };
@@ -109,6 +120,25 @@ in
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
+
+        __lazy_bash_completion_init() {
+          [[ -v BASH_COMPLETION_VERSINFO ]] || source "${pkgs.bash-completion}/etc/profile.d/bash_completion.sh"
+          unset -f __lazy_bash_completion_init
+        }
+
+        __lazy_completion_loader() {
+          local command="''${1:-}"
+
+          __lazy_bash_completion_init
+
+          if declare -F _comp_complete_load >/dev/null; then
+            _comp_complete_load "$command"
+          elif declare -F _completion_loader >/dev/null; then
+            _completion_loader "$command"
+          fi
+        }
+
+        complete -D -F __lazy_completion_loader
 
         __lazy_zoxide_init() {
           unset -f cd cdi __lazy_zoxide_init
@@ -334,6 +364,12 @@ in
     export = meta E
   '';
 
+  xdg.configFile."chromium/hide-scrollbars/manifest.json".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos/dots/chromium/hide-scrollbars/manifest.json";
+
+  xdg.configFile."chromium/hide-scrollbars/inject.css".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos/dots/chromium/hide-scrollbars/inject.css";
+
   xdg.dataFile."applications/chromium.desktop".text = ''
     [Desktop Entry]
     Type=Application
@@ -341,6 +377,7 @@ in
     GenericName=Web Browser
     Exec=chromium-app %U
     Terminal=false
+    NoDisplay=true
     Categories=Network;WebBrowser;
     MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
   '';
@@ -394,6 +431,7 @@ in
       nil
       nixfmt
       ripgrep
+      unzip
       ruff
       ripdrag
       shfmt

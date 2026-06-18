@@ -3,6 +3,17 @@
   lib,
   ...
 }:
+let
+  chromeWebStoreUpdateUrl = "https://clients2.google.com/service/update2/crx";
+  chromiumExtensionIds = [
+    "ocaahdebbfolfmndjeplogmgcagdmblk" # Chromium Web Store
+    "nngceckbapebfimnlniiiahkandclblb" # Bitwarden
+    "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock
+    "hfjbmagddngcpeloejdejnfgbamkjaeg" # Vimium C
+    "khncfooichmfjbepaaaebmommgaepoid" # Unhook
+    "ddkjiahejlhfcafbddmgiahcphecmpfh" # uBlock Origin Lite
+  ];
+in
 {
   imports = [
     ./secrets.nix
@@ -136,8 +147,36 @@
     AttrKeyboardIntegration=internal
   '';
 
-  programs.dconf.enable = true;
-  programs.niri.enable = true;
+  programs = {
+    chromium = {
+      enable = true;
+      extensions = map (id: "${id};${chromeWebStoreUpdateUrl}") chromiumExtensionIds;
+      extraOpts = {
+        BookmarkBarEnabled = false;
+        BrowserSignin = 0;
+        DefaultBrowserSettingEnabled = false;
+        DefaultSearchProviderEnabled = true;
+        DefaultSearchProviderName = "DuckDuckGo";
+        DefaultSearchProviderSearchURL = "https://duckduckgo.com/?q={searchTerms}";
+        DefaultSearchProviderSuggestURL = "https://duckduckgo.com/ac/?q={searchTerms}&type=list";
+        SyncDisabled = true;
+        TranslateEnabled = false;
+      };
+      initialPrefs = {
+        browser.enabled_labs_experiments = [
+          "extension-mime-request-handling@2"
+          "overlay-scrollbars@2"
+          "scroll-tabs@2"
+        ];
+        bookmark_bar.show_on_all_tabs = false;
+        intl.selected_languages = "en-US,en";
+        profile.name = "Your Chromium";
+      };
+    };
+
+    dconf.enable = true;
+    niri.enable = true;
+  };
 
   xdg.portal = {
     enable = true;
