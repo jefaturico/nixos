@@ -1,10 +1,21 @@
 {
   config,
+  lib,
+  osConfig,
   pkgs,
   ...
 }:
 
 let
+  hostName = osConfig.networking.hostName;
+  peerHost =
+    if hostName == "galileo" then
+      "ekman"
+    else if hostName == "ekman" then
+      "galileo"
+    else
+      null;
+
   symlinks = {
     nvim = "nvim";
     niri = "niri";
@@ -72,6 +83,38 @@ in
       )
     );
 
+  };
+
+  programs.ssh = {
+    enable = true;
+    enableDefaultConfig = false;
+    settings = {
+      "github.com" = {
+        HostName = "github.com";
+        User = "jefaturico";
+        IdentityFile = "~/.ssh/galileo-github";
+      };
+
+      "*" = {
+        ForwardAgent = false;
+        AddKeysToAgent = "no";
+        Compression = false;
+        ServerAliveInterval = 0;
+        ServerAliveCountMax = 3;
+        HashKnownHosts = false;
+        UserKnownHostsFile = "~/.ssh/known_hosts";
+        ControlMaster = "no";
+        ControlPath = "~/.ssh/master-%r@%n:%p";
+        ControlPersist = "no";
+      };
+    }
+    // lib.optionalAttrs (peerHost != null) {
+      ${peerHost} = {
+        User = "jefaturico";
+        IdentityFile = "~/.ssh/id_tailnet";
+        IdentitiesOnly = true;
+      };
+    };
   };
 
 }

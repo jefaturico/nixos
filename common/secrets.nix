@@ -15,10 +15,26 @@ in
       ];
     };
 
-    secrets."vdirsyncer-google-calendar.env" = lib.mkIf isGalileo {
-      owner = "jefaturico";
-      group = "users";
-      mode = "0400";
+    secrets = {
+      "ssh-galileo-github" = {
+        path = "/home/jefaturico/.ssh/galileo-github";
+        owner = "jefaturico";
+        group = "users";
+        mode = "0600";
+      };
+
+      "ssh-id-tailnet" = {
+        path = "/home/jefaturico/.ssh/id_tailnet";
+        owner = "jefaturico";
+        group = "users";
+        mode = "0600";
+      };
+
+      "vdirsyncer-google-calendar.env" = lib.mkIf isGalileo {
+        owner = "jefaturico";
+        group = "users";
+        mode = "0400";
+      };
     };
   };
 }

@@ -1,8 +1,17 @@
 {
   pkgs,
   lib,
+  config,
   ...
 }:
+let
+  syncthingDevices = {
+    galileo.id = "OQUT2EC-CERWR4S-PJCPFUU-BUMZJZL-EVH66K6-I2YKDX3-6A7RS3I-Z3LLFAW";
+    ekman.id = "2STWXA4-JBLZ5FM-ZDFPSR2-VE63IJP-SI4LVAW-ECSVLL4-PRFI27E-6VELQQG";
+  };
+
+  sharedWith = devices: builtins.filter (device: device != config.networking.hostName) devices;
+in
 {
   imports = [
     ./secrets.nix
@@ -100,6 +109,72 @@
       user = "jefaturico";
       dataDir = "/home/jefaturico";
       openDefaultPorts = true;
+      overrideDevices = false;
+      overrideFolders = false;
+      settings = {
+        devices = syncthingDevices;
+        folders = {
+          projects = {
+            id = "4pmxv-syxrh";
+            path = "/home/jefaturico/projects";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+          calcurse = {
+            id = "5rdcv-wpnjr";
+            path = "~/.local/share/calcurse";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+          wallpapers = {
+            id = "bppru-7tfft";
+            path = "~/images/wallpapers";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+          tasks = {
+            id = "pngaf-ufcfi";
+            path = "/home/jefaturico/.local/share/task";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+          "zathura metadata" = {
+            id = "rqfbg-5r2be";
+            path = "~/.local/share/zathura";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+          documents = {
+            id = "twsxa-tfzj6";
+            path = "/home/jefaturico/documents";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+          nixos = {
+            id = "y2dqc-sjty3";
+            path = "~/nixos";
+            devices = sharedWith [
+              "galileo"
+              "ekman"
+            ];
+          };
+        };
+        options = {
+          urAccepted = -1;
+        };
+      };
     };
 
     openssh = {
@@ -187,6 +262,9 @@
 
   users.users.jefaturico = {
     isNormalUser = true;
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGAZQTS4nzEXLYIQWPBDo1mEimbkVDpzdtp5bS22kARK tailnet"
+    ];
     extraGroups = [
       "wheel"
       "networkmanager"
