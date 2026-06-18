@@ -101,7 +101,6 @@ in
         vim = "nvim";
       };
       sessionVariables = {
-        TERM = "foot";
         EDITOR = "nvim";
         BROWSER = "chromium-app";
         DEFAULT_BROWSER = "chromium-app";
@@ -365,7 +364,6 @@ in
     with pkgs;
     [
       bat
-      brightnessctl
       calibre
       fd
       ffmpeg
@@ -373,7 +371,6 @@ in
       imagemagick
       imv
       chromiumApp
-      libnotify
       libreoffice
       neovim
       mpv
@@ -400,21 +397,15 @@ in
       stylua
       gnome-solanum
       uget
-      wbg
-      wireplumber
       wl-clipboard
       subsurface
       qbittorrent
-      slurp
-      grim
-      wlrctl
       tinymist
       khal
       xwayland-satellite
       python3
       zoxide
       taskwarrior-tui
-      vdirsyncer
       visidata
       obs-studio
       qgis

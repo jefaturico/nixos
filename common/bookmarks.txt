@@ -2,6 +2,7 @@ GitHub https://github.com
 NixOS-Search https://search.nixos.org/packages
 YouTube https://youtube.com
 Google Gemini https://gemini.google.com/app
+ChatGPT https://chatgpt.com
 YouTube Music https://music.youtube.com/
 YouTube Creator Studio https://studio.youtube.com/channel/UCNYr8wbLHiDtMebn8UL-1MA
 Syncthing http://localhost:8384/

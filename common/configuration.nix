@@ -146,7 +146,13 @@
       pkgs.xdg-desktop-portal-gnome
     ];
     config = {
-      common.default = [ "gtk" ];
+      niri = {
+        default = [
+          "gnome"
+          "gtk"
+        ];
+        "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+      };
     };
   };
 
