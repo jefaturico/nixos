@@ -54,17 +54,7 @@
       if [ "$THEME" = "Dynamic" ]; then
           ${pkgs.wallust}/bin/wallust run -q "$FULL_PATH" && \
           { ${pkgs.systemd}/bin/systemctl --user kill --kill-whom=main --signal=SIGUSR1 foot-server.service 2>/dev/null || true; } && \
-          ${pkgs.mako}/bin/makoctl reload && \
-          {
-              COLOR_SH="$HOME/.cache/wallust/colors.sh"
-              NIRI_CONFIG="$HOME/nixos/dots/niri/config.kdl"
-              if [ -s "$COLOR_SH" ] && [ -f "$NIRI_CONFIG" ]; then
-                  . "$COLOR_SH"
-                  # Sync both border and focus-ring with color3 (matching fuzzel)
-                  sed -i "s/active-color \".*\" \/\/ {color3}/active-color \"$color3\" \/\/ {color3}/g" "$NIRI_CONFIG"
-              fi
-          } && \
-          ${pkgs.niri}/bin/niri msg action load-config-file &
+          ${pkgs.mako}/bin/makoctl reload &
       fi
   fi
 
