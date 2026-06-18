@@ -31,7 +31,7 @@ in
         link_filenames_only = true
       '';
       ".latexmkrc".text = ''
-        $pdf_previewer = 'zathura';
+        $pdf_previewer = 'sioyek';
         $pdf_update_method = 0;
       '';
       ".local/bin/footclient" = {

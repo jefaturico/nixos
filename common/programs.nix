@@ -8,18 +8,6 @@
 
 let
 
-  chromiumExtensions = {
-    chromiumWebStore = "ocaahdebbfolfmndjeplogmgcagdmblk";
-    bitwarden = "nngceckbapebfimnlniiiahkandclblb";
-    sponsorBlock = "mnjggcdmjocbbbhaepdhchncahnbgone";
-    vimiumC = "hfjbmagddngcpeloejdejnfgbamkjaeg";
-    unhook = "khncfooichmfjbepaaaebmommgaepoid";
-    ublockOriginLite = "ddkjiahejlhfcafbddmgiahcphecmpfh";
-  };
-
-  chromiumExtensionIds = builtins.attrValues chromiumExtensions;
-  hideScrollbarsExtensionPath = "${config.home.homeDirectory}/.config/chromium/hide-scrollbars";
-
   chromiumApp = pkgs.writeShellApplication {
     name = "chromium-app";
     runtimeInputs = [
@@ -98,11 +86,9 @@ in
         "--no-first-run"
         "--no-default-browser-check"
         "--enable-features=ExtensionMimeRequestHandling,OverlayScrollbar,ScrollableTabStrip"
-        "--load-extension=${hideScrollbarsExtensionPath}"
         "--remote-debugging-address=127.0.0.1"
         "--remote-debugging-port=9222"
       ];
-      extensions = chromiumExtensionIds;
     };
 
     bash = {
@@ -276,23 +262,8 @@ in
       };
     };
 
-    zathura = {
+    sioyek = {
       enable = true;
-      package = pkgs.zathura.override {
-        plugins = [
-          pkgs.zathuraPkgs.zathura_pdf_mupdf
-        ];
-      };
-      options = {
-        render-loading = "false";
-        guioptions = "none";
-        page-cache-size = 1024;
-        continuous-hist-save = true;
-        selection-clipboard = "clipboard";
-        database = "sqlite";
-        sandbox = "normal";
-        include = "~/.cache/wallust/colors-zathura";
-      };
     };
 
     nnn = {
@@ -362,12 +333,6 @@ in
     external_edit = e
     export = meta E
   '';
-
-  xdg.configFile."chromium/hide-scrollbars/manifest.json".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos/dots/chromium/hide-scrollbars/manifest.json";
-
-  xdg.configFile."chromium/hide-scrollbars/inject.css".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos/dots/chromium/hide-scrollbars/inject.css";
 
   xdg.dataFile."applications/chromium.desktop".text = ''
     [Desktop Entry]

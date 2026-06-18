@@ -3,17 +3,6 @@
   lib,
   ...
 }:
-let
-  chromeWebStoreUpdateUrl = "https://clients2.google.com/service/update2/crx";
-  chromiumExtensionIds = [
-    "ocaahdebbfolfmndjeplogmgcagdmblk" # Chromium Web Store
-    "nngceckbapebfimnlniiiahkandclblb" # Bitwarden
-    "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock
-    "hfjbmagddngcpeloejdejnfgbamkjaeg" # Vimium C
-    "khncfooichmfjbepaaaebmommgaepoid" # Unhook
-    "ddkjiahejlhfcafbddmgiahcphecmpfh" # uBlock Origin Lite
-  ];
-in
 {
   imports = [
     ./secrets.nix
@@ -30,7 +19,7 @@ in
 
   networking = {
     networkmanager.enable = true;
-    firewall.allowedTCPPorts = [ 22 ];
+    firewall.trustedInterfaces = [ "tailscale0" ];
   };
 
   services.xserver.xkb = {
@@ -115,8 +104,10 @@ in
 
     openssh = {
       enable = true;
+      openFirewall = false;
       settings.PasswordAuthentication = false;
       settings.KbdInteractiveAuthentication = false;
+      settings.PermitRootLogin = "no";
     };
 
     tailscale = {
@@ -150,7 +141,6 @@ in
   programs = {
     chromium = {
       enable = true;
-      extensions = map (id: "${id};${chromeWebStoreUpdateUrl}") chromiumExtensionIds;
       extraOpts = {
         BookmarkBarEnabled = false;
         BrowserSignin = 0;
