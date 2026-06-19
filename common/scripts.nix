@@ -14,6 +14,7 @@ in
   home.packages = [
     (mkScript "browser-palette")
     (mkScript "niri-launch-or-focus")
+    (mkScript "power-menu")
     (mkScript "wlsetbg")
     (mkScript "wlsettheme")
     (mkScript "wdoc-find")

@@ -279,7 +279,7 @@ binds {
 
   Mod+Ctrl+Escape repeat=false allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-  Mod+Escape repeat=false { quit; }
+  Mod+Escape repeat=false { spawn "power-menu"; }
 
   Mod+Shift+Escape repeat=false { power-off-monitors; }
 }
