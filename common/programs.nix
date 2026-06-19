@@ -99,40 +99,6 @@ in
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
 
-        __lazy_bash_completion_init() {
-          [[ -v BASH_COMPLETION_VERSINFO ]] || source "${pkgs.bash-completion}/etc/profile.d/bash_completion.sh"
-          unset -f __lazy_bash_completion_init
-        }
-
-        __lazy_completion_loader() {
-          local command="''${1:-}"
-
-          __lazy_bash_completion_init
-
-          if declare -F _comp_complete_load >/dev/null; then
-            _comp_complete_load "$command"
-          elif declare -F _completion_loader >/dev/null; then
-            _completion_loader "$command"
-          fi
-        }
-
-        complete -D -F __lazy_completion_loader
-
-        __lazy_zoxide_init() {
-          unset -f cd cdi __lazy_zoxide_init
-          eval "$(${pkgs.zoxide}/bin/zoxide init bash --cmd cd)"
-        }
-
-        cd() {
-          __lazy_zoxide_init
-          cd "$@"
-        }
-
-        cdi() {
-          __lazy_zoxide_init
-          cdi "$@"
-        }
-
         usb() {
           local media_root target
           media_root="/run/media/''${USER:-$(${pkgs.coreutils}/bin/id -un)}"
@@ -196,6 +162,8 @@ in
         HISTCONTROL=ignoreboth:erasedups
         HISTSIZE=10000
         HISTFILESIZE=20000
+
+        eval "$(${pkgs.zoxide}/bin/zoxide init bash --cmd cd)"
       '';
     };
 
@@ -255,8 +223,27 @@ in
       };
     };
 
-    sioyek = {
+    zathura = {
       enable = true;
+      package = pkgs.zathura.override {
+        plugins = [
+          pkgs.zathuraPkgs.zathura_pdf_mupdf
+        ];
+      };
+      options = {
+        adjust-open = "width";
+        continuous-hist-save = true;
+        database = "sqlite";
+        guioptions = "none";
+        page-cache-size = 2048;
+        recolor = false;
+        render-loading = false;
+        sandbox = "none";
+        scroll-step = 80;
+        selection-clipboard = "clipboard";
+        statusbar-basename = true;
+        window-title-basename = true;
+      };
     };
 
     nnn = {

@@ -37,7 +37,7 @@
     mimeApps = {
       enable = true;
       defaultApplications = {
-        "application/pdf" = [ "sioyek.desktop" ];
+        "application/pdf" = [ "org.pwmt.zathura.desktop" ];
         "image/png" = [ "imv.desktop" ];
         "image/jpeg" = [ "imv.desktop" ];
         "image/gif" = [ "imv.desktop" ];
