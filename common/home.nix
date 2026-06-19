@@ -92,7 +92,7 @@ in
       "github.com" = {
         HostName = "github.com";
         User = "jefaturico";
-        IdentityFile = "~/.ssh/galileo-github";
+        IdentityFile = "~/.ssh/id_${hostName}-github";
       };
 
       "*" = {

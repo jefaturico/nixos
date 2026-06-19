@@ -9,7 +9,6 @@ return {
 			require("mini.pairs").setup()
 			require("mini.statusline").setup()
 			require("mini.indentscope").setup()
-			require("mini.starter").setup()
 			require("mini.files").setup()
 			require("mini.icons").setup()
 

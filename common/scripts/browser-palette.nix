@@ -70,7 +70,7 @@ in
       }
   )"
 
-  SELECTED="$(printf '%s\n' "$ENTRIES" | ${fuzzel} -d --no-sort --match-mode=exact --with-nth=3 --match-nth=3 -p "Browser: " -w 80 || true)"
+  SELECTED="$(printf '%s\n' "$ENTRIES" | ${fuzzel} -d --match-mode=exact --with-nth=3 --match-nth=3 -p "Browser: " -w 40 || true)"
   if [ -z "$SELECTED" ]; then
       exit 0
   fi

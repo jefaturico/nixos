@@ -16,7 +16,6 @@ in
     (mkScript "niri-launch-or-focus")
     (mkScript "wlsetbg")
     (mkScript "wlsettheme")
-    (mkScript "wldaynight")
     (mkScript "wdoc-find")
     (mkScript "niri-window-switch")
     (mkScript "rebuild-push")

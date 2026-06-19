@@ -263,7 +263,7 @@ in
   users.users.jefaturico = {
     isNormalUser = true;
     openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGAZQTS4nzEXLYIQWPBDo1mEimbkVDpzdtp5bS22kARK tailnet"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfx6y39zNZYSLw18oOwuX8N+aStamNANfZJtCrBEK3I tailnet"
     ];
     extraGroups = [
       "wheel"
@@ -279,6 +279,8 @@ in
     git
     curl
     htop
+    sops
+    ssh-to-age
   ];
 
   fonts.packages = with pkgs; [

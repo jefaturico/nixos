@@ -163,10 +163,8 @@ binds {
 
   Mod+T repeat=false { spawn "wlsettheme"; }
   Mod+D repeat=false { spawn "wdoc-find"; }
-  Mod+Shift+T repeat=false { spawn "wldaynight"; }
 
-  Mod+W repeat=false { spawn "wlsetbg" "-r"; }
-  Mod+Shift+W repeat=false { spawn "wlsetbg"; }
+  Mod+W repeat=false { spawn "wlsetbg"; }
 
   Mod+I repeat=false { spawn "systeminfo"; }
   Mod+U repeat=false { spawn "usb-open"; }
