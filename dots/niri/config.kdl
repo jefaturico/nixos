@@ -175,7 +175,7 @@ binds {
   Mod+N repeat=false { spawn-sh "footclient -D ~/documents/notes -e nvim -c ObsidianSearch"; }
 
   Mod+C repeat=false { spawn "niri-launch-or-focus" "taskwarrior-tui" "Taskwarrior TUI" "taskwarrior-tui"; }
-  Mod+Shift+C repeat=false { spawn "niri-launch-or-focus" "ikhal" "ikhal" "ikhal"; }
+  Mod+Shift+C repeat=false { spawn "niri-launch-or-focus" "calcure" "calcure" "calcure"; }
 
   Mod+Q repeat=false { close-window; }
   Mod+MouseLeft repeat=false hotkey-overlay-title=null { spawn "true"; }

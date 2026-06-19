@@ -67,13 +67,6 @@ let
     '';
   };
 
-  calendarDirs = {
-    Scheduled = "~/.calendars/emiliohurtadosr@gmail.com/";
-    Critical = "~/.calendars/bf06f35ac421e7839cfe16e31fb6ca4532c850a29556616e724eb33e0fde934f@group.calendar.google.com/";
-    Routine = "~/.calendars/ee2eb2b218fe4d5eee4bef53bd1502b96d1408b55f816968477d2bf8adedc9fb@group.calendar.google.com/";
-    Holidays = "~/.calendars/clpissrgc5kms8r8dtm6ip31f506esjfelo2sthecdgmopbechgn4bj7dtnmer355phmur8@virtual/";
-  };
-
 in
 {
 
@@ -296,44 +289,6 @@ in
     };
   };
 
-  xdg.configFile."khal/config".text = ''
-    [calendars]
-    [[Scheduled]]
-    path = ${calendarDirs.Scheduled}
-    readonly = False
-    color = light green
-
-    [[Critical]]
-    path = ${calendarDirs.Critical}
-    readonly = False
-    color = light red
-
-    [[Routine]]
-    path = ${calendarDirs.Routine}
-    readonly = False
-    color = yellow
-
-    [[Holidays]]
-    path = ${calendarDirs.Holidays}
-    readonly = True
-    color = dark gray
-
-    [default]
-    default_calendar = Scheduled
-    timedelta = 7d
-
-    [locale]
-    timeformat = %H:%M
-    dateformat = %m-%d
-    longdateformat = %Y-%m-%d
-    datetimeformat = %m-%d %H:%M
-    longdatetimeformat = %Y-%m-%d %H:%M
-
-    [keybindings]
-    external_edit = e
-    export = meta E
-  '';
-
   xdg.dataFile."applications/chromium.desktop".text = ''
     [Desktop Entry]
     Type=Application
@@ -404,7 +359,7 @@ in
       subsurface
       qbittorrent
       tinymist
-      khal
+      calcure
       xwayland-satellite
       python3
       zoxide
