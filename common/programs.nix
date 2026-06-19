@@ -301,22 +301,6 @@ in
     MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
   '';
 
-  programs.taskwarrior = {
-    enable = true;
-    package = pkgs.taskwarrior3;
-    config = {
-      urgency.user.tag.uni.coefficient = 6.0;
-      urgency.user.tag.cert.coefficient = 3.0;
-      urgency.user.tag.personal.coefficient = 1.0;
-      urgency.user.tag.deep.coefficient = 3.5;
-      urgency.user.tag.shallow.coefficient = 0.0;
-      urgency.user.tag.quick.coefficient = 2.0;
-      urgency.user.tag.away.coefficient = 0.0;
-      urgency.user.tag.waiting.coefficient = -5.0;
-      urgency.tags.coefficient = 1.0;
-    };
-  };
-
   home.packages =
     with pkgs;
     [
@@ -363,7 +347,6 @@ in
       xwayland-satellite
       python3
       zoxide
-      taskwarrior-tui
       visidata
       obs-studio
       qgis
