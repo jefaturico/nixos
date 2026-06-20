@@ -7,6 +7,15 @@
   INDEX_CACHE="$CACHE_DIR/index.tsv"
   VERSION_CACHE="$CACHE_DIR/version"
   CACHE_VERSION="7"
+  VIEWER="zathura"
+
+  usage() {
+      printf '%s\n' \
+          'Usage: wdoc-find [--zathura|--okular] [-r|--refresh]' \
+          '  --zathura  open the selected PDF in Zathura (default)' \
+          '  --okular   open the selected PDF in Okular' \
+          '  --refresh  rebuild the document index and exit'
+  }
 
   find_documents() {
       ${pkgs.findutils}/bin/find -L "$HOME/documents" "$HOME/downloads" "$HOME/projects" \
@@ -82,12 +91,29 @@
       [ "$status" -ne 0 ]
   }
 
-  case "''${1:-}" in
-      -r|--refresh)
-          refresh_cache
-          exit 0
-          ;;
-  esac
+  while [ "$#" -gt 0 ]; do
+      case "$1" in
+          --zathura)
+              VIEWER="zathura"
+              ;;
+          --okular)
+              VIEWER="okular"
+              ;;
+          -r|--refresh)
+              refresh_cache
+              exit 0
+              ;;
+          -h|--help)
+              usage
+              exit 0
+              ;;
+          *)
+              usage >&2
+              exit 2
+              ;;
+      esac
+      shift
+  done
 
   if cache_is_stale; then
       refresh_cache
@@ -96,6 +122,13 @@
   FILE="$(${pkgs.fuzzel}/bin/fuzzel -d --no-sort --with-nth=1 --match-nth=2 --accept-nth=3 -p "Select Document: " -w 100 < "$MAP_CACHE")"
 
   if [ -n "$FILE" ] && [ -f "$FILE" ]; then
-      exec setsid ${pkgs.zathura}/bin/zathura "$FILE" >/dev/null 2>&1
+      case "$VIEWER" in
+          okular)
+              exec setsid ${pkgs.kdePackages.okular}/bin/okular "$FILE" >/dev/null 2>&1
+              ;;
+          *)
+              exec setsid ${pkgs.zathura}/bin/zathura "$FILE" >/dev/null 2>&1
+              ;;
+      esac
   fi
 ''

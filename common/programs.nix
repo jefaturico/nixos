@@ -8,6 +8,31 @@
 
 let
 
+  zathuraOpenOkular = pkgs.writeShellApplication {
+    name = "zathura-open-okular";
+    text = ''
+      file="''${1:-}"
+      page="''${2:-1}"
+      if [ -z "$file" ]; then
+        exit 1
+      fi
+
+      case "$page" in
+        *[!0-9]*|"")
+          page=1
+          ;;
+      esac
+
+      case "$file" in
+        file://*)
+          file="$(${pkgs.python3}/bin/python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1]).path))' "$file")"
+          ;;
+      esac
+
+      exec ${pkgs.kdePackages.okular}/bin/okular --page "$page" "$file"
+    '';
+  };
+
   chromiumApp = pkgs.writeShellApplication {
     name = "chromium-app";
     runtimeInputs = [
@@ -244,6 +269,9 @@ in
         statusbar-basename = true;
         window-title-basename = true;
       };
+      mappings = {
+        o = "exec \"${zathuraOpenOkular}/bin/zathura-open-okular '$FILE' $PAGE\"";
+      };
     };
 
     nnn = {
@@ -276,17 +304,72 @@ in
     };
   };
 
-  xdg.dataFile."applications/chromium.desktop".text = ''
-    [Desktop Entry]
-    Type=Application
-    Name=Chromium
-    GenericName=Web Browser
-    Exec=chromium-app %U
-    Terminal=false
-    NoDisplay=true
-    Categories=Network;WebBrowser;
-    MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
-  '';
+  xdg = {
+    configFile = {
+      "okularrc" = {
+        force = true;
+        text = ''
+          MenuBar=Disabled
+
+          [Desktop Entry]
+          FullScreen=false
+
+          [General]
+          LockSidebar=true
+          ShowSidebar=false
+
+          [MainWindow]
+          MenuBar=Disabled
+        '';
+      };
+
+      "okularpartrc" = {
+        force = true;
+        text = ''
+          [Core Performance]
+          MemoryLevel=Low
+
+          [Dlg Performance]
+          EnableCompositing=false
+
+          [General]
+          MaxRecentItems=8
+          ShowEmbeddedContentMessages=false
+          ShowOSD=false
+          ttsVoice=samantha
+
+          [Main View]
+          ShowBottomBar=false
+          ShowLeftPanel=false
+
+          [PageView]
+          BackgroundColor=0,0,0
+          PrimaryAnnotationToolBar=QuickAnnotationToolBar
+          ShowScrollBars=false
+          SmoothScrolling=false
+          TrimMargins=true
+          UseCustomBackgroundColor=true
+
+          [Reviews]
+          AnnotationContinuousMode=true
+          QuickAnnotationDefaultAction=0
+          QuickAnnotationTools=<tool default="true" id="1" name="Yellow Highlighter" type="highlight"><engine color="#ffff00" type="TextSelector"><annotation color="#ffffff00" type="Highlight"/></engine><shortcut>1</shortcut></tool>,<tool default="true" id="2" name="Green Highlighter" type="highlight"><engine color="#00ff00" type="TextSelector"><annotation color="#ff00ff00" type="Highlight"/></engine><shortcut>2</shortcut></tool>,<tool id="3" type="underline"><engine color="#ff0000" type="TextSelector"><annotation color="#ffff0000" type="Underline"/></engine><shortcut>3</shortcut></tool>,<tool default="true" id="4" name="Insert Text" type="typewriter"><engine block="true" type="PickPoint"><annotation color="#00ffffff" textColor="#000000" type="Typewriter" width="0"/></engine><shortcut>4</shortcut></tool>,<tool id="5" type="note-inline"><engine block="true" color="#ffff00" hoverIcon="tool-note-inline" type="PickPoint"><annotation color="#ffffff00" textColor="#ff000000" type="FreeText"/></engine><shortcut>5</shortcut></tool>,<tool id="6" type="note-linked"><engine color="#ffff00" hoverIcon="tool-note"><annotation color="#ffffff00" icon="Note" type="Text"/></engine><shortcut>6</shortcut></tool>
+        '';
+      };
+    };
+
+    dataFile."applications/chromium.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=Chromium
+      GenericName=Web Browser
+      Exec=chromium-app %U
+      Terminal=false
+      NoDisplay=true
+      Categories=Network;WebBrowser;
+      MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
+    '';
+  };
 
   home.packages =
     with pkgs;
@@ -299,6 +382,7 @@ in
       imagemagick
       imv
       chromiumApp
+      zathuraOpenOkular
       libreoffice
       neovim
       mpv

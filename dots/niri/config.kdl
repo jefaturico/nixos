@@ -163,6 +163,7 @@ binds {
 
   Mod+T repeat=false { spawn "wlsettheme"; }
   Mod+D repeat=false { spawn "wdoc-find"; }
+  Mod+Shift+D repeat=false { spawn "wdoc-find" "--okular"; }
 
   Mod+W repeat=false { spawn "wlsetbg"; }
 
