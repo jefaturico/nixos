@@ -18,6 +18,10 @@
 
           # Check the current GNOME color-scheme preference via dconf.
           CUR_MODE=$(${pkgs.dconf}/bin/dconf read /org/gnome/desktop/interface/color-scheme || echo "'prefer-dark'")
+          case "$CUR_MODE" in
+              "'prefer-light'") CURRENT_MODE="light" ;;
+              *) CURRENT_MODE="dark" ;;
+          esac
 
           DARK_THEMES="Dynamic
   Aci
@@ -87,6 +91,18 @@
   Solarized-Light
   Tokyo-Night-Light"
 
+          GSETTINGS_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}"
+
+          set_interface_setting() {
+              KEY="$1"
+              GSETTINGS_VALUE="$2"
+              DCONF_VALUE="$3"
+
+              XDG_DATA_DIRS="$GSETTINGS_DATA_DIRS''${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}" \
+                  ${pkgs.glib.bin}/bin/gsettings set org.gnome.desktop.interface "$KEY" "$GSETTINGS_VALUE" 2>/dev/null || \
+                  ${pkgs.dconf}/bin/dconf write "/org/gnome/desktop/interface/$KEY" "$DCONF_VALUE"
+          }
+
           apply_theme() {
               THEME="$1"
               if [ "$THEME" = "Dynamic" ]; then
@@ -99,9 +115,28 @@
               ${pkgs.mako}/bin/makoctl reload
           }
 
+          set_mode_preference() {
+              MODE="$1"
+
+              case "$MODE" in
+                  dark)
+                      COLOR_SCHEME="prefer-dark"
+                      GTK_THEME="Adwaita-dark"
+                      ;;
+                  light)
+                      COLOR_SCHEME="prefer-light"
+                      GTK_THEME="Adwaita"
+                      ;;
+                  *) exit 1 ;;
+              esac
+
+              set_interface_setting gtk-theme "$GTK_THEME" "'$GTK_THEME'"
+              set_interface_setting color-scheme "$COLOR_SCHEME" "'$COLOR_SCHEME'"
+          }
+
           save_current_theme() {
               SELECTED_THEME="$1"
-              if [ "$CUR_MODE" = "'prefer-dark'" ]; then
+              if [ "$CURRENT_MODE" = "dark" ]; then
                   grep -q "^DARK_THEME=" "$STATE_FILE" && sed -i "s/^DARK_THEME=.*/DARK_THEME=$SELECTED_THEME/" "$STATE_FILE" || printf "DARK_THEME=$SELECTED_THEME\n" >> "$STATE_FILE"
               else
                   grep -q "^LIGHT_THEME=" "$STATE_FILE" && sed -i "s/^LIGHT_THEME=.*/LIGHT_THEME=$SELECTED_THEME/" "$STATE_FILE" || printf "LIGHT_THEME=$SELECTED_THEME\n" >> "$STATE_FILE"
@@ -109,12 +144,17 @@
           }
 
           switch_mode() {
-              if [ "$CUR_MODE" = "'prefer-dark'" ]; then
-                  ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-light'"
+              TARGET_MODE="''${1:-}"
+              if [ -z "$TARGET_MODE" ]; then
+                  [ "$CURRENT_MODE" = "dark" ] && TARGET_MODE="light" || TARGET_MODE="dark"
+              fi
+
+              if [ "$TARGET_MODE" = "light" ]; then
+                  set_mode_preference light
                   THEME="$LIGHT_THEME"
                   MODE_LABEL="Light"
               else
-                  ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'"
+                  set_mode_preference dark
                   THEME="$DARK_THEME"
                   MODE_LABEL="Dark"
               fi
@@ -128,23 +168,25 @@
               exit 0
           fi
 
-          if [ "$CUR_MODE" = "'prefer-light'" ]; then
+          if [ "$CURRENT_MODE" = "light" ]; then
               THEMES="$LIGHT_THEMES"
               PROMPT="Light Theme: "
               CURRENT_THEME="$LIGHT_THEME"
               MODE_ACTION="Switch to Dark Mode"
+              MODE_ACTION_TARGET="dark"
           else
               THEMES="$DARK_THEMES"
               PROMPT="Dark Theme: "
               CURRENT_THEME="$DARK_THEME"
               MODE_ACTION="Switch to Light Mode"
+              MODE_ACTION_TARGET="light"
           fi
 
           SELECTED=$(printf '%s\n%s\n' "$MODE_ACTION" "$THEMES" | ${pkgs.fuzzel}/bin/fuzzel -d --no-sort -p "$PROMPT(current: $CURRENT_THEME): " -w 80)
           [ -z "$SELECTED" ] && exit 0
 
           if [ "$SELECTED" = "$MODE_ACTION" ]; then
-              switch_mode
+              switch_mode "$MODE_ACTION_TARGET"
               exit 0
           fi
 

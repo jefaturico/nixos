@@ -101,6 +101,7 @@ in
       package = pkgs.ungoogled-chromium;
       commandLineArgs = [
         "--ozone-platform=wayland"
+        "--gtk-version=4"
         "--no-first-run"
         "--no-default-browser-check"
         "--enable-features=ExtensionMimeRequestHandling,OverlayScrollbar,ScrollableTabStrip"
@@ -294,12 +295,15 @@ in
           buildInputs = [ pkgs.makeWrapper ];
           postBuild = ''
             wrapProgram $out/bin/code \
-              --add-flags "--enable-features=UseOzonePlatform,WebUIDarkMode --ozone-platform=wayland --disable-gpu-compositing"
+              --add-flags "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing"
           '';
         })
         // {
           pname = pkgs.vscode-fhs.pname or "vscode";
           version = pkgs.vscode-fhs.version or "latest";
+          meta = (pkgs.vscode-fhs.meta or { }) // {
+            mainProgram = "code";
+          };
         };
     };
   };

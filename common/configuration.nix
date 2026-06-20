@@ -256,6 +256,7 @@ in
           "gtk"
         ];
         "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+        "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
       };
     };
   };
