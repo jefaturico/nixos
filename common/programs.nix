@@ -418,7 +418,7 @@ in
       subsurface
       qbittorrent
       tinymist
-      calcure
+      calcurse
       xwayland-satellite
       python3
       zoxide
