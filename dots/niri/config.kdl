@@ -173,7 +173,9 @@ binds {
 
   Mod+B repeat=false { spawn "browser-palette"; }
 
-  Mod+N repeat=false { spawn-sh "footclient -D ~/documents/notes -e nvim -c ObsidianSearch"; }
+  Mod+N repeat=false { spawn-sh "footclient -D ~/documents/notes -e nvim -c ObsidianNew"; }
+
+  Mod+Shift+N repeat=false { spawn "obsidian"; }
 
   Mod+C repeat=false { spawn "niri-launch-or-focus" "calcurse" "calcurse" "calcurse"; }
 

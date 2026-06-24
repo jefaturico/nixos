@@ -1,5 +1,5 @@
 {
-  description = "NixOS Flake for Galileo and Ekman";
+  description = "NixOS Flake for Galileo, Ekman, and Odin";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
@@ -26,7 +26,7 @@
         };
       };
 
-      mkHost =
+      mkDesktopHost =
         host:
         nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
@@ -38,11 +38,21 @@
             homeManagerConf
           ];
         };
+
+      mkServerHost =
+        host:
+        nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            (./hosts + "/${host}/software.nix")
+          ];
+        };
     in
     {
       nixosConfigurations = {
-        galileo = mkHost "galileo";
-        ekman = mkHost "ekman";
+        galileo = mkDesktopHost "galileo";
+        ekman = mkDesktopHost "ekman";
+        odin = mkServerHost "odin";
       };
     };
 }
