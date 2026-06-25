@@ -26,6 +26,22 @@ let
     inherit id path;
     devices = availableSyncPeers;
   };
+
+  mkNixosFolder = id: path:
+    (mkFolder id path)
+    // {
+      ignorePatterns = [
+        ".git"
+        ".git/**"
+        ".agents"
+        ".agents/**"
+        ".codex"
+        ".codex/**"
+        "*.sync-conflict-*"
+        "result"
+        "result-*"
+      ];
+    };
 in
 {
   services.syncthing = {
@@ -44,7 +60,7 @@ in
         tasks = mkFolder "pngaf-ufcfi" "/home/jefaturico/.local/share/task";
         "zathura metadata" = mkFolder "rqfbg-5r2be" "/home/jefaturico/.local/share/zathura";
         documents = mkFolder "twsxa-tfzj6" "/home/jefaturico/documents";
-        nixos = mkFolder "y2dqc-sjty3" "/home/jefaturico/nixos";
+        nixos = mkNixosFolder "y2dqc-sjty3" "/home/jefaturico/nixos";
       };
       options = {
         urAccepted = -1;
