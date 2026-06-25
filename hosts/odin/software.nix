@@ -36,6 +36,7 @@
     ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfx6y39zNZYSLw18oOwuX8N+aStamNANfZJtCrBEK3I tailnet"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKCYYIkAOD+VUHxB7shEKIxt5goUYv9kABwIKUU4hxgP jefaturico@ekman"
     ];
   };
 
