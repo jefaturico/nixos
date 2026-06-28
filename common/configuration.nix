@@ -1,12 +1,9 @@
-{
-  pkgs,
-  lib,
-  ...
-}:
+{ pkgs, ... }:
 {
   imports = [
     ./secrets.nix
     ./syncthing.nix
+    ./unfree-packages.nix
   ];
 
   boot.loader.systemd-boot = {
@@ -208,21 +205,17 @@
     roboto
   ];
 
-  nixpkgs.config = {
-    allowUnfree = false;
-    allowUnfreePredicate =
-      pkg:
-      builtins.elem (lib.getName pkg) [
-        "code"
-        "nvidia-x11"
-        "nvidia-kernel-modules"
-        "nvidia-settings"
-        "obsidian"
-        "vscode"
-        "vscode-fhs"
-        "firefox-bin"
-      ];
-  };
+  jefaturico.allowedUnfreePackages = [
+    "code"
+    "nvidia-x11"
+    "nvidia-kernel-modules"
+    "nvidia-settings"
+    "obsidian"
+    "vscode"
+    "vscode-fhs"
+    "firefox-bin"
+  ];
+
   nix.settings = {
     experimental-features = [
       "nix-command"

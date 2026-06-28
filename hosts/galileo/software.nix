@@ -20,12 +20,8 @@
   };
 
   hardware = {
+    graphics.enable = true;
     uinput.enable = true;
-
-    graphics = {
-      enable = true;
-      enable32Bit = true;
-    };
   };
 
   services.ratbagd.enable = true;
@@ -45,6 +41,7 @@
   };
 
   security.polkit.enable = true;
+
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.nvidia = {
     modesetting.enable = true;
@@ -74,9 +71,6 @@
       LIBVA_DRIVER_NAME = "nvidia";
       GBM_BACKEND = "nvidia-drm";
       __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-      __GL_GSYNC_ALLOWED = "1";
-      __GL_VRR_ALLOWED = "1";
-      __GL_MAX_FRAMES_ALLOWED = "1";
       NVD_BACKEND = "direct";
     };
   };
