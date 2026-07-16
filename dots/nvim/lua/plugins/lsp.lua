@@ -11,6 +11,10 @@ return {
 					vim.keymap.set("n", keys, func, { buffer = bufnr, desc = "LSP: " .. desc })
 				end
 
+				if vim.lsp.completion and client:supports_method("textDocument/completion") then
+					vim.lsp.completion.enable(true, client.id, bufnr, { autotrigger = true })
+				end
+
 				map("gd", vim.lsp.buf.definition, "[G]oto [D]efinition")
 				map("gr", require("fzf-lua").lsp_references, "[G]oto [R]eferences")
 				map("gI", vim.lsp.buf.implementation, "[G]oto [I]mplementation")
@@ -41,6 +45,7 @@ return {
 						},
 					},
 				},
+				markdown_oxide = {},
 				tinymist = {},
 			}
 

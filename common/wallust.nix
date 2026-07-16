@@ -12,9 +12,7 @@
       [templates]
       foot = { template = 'colors-foot.ini', target = '~/.cache/wallust/colors-foot.ini' }
       footclient = { template = 'footclient-overrides.bash', target = '~/.cache/wallust/footclient-overrides.bash' }
-      fuzzel = { template = 'colors-fuzzel.ini', target = '~/.cache/wallust/colors-fuzzel.ini' }
       mako = { template = 'colors-mako', target = '~/.cache/wallust/colors-mako' }
-      obsidian = { template = 'colors-obsidian.css', target = '~/documents/notes/.obsidian/snippets/wallust.css' }
       neopywal = { template = 'colors_neopywal.vim', target = '~/.cache/wallust/colors_neopywal.vim' }
 
     '';
@@ -107,47 +105,11 @@
       )
     '';
 
-    ".config/wallust/templates/colors-fuzzel.ini".text = ''
-      [colors]
-      background={{background | strip}}ff
-      text={{foreground | strip}}ff
-      match={{color1 | strip}}ff
-      selection={{color2 | strip}}ff
-      selection-text={{background | strip}}ff
-      selection-match={{color1 | strip}}ff
-      border={{color3 | strip}}ff
-      prompt={{color4 | strip}}ff
-    '';
-
     ".config/wallust/templates/colors-mako".text = ''
       background-color=#{{background | strip}}ff
       text-color=#{{foreground | strip}}ff
       border-color=#{{color3 | strip}}ff
       progress-color=over #{{color3 | strip}}ff
-    '';
-
-    ".config/wallust/templates/colors-obsidian.css".text = ''
-      .theme-dark {
-        --background-primary: {{background}} !important;
-        --background-primary-alt: {{color0 | lighten(0.05)}} !important;
-        --background-secondary: {{color0 | lighten(0.03)}} !important;
-        --background-secondary-alt: {{color0 | lighten(0.06)}} !important;
-        --background-modifier-border: {{color8}}44 !important;
-        --text-normal: {{foreground}} !important;
-        --text-muted: {{color7}} !important;
-        --text-faint: {{color8}} !important;
-        --text-accent: {{color4}} !important;
-        --text-accent-hover: {{color12}} !important;
-        --interactive-normal: {{color0 | lighten(0.05)}} !important;
-        --interactive-hover: {{color0 | lighten(0.1)}} !important;
-        --interactive-accent: {{color4}} !important;
-        --interactive-accent-hover: {{color12}} !important;
-        --text-selection: {{color2}}44 !important;
-        --text-highlight-bg: {{color3}}33 !important;
-        --titlebar-background: {{background}} !important;
-        --titlebar-background-focused: {{background}} !important;
-        --tab-text-color-focused-active: {{foreground}} !important;
-      }
     '';
 
   };

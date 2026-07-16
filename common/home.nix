@@ -9,21 +9,25 @@
 let
   hostName = osConfig.networking.hostName;
   peerHost =
-    if hostName == "galileo" then
+    if hostName == "titan" then
+      "tethys"
+    else if hostName == "tethys" then
+      "titan"
+    else
+      null;
+  oldPeerHost =
+    if hostName == "titan" then
       "ekman"
-    else if hostName == "ekman" then
+    else if hostName == "tethys" then
       "galileo"
     else
       null;
-
-  symlinks = {
-    nvim = "nvim";
-    niri = "niri";
-  };
+  symlinks = { };
 in
 {
   imports = [
     ./scripts.nix
+    ./emacs.nix
     ./programs.nix
     ./services.nix
     ./session.nix
@@ -40,6 +44,58 @@ in
         heading_completions = false
         title_headings = false
         link_filenames_only = true
+      '';
+      "documents/notes/config.yml".text = ''
+        select_origin: directory
+        files_origin: "."
+        nodes_origin: ""
+        links_origin: ""
+        nodes_online: ""
+        links_online: ""
+        images_origin: ""
+        export_target: "."
+        history: false
+        focus_max: 2
+        record_types:
+          undefined:
+            fill: '#858585'
+            stroke: '#858585'
+        link_types:
+          undefined:
+            stroke: simple
+            color: '#e1e1e1'
+        references_as_nodes: false
+        references_type_label: references
+        record_filters: []
+        graph_background_color: '#ffffff'
+        graph_highlight_color: '#ff6a6a'
+        graph_highlight_on_hover: true
+        graph_text_size: 10
+        graph_arrows: true
+        node_size_method: degree
+        node_size: 10
+        node_size_max: 20
+        node_size_min: 2
+        attraction_force: 200
+        attraction_distance_max: 250
+        attraction_vertical: 0
+        attraction_horizontal: 0
+        views: {}
+        record_metas: []
+        generate_id: always
+        link_context: tooltip
+        hide_id_from_record_header: false
+        title: "Notes"
+        author: ""
+        description: ""
+        keywords: []
+        link_symbol: ""
+        csl: ""
+        bibliography: ""
+        csl_locale: ""
+        css_custom: ""
+        devtools: false
+        lang: en
       '';
       ".latexmkrc".text = ''
         $pdf_previewer = 'zathura';
@@ -110,6 +166,22 @@ in
     }
     // lib.optionalAttrs (peerHost != null) {
       ${peerHost} = {
+        User = "jefaturico";
+        IdentityFile = "~/.ssh/id_tailnet";
+        IdentitiesOnly = true;
+      };
+      # Transitional authentication for a peer that still advertises its old name.
+      ${oldPeerHost} = {
+        User = "jefaturico";
+        IdentityFile = "~/.ssh/id_tailnet";
+        IdentitiesOnly = true;
+      };
+      iapetus = {
+        User = "jefaturico";
+        IdentityFile = "~/.ssh/id_tailnet";
+        IdentitiesOnly = true;
+      };
+      odin = {
         User = "jefaturico";
         IdentityFile = "~/.ssh/id_tailnet";
         IdentitiesOnly = true;

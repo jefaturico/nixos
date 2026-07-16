@@ -1,12 +1,11 @@
-{
-  pkgs,
-  lib,
-  ...
-}:
+{ config, pkgs, ... }:
 {
   imports = [
+    ./tty.nix
     ./secrets.nix
     ./syncthing.nix
+    ./eureka.nix
+    ./unfree-packages.nix
   ];
 
   boot.loader.systemd-boot = {
@@ -48,7 +47,6 @@
 
   services = {
     displayManager = {
-      defaultSession = "niri";
       ly = {
         enable = true;
         settings = {
@@ -74,6 +72,18 @@
 
     flatpak = {
       enable = true;
+      overrides = {
+        global = {
+          Context.filesystems = [
+            "xdg-config/gtk-3.0:ro"
+            "xdg-config/gtk-4.0:ro"
+          ];
+          Environment = {
+            GTK_CSD = "0";
+            QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
+          };
+        };
+      };
       packages = [
         "com.bitwarden.desktop"
         "org.jamovi.jamovi"
@@ -108,6 +118,7 @@
       enable = true;
       openFirewall = true;
       useRoutingFeatures = "client";
+      extraSetFlags = [ "--hostname=${config.networking.hostName}" ];
     };
 
     keyd = {
@@ -133,51 +144,11 @@
   '';
 
   programs = {
-    chromium = {
-      enable = true;
-      extraOpts = {
-        BookmarkBarEnabled = false;
-        BrowserSignin = 0;
-        DefaultBrowserSettingEnabled = false;
-        DefaultSearchProviderEnabled = true;
-        DefaultSearchProviderName = "DuckDuckGo";
-        DefaultSearchProviderSearchURL = "https://duckduckgo.com/?q={searchTerms}";
-        DefaultSearchProviderSuggestURL = "https://duckduckgo.com/ac/?q={searchTerms}&type=list";
-        SyncDisabled = true;
-        TranslateEnabled = false;
-      };
-      initialPrefs = {
-        browser.enabled_labs_experiments = [
-          "extension-mime-request-handling@2"
-          "overlay-scrollbars@2"
-          "scroll-tabs@2"
-        ];
-        bookmark_bar.show_on_all_tabs = false;
-        intl.selected_languages = "en-US,en";
-        profile.name = "Your Chromium";
-      };
-    };
-
     dconf.enable = true;
-    niri.enable = true;
   };
 
   xdg.portal = {
     enable = true;
-    extraPortals = [
-      pkgs.xdg-desktop-portal-gtk
-      pkgs.xdg-desktop-portal-gnome
-    ];
-    config = {
-      niri = {
-        default = [
-          "gnome"
-          "gtk"
-        ];
-        "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
-        "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
-      };
-    };
   };
 
   users.users.jefaturico = {
@@ -195,10 +166,6 @@
   };
 
   environment.systemPackages = with pkgs; [
-    wget
-    git
-    curl
-    htop
     sops
     ssh-to-age
   ];
@@ -206,23 +173,9 @@
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
     roboto
+    corefonts
   ];
 
-  nixpkgs.config = {
-    allowUnfree = false;
-    allowUnfreePredicate =
-      pkg:
-      builtins.elem (lib.getName pkg) [
-        "code"
-        "nvidia-x11"
-        "nvidia-kernel-modules"
-        "nvidia-settings"
-        "obsidian"
-        "vscode"
-        "vscode-fhs"
-        "firefox-bin"
-      ];
-  };
   nix.settings = {
     experimental-features = [
       "nix-command"

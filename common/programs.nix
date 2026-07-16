@@ -1,5 +1,4 @@
 {
-  config,
   pkgs,
   osConfig,
   lib,
@@ -33,97 +32,30 @@ let
     '';
   };
 
-  chromiumApp = pkgs.writeShellApplication {
-    name = "chromium-app";
-    runtimeInputs = [
-      pkgs.jq
-    ];
-    text = ''
-      set -u
-
-      trim() {
-          local value="$1"
-          value="''${value#"''${value%%[![:space:]]*}"}"
-          value="''${value%"''${value##*[![:space:]]}"}"
-          printf '%s' "$value"
-      }
-
-      search_url() {
-          local query encoded
-          query="$1"
-          encoded="$(jq -rn --arg q "$query" '$q | @uri')"
-          printf 'https://duckduckgo.com/?q=%s' "$encoded"
-      }
-
-      normalize_target() {
-          local target
-          target="$(trim "$1")"
-
-          if [ -z "$target" ]; then
-              printf 'about:blank'
-              return
-          fi
-
-          case "$target" in
-              *[[:space:]]*)
-                  search_url "$target"
-                  return
-                  ;;
-          esac
-
-          case "$target" in
-              [a-zA-Z][a-zA-Z0-9+.-]*:*)
-                  printf '%s' "$target"
-                  ;;
-              localhost|localhost/*|localhost:*)
-                  printf 'http://%s' "$target"
-                  ;;
-              *.*)
-                  printf 'https://%s' "$target"
-                  ;;
-              *)
-                  search_url "$target"
-                  ;;
-          esac
-      }
-
-      url="$(normalize_target "$*")"
-      exec ${lib.getExe config.programs.chromium.finalPackage} --app="$url"
-    '';
-  };
-
 in
 {
 
   programs = {
-    chromium = {
-      enable = true;
-      package = pkgs.ungoogled-chromium;
-      commandLineArgs = [
-        "--ozone-platform=wayland"
-        "--gtk-version=4"
-        "--no-first-run"
-        "--no-default-browser-check"
-        "--enable-features=ExtensionMimeRequestHandling,OverlayScrollbar,ScrollableTabStrip"
-        "--remote-debugging-address=127.0.0.1"
-        "--remote-debugging-port=9222"
-      ];
-    };
-
     bash = {
       enable = true;
       enableCompletion = false;
-      shellAliases = {
-        vim = "nvim";
-      };
       sessionVariables = {
-        EDITOR = "nvim";
-        BROWSER = "chromium-app";
-        DEFAULT_BROWSER = "chromium-app";
+        EDITOR = "emacsclient --tty --alternate-editor=emacs";
+        VISUAL = "emacsclient --create-frame --wait --alternate-editor=emacs";
+        BROWSER = "brave";
+        DEFAULT_BROWSER = "brave";
         LEDGER_FILE = "$HOME/documents/personal/finance/main.journal";
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
+
+        nix() {
+          command nix --log-format bar-with-logs --print-build-logs "$@"
+        }
+
+        nixos-rebuild() {
+          command nixos-rebuild --log-format bar-with-logs --print-build-logs "$@"
+        }
 
         usb() {
           local media_root target
@@ -213,32 +145,6 @@ in
       };
     };
 
-    fuzzel = {
-      enable = true;
-      settings = {
-        main = {
-          font = "JetBrainsMono Nerd Font:size=12";
-          icons-enabled = "no";
-          list-executables-in-path = "no";
-          lines = 5;
-          width = 40;
-          horizontal-pad = 20;
-          vertical-pad = 15;
-          inner-pad = 5;
-          include = "~/.cache/wallust/colors-fuzzel.ini";
-          match-mode = "fzf";
-        };
-
-        border = {
-          width = 1;
-          radius = 0;
-        };
-        "key-bindings" = {
-          execute-input = "Control+Return";
-        };
-      };
-    };
-
     git = {
       enable = true;
       settings = {
@@ -272,15 +178,10 @@ in
       };
       mappings = {
         o = "exec \"${zathuraOpenOkular}/bin/zathura-open-okular '$FILE' $PAGE\"";
-      };
-    };
-
-    nnn = {
-      enable = true;
-      package = pkgs.nnn;
-      bookmarks = {
-        d = "~/downloads";
-        n = "~/nixos";
+        n = "navigate previous";
+        p = "navigate next";
+        "<C-n>" = "scroll down";
+        "<C-p>" = "scroll up";
       };
     };
 
@@ -295,7 +196,9 @@ in
           buildInputs = [ pkgs.makeWrapper ];
           postBuild = ''
             wrapProgram $out/bin/code \
-              --add-flags "--enable-features=UseOzonePlatform --ozone-platform=wayland --disable-gpu-compositing"
+              --unset NIXOS_OZONE_WL \
+              --set ELECTRON_OZONE_PLATFORM_HINT x11 \
+              --add-flags "--ozone-platform=x11"
           '';
         })
         // {
@@ -306,6 +209,7 @@ in
           };
         };
     };
+
   };
 
   xdg = {
@@ -362,17 +266,6 @@ in
       };
     };
 
-    dataFile."applications/chromium.desktop".text = ''
-      [Desktop Entry]
-      Type=Application
-      Name=Chromium
-      GenericName=Web Browser
-      Exec=chromium-app %U
-      Terminal=false
-      NoDisplay=true
-      Categories=Network;WebBrowser;
-      MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
-    '';
   };
 
   home.packages =
@@ -385,12 +278,12 @@ in
       gimp
       imagemagick
       imv
-      chromiumApp
       zathuraOpenOkular
       libreoffice
-      neovim
       mpv
-      obsidian
+      brave
+      libnotify
+      librewolf
       blanket
       pdfarranger
       kdePackages.okular
@@ -401,24 +294,22 @@ in
       pwvucontrol
       hugo
       hledger
-      hledger-iadd
-      hledger-web
       markdown-oxide
+      nodejs
       nil
       nixfmt
       ripgrep
+      antigravity
       unzip
       ruff
       ripdrag
       shfmt
       stylua
-      gnome-solanum
       uget
       wl-clipboard
       subsurface
       qbittorrent
       tinymist
-      calcurse
       xwayland-satellite
       python3
       zoxide
@@ -427,7 +318,7 @@ in
       qgis
     ]
 
-    ++ lib.optionals (osConfig.networking.hostName == "galileo") [
+    ++ lib.optionals (osConfig.networking.hostName == "titan") [
       piper
     ];
 }

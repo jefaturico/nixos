@@ -1,5 +1,5 @@
 {
-  description = "NixOS Flake for Galileo, Ekman, and Odin";
+  description = "NixOS Flake for Titan, Tethys, and Iapetus";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
@@ -50,9 +50,14 @@
     in
     {
       nixosConfigurations = {
-        galileo = mkDesktopHost "galileo";
-        ekman = mkDesktopHost "ekman";
-        odin = mkServerHost "odin";
+        titan = mkDesktopHost "titan";
+        tethys = mkDesktopHost "tethys";
+        iapetus = mkServerHost "iapetus";
+
+        # Temporary aliases for rebuilding machines that still have their old hostname.
+        galileo = mkDesktopHost "titan";
+        ekman = mkDesktopHost "tethys";
+        odin = mkServerHost "iapetus";
       };
     };
 }

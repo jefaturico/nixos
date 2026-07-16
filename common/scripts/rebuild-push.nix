@@ -10,6 +10,7 @@
 
   repo="''${HOME}/nixos"
   sudo="/run/wrappers/bin/sudo"
+  git_owner_hosts="iapetus odin"
 
   if [ -z "''${HOSTNAME:-}" ]; then
       printf 'HOSTNAME is not set.\n' >&2
@@ -21,17 +22,35 @@
       exit 1
   fi
 
-  if [ ! -d "$repo/.git" ]; then
-      printf 'Expected a git repo at %s.\n' "$repo" >&2
-      exit 1
+  cd "$repo"
+
+  case " $git_owner_hosts " in
+    *" $HOSTNAME "*) is_git_owner=1 ;;
+    *) is_git_owner=0 ;;
+  esac
+
+  if [ "$is_git_owner" -eq 0 ]; then
+      "$sudo" ${pkgs.nixos-rebuild}/bin/nixos-rebuild \
+          --log-format bar-with-logs \
+          --print-build-logs \
+          switch \
+          --flake "path:$repo#$HOSTNAME"
+      exit 0
   fi
 
-  cd "$repo"
+  if ! ${pkgs.git}/bin/git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      printf 'Expected a valid git repo at %s on Git owner %s.\n' "$repo" "$HOSTNAME" >&2
+      exit 1
+  fi
 
   ${pkgs.git}/bin/git add .
   printf 'Staged current repo changes for flake evaluation.\n'
 
-  "$sudo" ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$repo/#$HOSTNAME"
+  "$sudo" ${pkgs.nixos-rebuild}/bin/nixos-rebuild \
+      --log-format bar-with-logs \
+      --print-build-logs \
+      switch \
+      --flake "$repo/#$HOSTNAME"
 
   printf 'Commit and push changes? [y/N] '
   IFS= read -r publish

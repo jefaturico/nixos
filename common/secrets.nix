@@ -14,30 +14,31 @@ in
       ];
     };
 
-    secrets =
-      {
-        "ssh-id-tailnet" = {
-          path = "/home/jefaturico/.ssh/id_tailnet";
-          owner = "jefaturico";
-          group = "users";
-          mode = "0600";
-        };
-      }
-      // lib.optionalAttrs (hostName == "galileo") {
-        "ssh-galileo-github" = {
-          path = "/home/jefaturico/.ssh/id_galileo-github";
-          owner = "jefaturico";
-          group = "users";
-          mode = "0600";
-        };
-      }
-      // lib.optionalAttrs (hostName == "ekman") {
-        "ssh-ekman-github" = {
-          path = "/home/jefaturico/.ssh/id_ekman-github";
-          owner = "jefaturico";
-          group = "users";
-          mode = "0600";
-        };
+    secrets = {
+      "ssh-id-tailnet" = {
+        path = "/home/jefaturico/.ssh/id_tailnet";
+        owner = "jefaturico";
+        group = "users";
+        mode = "0600";
       };
+    }
+    // lib.optionalAttrs (hostName == "titan") {
+      "ssh-titan-github" = {
+        key = "ssh-galileo-github";
+        path = "/home/jefaturico/.ssh/id_titan-github";
+        owner = "jefaturico";
+        group = "users";
+        mode = "0600";
+      };
+    }
+    // lib.optionalAttrs (hostName == "tethys") {
+      "ssh-tethys-github" = {
+        key = "ssh-ekman-github";
+        path = "/home/jefaturico/.ssh/id_tethys-github";
+        owner = "jefaturico";
+        group = "users";
+        mode = "0600";
+      };
+    };
   };
 }

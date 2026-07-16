@@ -17,6 +17,8 @@ return {
 			vim.keymap.set("n", "<leader>fg", "<cmd>FzfLua live_grep<CR>", { desc = "Live Grep" })
 			vim.keymap.set("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", { desc = "Buffers" })
 			vim.keymap.set("n", "<leader>fh", "<cmd>FzfLua help_tags<CR>", { desc = "Help Tags" })
+			vim.keymap.set("n", "<leader>fc", "<cmd>FzfLua commands<CR>", { desc = "Commands" })
+			vim.keymap.set("n", "<leader>f:", "<cmd>FzfLua command_history<CR>", { desc = "Command History" })
 		end,
 	},
 }

@@ -1,0 +1,9 @@
+(?d).git
+(?d).git/**
+.agents
+.agents/**
+.codex
+.codex/**
+*.sync-conflict-*
+result
+result-*

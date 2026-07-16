@@ -26,7 +26,8 @@ opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
 opt.inccommand = "split"
 opt.cursorline = true
 opt.scrolloff = 10 -- Minimal number of screen lines to keep above and below the cursor
-opt.conceallevel = 2 -- Hide formatting symbols to support Obsidian UI features
+opt.conceallevel = 2
+opt.completeopt = "menu,menuone,noselect,popup"
 opt.background = "dark"
 
 -- Indentation

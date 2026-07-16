@@ -1,31 +1,80 @@
 { config, lib, ... }:
 let
   syncthingDevices = {
-    galileo.id = "OQUT2EC-CERWR4S-PJCPFUU-BUMZJZL-EVH66K6-I2YKDX3-6A7RS3I-Z3LLFAW";
-    coriolis.id = "YAYGCCW-R4IWEUH-7L7QRYG-TSHGH6K-XOCADP3-3OPOXU3-JAFFTC5-76TF6AO";
-    ekman.id = "2STWXA4-JBLZ5FM-ZDFPSR2-VE63IJP-SI4LVAW-ECSVLL4-PRFI27E-6VELQQG";
-    odin.id = "K5ROMZZ-E7WR4MM-EYYOLC5-UNOSCJ2-IIMYRGH-LOQOBZZ-DAV3EK6-CVDZ6AG";
+    titan.id = "OQUT2EC-CERWR4S-PJCPFUU-BUMZJZL-EVH66K6-I2YKDX3-6A7RS3I-Z3LLFAW";
+    tethys.id = "2STWXA4-JBLZ5FM-ZDFPSR2-VE63IJP-SI4LVAW-ECSVLL4-PRFI27E-6VELQQG";
+    iapetus.id = "K5ROMZZ-E7WR4MM-EYYOLC5-UNOSCJ2-IIMYRGH-LOQOBZZ-DAV3EK6-CVDZ6AG";
+    rhea.id = "HX2Y3DU-MX2MRNK-WLIJKQL-C4GQNVZ-LG5HRPA-YHRF2TH-23OQ4LA-PU3XBAM";
   };
 
-  hub = "odin";
+  hub = "iapetus";
   spokeHosts = [
-    "galileo"
-    "ekman"
-    "coriolis"
+    "titan"
+    "tethys"
   ];
 
-  syncPeers = if config.networking.hostName == hub then spokeHosts else [ hub ];
+  directPeers = {
+    titan = [ "tethys" ];
+    tethys = [ "titan" ];
+  };
+
+  syncPeers =
+    if config.networking.hostName == hub then
+      spokeHosts
+    else
+      [ hub ] ++ (directPeers.${config.networking.hostName} or [ ]);
+
+  phonePeers = [ "rhea" ];
 
   availableSyncPeers = builtins.filter (
     device: device != config.networking.hostName && builtins.hasAttr device syncthingDevices
   ) syncPeers;
 
-  enabledSyncthingDevices = lib.genAttrs availableSyncPeers (device: syncthingDevices.${device});
+  availablePhonePeers = builtins.filter (
+    device: device != config.networking.hostName && builtins.hasAttr device syncthingDevices
+  ) phonePeers;
 
-  mkFolder = id: path: {
+  enabledSyncthingDevices = lib.genAttrs (availableSyncPeers ++ availablePhonePeers) (
+    device: syncthingDevices.${device}
+  );
+
+  mkFolderWithDevices = devices: id: path: {
     inherit id path;
-    devices = availableSyncPeers;
+    inherit devices;
   };
+
+  mkFolder = mkFolderWithDevices availableSyncPeers;
+
+  mkFolderWithPhone = mkFolderWithDevices (availableSyncPeers ++ availablePhonePeers);
+
+  mkDocumentsFolder =
+    id: path:
+    (mkFolder id path)
+    // {
+      ignorePatterns = [
+        "notes/.stfolder"
+        "notes/.stfolder/**"
+        "org/.stfolder"
+        "org/.stfolder/**"
+      ];
+    };
+
+  mkNixosFolder =
+    id: path:
+    (mkFolder id path)
+    // {
+      ignorePatterns = [
+        "(?d).git"
+        "(?d).git/**"
+        ".agents"
+        ".agents/**"
+        ".codex"
+        ".codex/**"
+        "*.sync-conflict-*"
+        "result"
+        "result-*"
+      ];
+    };
 in
 {
   services.syncthing = {
@@ -38,13 +87,13 @@ in
     settings = {
       devices = enabledSyncthingDevices;
       folders = {
+        org = mkFolderWithPhone "org" "/home/jefaturico/documents/org";
         projects = mkFolder "4pmxv-syxrh" "/home/jefaturico/projects";
-        calcurse = mkFolder "5rdcv-wpnjr" "/home/jefaturico/.local/share/calcurse";
         wallpapers = mkFolder "bppru-7tfft" "/home/jefaturico/images/wallpapers";
         tasks = mkFolder "pngaf-ufcfi" "/home/jefaturico/.local/share/task";
         "zathura metadata" = mkFolder "rqfbg-5r2be" "/home/jefaturico/.local/share/zathura";
-        documents = mkFolder "twsxa-tfzj6" "/home/jefaturico/documents";
-        nixos = mkFolder "y2dqc-sjty3" "/home/jefaturico/nixos";
+        documents = mkDocumentsFolder "twsxa-tfzj6" "/home/jefaturico/documents";
+        nixos = mkNixosFolder "y2dqc-sjty3" "/home/jefaturico/nixos";
       };
       options = {
         urAccepted = -1;
