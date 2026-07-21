@@ -21,6 +21,11 @@ let
       "galileo"
     else
       null;
+  tailnetHost = {
+    User = "jefaturico";
+    IdentityFile = "~/.ssh/id_tailnet";
+    IdentitiesOnly = true;
+  };
 in
 {
   imports = [
@@ -123,7 +128,6 @@ in
         '';
       };
     };
-
   };
 
   programs.ssh = {
@@ -150,28 +154,19 @@ in
       };
     }
     // lib.optionalAttrs (peerHost != null) {
-      ${peerHost} = {
-        User = "jefaturico";
-        IdentityFile = "~/.ssh/id_tailnet";
-        IdentitiesOnly = true;
-      };
-      # Transitional authentication for a peer that still advertises its old name.
-      ${oldPeerHost} = {
-        User = "jefaturico";
-        IdentityFile = "~/.ssh/id_tailnet";
-        IdentitiesOnly = true;
-      };
-      iapetus = {
-        User = "jefaturico";
-        IdentityFile = "~/.ssh/id_tailnet";
-        IdentitiesOnly = true;
-      };
-      odin = {
-        User = "jefaturico";
-        IdentityFile = "~/.ssh/id_tailnet";
-        IdentitiesOnly = true;
-      };
+      ${peerHost} = tailnetHost;
+      ${oldPeerHost} = tailnetHost;
+      iapetus = tailnetHost;
+      odin = tailnetHost;
+      prometheus = tailnetHost;
+    }
+    // lib.optionalAttrs (hostName == "prometheus") {
+      titan = tailnetHost;
+      tethys = tailnetHost;
+      galileo = tailnetHost;
+      ekman = tailnetHost;
+      iapetus = tailnetHost;
+      odin = tailnetHost;
     };
   };
-
 }
