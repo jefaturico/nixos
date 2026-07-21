@@ -1,7 +1,5 @@
 {
   pkgs,
-  osConfig,
-  lib,
   ...
 }:
 
@@ -48,14 +46,6 @@ in
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
-
-        nix() {
-          command nix --log-format bar-with-logs --print-build-logs "$@"
-        }
-
-        nixos-rebuild() {
-          command nixos-rebuild --log-format bar-with-logs --print-build-logs "$@"
-        }
 
         usb() {
           local media_root target
@@ -122,6 +112,15 @@ in
         HISTFILESIZE=20000
 
         eval "$(${pkgs.zoxide}/bin/zoxide init bash --cmd cd)"
+
+        # Let vterm track the shell's working directory and prompt boundaries
+        # through its native OSC 51 protocol.
+        if [[ "$INSIDE_EMACS" == vterm ]]; then
+          _vterm_prompt_end() {
+            printf '\e]51;A%s@%s:%s\e\\' "''${USER}" "''${HOSTNAME}" "$PWD"
+          }
+          PS1+='\[$(_vterm_prompt_end)\]'
+        fi
       '';
     };
 
@@ -282,20 +281,17 @@ in
       libreoffice
       mpv
       brave
-      libnotify
       librewolf
-      blanket
       pdfarranger
       kdePackages.okular
-      typst
       pandoc
       playerctl
       gsettings-desktop-schemas
+      glib
       pwvucontrol
       hugo
       hledger
       markdown-oxide
-      nodejs
       nil
       nixfmt
       ripgrep
@@ -304,21 +300,12 @@ in
       ruff
       ripdrag
       shfmt
-      stylua
       uget
-      wl-clipboard
       subsurface
       qbittorrent
-      tinymist
-      xwayland-satellite
       python3
       zoxide
-      visidata
       obs-studio
       qgis
-    ]
-
-    ++ lib.optionals (osConfig.networking.hostName == "titan") [
-      piper
     ];
 }

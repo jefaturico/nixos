@@ -57,7 +57,10 @@ local function generate_cosma_graph(open_after)
 
 	local cwd = find_cosma_root()
 	if not cwd then
-		vim.notify("Cosma needs config.yml. Run Home Manager to create ~/documents/notes/config.yml.", vim.log.levels.WARN)
+		vim.notify(
+			"Cosma needs config.yml. Run Home Manager to create ~/documents/notes/config.yml.",
+			vim.log.levels.WARN
+		)
 		return
 	end
 
@@ -66,7 +69,10 @@ local function generate_cosma_graph(open_after)
 	vim.system({ "cosma", "modelize" }, { cwd = cwd, text = true }, function(result)
 		vim.schedule(function()
 			if result.code ~= 0 then
-				vim.notify(result.stderr ~= "" and result.stderr or "Cosma graph generation failed", vim.log.levels.ERROR)
+				vim.notify(
+					result.stderr ~= "" and result.stderr or "Cosma graph generation failed",
+					vim.log.levels.ERROR
+				)
 				return
 			end
 

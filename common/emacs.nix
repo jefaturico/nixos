@@ -3,7 +3,6 @@
 {
   home.packages = [
     pkgs.basedpyright
-    pkgs.emacs-lsp-booster
     pkgs.typst
     pkgs.tinymist
     pkgs.typstyle

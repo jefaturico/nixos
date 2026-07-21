@@ -1,5 +1,7 @@
 ;;; early-init.el -*- lexical-binding: t; -*-
 
+(defvar native-comp-async-report-warnings-errors)
+
 (defvar jf/startup-log-file (getenv "EUREKA_STARTUP_LOG")
   "File receiving Eureka cold-start timing events.")
 
@@ -28,7 +30,11 @@
     (let ((text (apply #'concat (nreverse jf/startup-log-lines))))
       (setq jf/startup-log-lines nil)
       (ignore-errors
-        (write-region text nil jf/startup-log-file t 'silent)))))
+        (write-region text nil jf/startup-log-file t 'silent))
+      ;; This is cold-start instrumentation.  Do not let later init reloads
+      ;; append misleading multi-minute entries to the startup report.
+      (setq jf/startup-log-file nil
+            jf/startup-epoch-ns nil))))
 
 (jf/startup-mark "early-init entry")
 
@@ -38,10 +44,18 @@
 (defvar jf/orig-file-name-handler-alist file-name-handler-alist)
 (setq file-name-handler-alist nil)
 
-(setq gc-cons-threshold most-positive-fixnum
+(setq gc-cons-threshold (* 128 1024 1024)
       gc-cons-percentage 0.6)
 
 (setq native-comp-async-report-warnings-errors 'silent)
+
+(defvar jf/emacs-cache-directory
+  (expand-file-name "emacs/" (or (getenv "XDG_CACHE_HOME")
+                                 (expand-file-name ".cache" "~"))))
+
+(let ((eln-cache (expand-file-name "eln-cache/" jf/emacs-cache-directory)))
+  (make-directory eln-cache t)
+  (startup-redirect-eln-cache eln-cache))
 
 (setq inhibit-startup-screen t
       inhibit-startup-message t)

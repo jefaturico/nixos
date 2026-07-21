@@ -16,15 +16,19 @@ in
 {
   options.jefaturico.allowedUnfreePackages = lib.mkOption {
     type = lib.types.listOf lib.types.str;
-    default = sharedAllowedPackages;
+    default = [ ];
     description = ''
       Nixpkgs package names allowed by the shared unfree predicate.
       Hosts can extend this with lib.mkAfter when they need additional unfree packages.
     '';
   };
 
-  config.nixpkgs.config = {
-    allowUnfree = false;
-    allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) config.jefaturico.allowedUnfreePackages;
+  config = {
+    jefaturico.allowedUnfreePackages = lib.mkBefore sharedAllowedPackages;
+
+    nixpkgs.config = {
+      allowUnfree = false;
+      allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) config.jefaturico.allowedUnfreePackages;
+    };
   };
 }

@@ -1,4 +1,9 @@
 { config, pkgs, ... }:
+let
+  rebuildPush = pkgs.writeScriptBin "rebuild-push" (
+    import ../../common/scripts/rebuild-push.nix { inherit pkgs; }
+  );
+in
 {
   imports = [
     ./hardware.nix
@@ -84,6 +89,8 @@
     EDITOR = "vim";
     VISUAL = "vim";
   };
+
+  environment.systemPackages = [ rebuildPush ];
 
   nix.settings = {
     experimental-features = [

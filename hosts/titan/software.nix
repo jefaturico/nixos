@@ -2,6 +2,7 @@
 {
   imports = [
     ./hardware.nix
+    ./elite-dangerous.nix
     ../../common/configuration.nix
   ];
 
@@ -24,7 +25,6 @@
     uinput.enable = true;
   };
 
-  services.ratbagd.enable = true;
   services.sunshine = {
     enable = true;
     autoStart = true;

@@ -6,10 +6,12 @@ eln-cache*
 elpa*
 eshell*
 games*
+history*
 .local/
 multisession/
 .org-id-locations*
-org-roam.db*
+org-roam*.db*
+org-roam/*.db*
 recentf*
 transient/
 smex-items*

@@ -5,10 +5,10 @@
 epkgs:
 extraPackages
 ++ (with epkgs; [
-  alert
   cape
   consult
   corfu
+  ednc
   ef-themes
   gcmh
   hledger-mode
@@ -19,8 +19,8 @@ extraPackages
   org-roam
   org-roam-ui
   pdf-tools
-  treesit-auto
   (treesit-grammars.with-grammars (grammars: [
+    grammars.tree-sitter-python
     grammars.tree-sitter-typst
   ]))
   typst-preview

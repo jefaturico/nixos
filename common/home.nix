@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   osConfig,
   pkgs,
@@ -22,7 +21,6 @@ let
       "galileo"
     else
       null;
-  symlinks = { };
 in
 {
   imports = [
@@ -124,20 +122,7 @@ in
           exit "$status"
         '';
       };
-    }
-    // (
-      # Automatically symlink directories in ./dots/ to ~/.config/
-      # We use mkOutOfStoreSymlink so that changes to files in the git repo
-      # are immediately reflected without needing a 'nixos-rebuild switch'.
-      builtins.listToAttrs (
-        map (name: {
-          name = ".config/${name}";
-          value = {
-            source = config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos/dots/${symlinks.${name}}";
-          };
-        }) (builtins.attrNames symlinks)
-      )
-    );
+    };
 
   };
 

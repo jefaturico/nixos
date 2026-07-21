@@ -1,12 +1,11 @@
 {
-  config,
   pkgs,
   ...
 }:
 
 let
   eurekaPackage = import ./packages/eureka.nix { inherit pkgs; };
-  canoePackage = import ./packages/canoe.nix { inherit pkgs; };
+  jrwmPackage = pkgs.callPackage ./packages/jrwm.nix { };
 
   eurekaEmacs = (pkgs.emacsPackagesFor pkgs.emacs-pgtk).emacsWithPackages (
     import ./emacs-packages.nix { extraPackages = [ eurekaPackage ]; }
@@ -84,10 +83,7 @@ let
 
   eurekaSession = pkgs.writeShellApplication {
     name = "eureka-session";
-    runtimeInputs = with pkgs; [
-      dbus
-      river
-    ];
+    runtimeInputs = [ pkgs.dbus ];
     text = ''
       set -euo pipefail
 
@@ -109,7 +105,7 @@ let
 
   eurekaDebugSession = pkgs.writeShellApplication {
     name = "eureka-debug-session";
-    runtimeInputs = with pkgs; [ dbus river ];
+    runtimeInputs = [ pkgs.dbus ];
     text = ''
       set -euo pipefail
 
@@ -184,7 +180,14 @@ let
 
   eurekaRecover = pkgs.writeShellApplication {
     name = "eureka-recover";
-    runtimeInputs = with pkgs; [ coreutils procps systemd ];
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.gnused
+      pkgs.procps
+      pkgs.systemd
+      eurekaEmacs
+    ];
     text = ''
       set -euo pipefail
 
@@ -220,32 +223,59 @@ let
         exit 1
       fi
 
-      # End only the Emacs process attached to this River display. This drops
-      # Eureka's WM protocol object while preserving River and all application
-      # windows. Canoe can then claim the active WM role.
+      # Identify only the Eureka Emacs attached to this River display.
       eureka_pids=()
       for pid in "''${emacs_candidates[@]}"; do
         if tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null \
           | grep -Fxq "WAYLAND_DISPLAY=$wayland_display"; then
           eureka_pids+=("$pid")
-          kill -TERM "$pid"
         fi
       done
 
-      for _ in $(seq 1 50); do
-        still_running=false
+      # Prefer asking a responsive Emacs to release River. This preserves
+      # Emacs, its unsaved buffers, and every graphical application. Match the
+      # display inside Emacs so another server cannot be disabled accidentally.
+      emacs_preserved=false
+      escaped_display=$(printf '%s' "$wayland_display" | sed 's/[\\"]/\\&/g')
+      if [ "''${#eureka_pids[@]}" -gt 0 ] && \
+        timeout 2s emacsclient --eval \
+          "(if (and (equal (getenv \"WAYLAND_DISPLAY\") \"$escaped_display\") (fboundp 'eureka-disable)) (progn (eureka-disable) t) (error \"not the Eureka Emacs for this display\"))" \
+          >/dev/null 2>&1; then
+        emacs_preserved=true
+        # The native worker releases the asynchronous Wayland role immediately
+        # after handling Eureka's stop request.
+        sleep 0.5
+      fi
+
+      # A completely frozen Emacs cannot voluntarily release its WM object.
+      # Terminating that process is the only simple way to recover River; Emacs
+      # file buffers can then be recovered from their existing auto-save files.
+      if [ "$emacs_preserved" = false ]; then
         for pid in "''${eureka_pids[@]}"; do
-          if kill -0 "$pid" 2>/dev/null; then
-            still_running=true
-          fi
+          kill -TERM "$pid"
         done
-        if [ "$still_running" = false ]; then
-          break
+
+        for _ in $(seq 1 50); do
+          still_running=false
+          for pid in "''${eureka_pids[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+              still_running=true
+            fi
+          done
+          if [ "$still_running" = false ]; then
+            break
+          fi
+          sleep 0.1
+        done
+
+        if [ "$still_running" = true ]; then
+          echo "eureka-recover: Eureka Emacs did not stop after 5 seconds" >&2
+          exit 1
         fi
-        sleep 0.1
-      done
+      fi
 
       systemctl --user stop eureka-fallback-wm.service 2>/dev/null || true
+      systemctl --user reset-failed eureka-fallback-wm.service 2>/dev/null || true
       systemd-run --user \
         --unit=eureka-fallback-wm \
         --collect \
@@ -253,9 +283,21 @@ let
         --setenv="XDG_RUNTIME_DIR=$runtime_dir" \
         --setenv="WAYLAND_DISPLAY=$wayland_display" \
         --setenv="PATH=${pkgs.lib.makeBinPath [ pkgs.foot pkgs.fuzzel ]}:$PATH" \
-        ${canoePackage}/bin/canoe
+        ${jrwmPackage}/bin/jrwm
 
-      echo "Canoe recovery WM started on $wayland_display"
+      sleep 0.5
+      if ! systemctl --user is-active --quiet eureka-fallback-wm.service; then
+        echo "eureka-recover: JrWM failed to claim the River session" >&2
+        systemctl --user status --no-pager eureka-fallback-wm.service >&2 || true
+        exit 1
+      fi
+
+      echo "JrWM recovery WM started on $wayland_display"
+      if [ "$emacs_preserved" = true ]; then
+        echo "The existing Emacs process and its buffers were preserved"
+      else
+        echo "The unresponsive Eureka Emacs was terminated; check its auto-save files"
+      fi
       echo "Super+Space: launcher; Super+Shift+Return: terminal; Super+w: close"
     '';
   };
@@ -270,14 +312,12 @@ in
 
   environment.systemPackages = with pkgs; [
     brightnessctl
-    canoePackage
+    jrwmPackage
     eurekaEmacs
     eurekaStartupReport
-    foot
     fuzzel
     eurekaRecover
     river
-    eurekaPackage
     wl-clipboard
     xwayland-satellite
   ];
@@ -296,13 +336,6 @@ in
     ];
     config = {
       river = {
-        default = [ "gtk" ];
-        "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
-        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Inhibit" = [ "none" ];
-      };
-      eureka = {
         default = [ "gtk" ];
         "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
         "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];

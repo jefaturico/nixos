@@ -792,7 +792,6 @@ impl Drop for Window {
 
 struct Seat {
     proxy: river::river_seat_v1::RiverSeatV1,
-    #[allow(dead_code)] // TODO(tazjin): do I *need* to store this?
     ls_seat: Option<RiverLayerShellSeatV1>,
 }
 
@@ -828,7 +827,6 @@ impl Drop for BindingState {
 
 #[derive(Debug)]
 struct Binding {
-    #[allow(dead_code)]
     command: Command,
     state: BindingState,
 }
@@ -1156,7 +1154,41 @@ impl Eureka {
         // TODO: force kill at some point
     }
 
-    fn reconcile_bindings(&mut self) {
+    fn reconcile_bindings(&mut self, qh: &wayland_client::QueueHandle<Self>) {
+        let register_prefixes = self
+            .prefixes
+            .iter()
+            .filter_map(|(prefix, binding)| match binding.state {
+                BindingState::Requested => Some(*prefix),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        if let (false, Some(xkb), Some(seat)) = (
+            register_prefixes.is_empty(),
+            self.xkb_bindings.as_ref(),
+            self.seat.as_ref(),
+        ) {
+            let mut bindings = Vec::with_capacity(register_prefixes.len());
+            for prefix in &register_prefixes {
+                bindings.push(xkb.get_xkb_binding(
+                    &seat.proxy,
+                    prefix.keysym,
+                    prefix.modifiers,
+                    qh,
+                    (),
+                ));
+            }
+
+            for (prefix, proxy) in register_prefixes.into_iter().zip(bindings) {
+                let binding = self
+                    .prefixes
+                    .get_mut(&prefix)
+                    .expect("binding magically disappeared");
+                binding.state = BindingState::Registered(proxy);
+            }
+        }
+
         let mut to_enable = vec![];
         {
             for (_, v) in self.prefixes.iter_mut() {
@@ -1427,36 +1459,6 @@ impl Eureka {
             river_wm.manage_dirty();
         }
 
-        let register_prefixes = self
-            .prefixes
-            .iter()
-            .filter_map(|(k, v)| match v.state {
-                BindingState::Requested => Some(*k),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
-        if let (false, Some(xkb), Some(seat)) = (
-            register_prefixes.is_empty(),
-            self.xkb_bindings.as_ref(),
-            self.seat.as_ref(),
-        ) {
-            let seat = seat.proxy.clone();
-            let mut bindings = vec![];
-
-            for p in &register_prefixes {
-                let b = xkb.get_xkb_binding(&seat, p.keysym, p.modifiers, qh, ());
-                bindings.push(b);
-            }
-
-            for (p, b) in register_prefixes.into_iter().zip(bindings) {
-                let binding = self
-                    .prefixes
-                    .get_mut(&p)
-                    .expect("binding magically disappeared");
-                binding.state = BindingState::Registered(b);
-            }
-        }
     }
 }
 
@@ -1521,7 +1523,7 @@ impl Dispatch<RiverWindowManagerV1, ()> for Eureka {
 
                 state.reconcile_frames();
                 state.reconcile_windows();
-                state.reconcile_bindings();
+                state.reconcile_bindings(qhandle);
                 state.reconcile_fullscreen();
                 state.reconcile_focus();
 
@@ -1682,7 +1684,7 @@ impl Dispatch<RiverWindowManagerV1, ()> for Eureka {
 impl Dispatch<RiverInputManagerV1, ()> for Eureka {
     fn event(
         state: &mut Self,
-        _proxy: &RiverInputManagerV1,
+        proxy: &RiverInputManagerV1,
         event: <RiverInputManagerV1 as wayland_client::Proxy>::Event,
         _data: &(),
         _conn: &Connection,
@@ -1697,7 +1699,14 @@ impl Dispatch<RiverInputManagerV1, ()> for Eureka {
                     },
                 );
             }
-            river::river_input_manager_v1::Event::Finished => {}
+            river::river_input_manager_v1::Event::Finished => {
+                if state.input_manager.as_ref() == Some(proxy) {
+                    state.input_manager = None;
+                } else {
+                    log::warn!("unknown input manager finished");
+                }
+                proxy.destroy();
+            }
         }
     }
 
@@ -1746,6 +1755,7 @@ impl Dispatch<RiverInputDeviceV1, ()> for Eureka {
             }
             river::river_input_device_v1::Event::Removed => {
                 state.input_devices.remove(proxy);
+                proxy.destroy();
             }
         }
     }
@@ -1754,7 +1764,7 @@ impl Dispatch<RiverInputDeviceV1, ()> for Eureka {
 impl Dispatch<RiverLibinputConfigV1, ()> for Eureka {
     fn event(
         state: &mut Self,
-        _proxy: &RiverLibinputConfigV1,
+        proxy: &RiverLibinputConfigV1,
         event: <RiverLibinputConfigV1 as wayland_client::Proxy>::Event,
         _data: &(),
         _conn: &Connection,
@@ -1764,7 +1774,14 @@ impl Dispatch<RiverLibinputConfigV1, ()> for Eureka {
             river::river_libinput_config_v1::Event::LibinputDevice { id } => {
                 state.libinput_devices.insert(id, LibinputDevice::default());
             }
-            river::river_libinput_config_v1::Event::Finished => {}
+            river::river_libinput_config_v1::Event::Finished => {
+                if state.libinput_config.as_ref() == Some(proxy) {
+                    state.libinput_config = None;
+                } else {
+                    log::warn!("unknown libinput config finished");
+                }
+                proxy.destroy();
+            }
         }
     }
 
@@ -1797,6 +1814,7 @@ impl Dispatch<RiverLibinputDeviceV1, ()> for Eureka {
             }
             river::river_libinput_device_v1::Event::Removed => {
                 state.libinput_devices.remove(proxy);
+                proxy.destroy();
             }
             _ => {}
         }
@@ -1972,25 +1990,49 @@ impl Dispatch<RiverLayerShellOutputV1, ()> for Eureka {
 impl Dispatch<river::river_seat_v1::RiverSeatV1, ()> for Eureka {
     fn event(
         state: &mut Self,
-        _proxy: &river::river_seat_v1::RiverSeatV1,
+        proxy: &river::river_seat_v1::RiverSeatV1,
         event: <river::river_seat_v1::RiverSeatV1 as wayland_client::Proxy>::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &wayland_client::QueueHandle<Self>,
     ) {
-        if let river::river_seat_v1::Event::WindowInteraction { window } = event {
-            if state.frames.contains_key(&window) {
-                state.focus.focus_frame(window);
-                return;
+        match event {
+            river::river_seat_v1::Event::WindowInteraction { window } => {
+                if state.frames.contains_key(&window) {
+                    state.focus.focus_frame(window);
+                    return;
+                }
+
+                let Some(frame) = state.displaying_frame(&window) else {
+                    log::error!("received window interaction for window without a frame");
+                    return;
+                };
+
+                state.focus.focus_window(window, frame.proxy.clone());
+                state.focus.mark_dirty();
             }
-
-            let Some(frame) = state.displaying_frame(&window) else {
-                log::error!("received window interaction for window without a frame");
-                return;
-            };
-
-            state.focus.focus_window(window, frame.proxy.clone());
-            state.focus.mark_dirty();
+            river::river_seat_v1::Event::Removed => {
+                if state
+                    .seat
+                    .as_ref()
+                    .is_some_and(|seat| seat.proxy.eq(proxy))
+                {
+                    for binding in state.prefixes.values_mut() {
+                        let old = std::mem::replace(
+                            &mut binding.state,
+                            BindingState::Requested,
+                        );
+                        if let BindingState::Registered(proxy) = &old {
+                            proxy.destroy();
+                        }
+                    }
+                    state.seat.take();
+                } else {
+                    log::warn!("unknown seat removed");
+                    proxy.destroy();
+                }
+            }
+            _ => {}
         }
     }
 }

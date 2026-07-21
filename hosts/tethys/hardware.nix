@@ -19,8 +19,6 @@
   ];
   boot.initrd.kernelModules = [ "i915" ];
   boot.kernelModules = [ "kvm-intel" ];
-  boot.extraModulePackages = [ ];
-
   fileSystems."/" = {
     device = "/dev/disk/by-uuid/4f0d80d8-c275-4592-b0ce-cb8a8ea8004d";
     fsType = "ext4";

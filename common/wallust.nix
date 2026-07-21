@@ -12,7 +12,6 @@
       [templates]
       foot = { template = 'colors-foot.ini', target = '~/.cache/wallust/colors-foot.ini' }
       footclient = { template = 'footclient-overrides.bash', target = '~/.cache/wallust/footclient-overrides.bash' }
-      mako = { template = 'colors-mako', target = '~/.cache/wallust/colors-mako' }
       neopywal = { template = 'colors_neopywal.vim', target = '~/.cache/wallust/colors_neopywal.vim' }
 
     '';
@@ -103,13 +102,6 @@
         -o 'colors-dark.bright7={{color15 | strip}}'
         -o 'colors-light.bright7={{color15 | strip}}'
       )
-    '';
-
-    ".config/wallust/templates/colors-mako".text = ''
-      background-color=#{{background | strip}}ff
-      text-color=#{{foreground | strip}}ff
-      border-color=#{{color3 | strip}}ff
-      progress-color=over #{{color3 | strip}}ff
     '';
 
   };

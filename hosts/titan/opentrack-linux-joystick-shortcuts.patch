@@ -1,0 +1,529 @@
+diff --git a/input/CMakeLists.txt b/input/CMakeLists.txt
+index 56eb18f..01354a1 100644
+--- a/input/CMakeLists.txt
++++ b/input/CMakeLists.txt
+@@ -19,6 +19,8 @@ if(WIN32)
+     else()
+         target_compile_definitions(${self} PUBLIC OPENTRACK_HAS_GAMEINPUT=0)
+     endif()
+ else()
+-    target_link_libraries(${self} PRIVATE opentrack-qxt-mini)
++    pkg_check_modules(libevdev REQUIRED libevdev)
++    target_link_libraries(${self} PRIVATE opentrack-qxt-mini ${libevdev_LIBRARIES})
++    target_include_directories(${self} SYSTEM PRIVATE ${libevdev_INCLUDE_DIRS})
+ endif()
+diff --git a/input/linux-joystick-shortcuts.hpp b/input/linux-joystick-shortcuts.hpp
+new file mode 100644
+index 0000000..16dfe8d
+--- /dev/null
++++ b/input/linux-joystick-shortcuts.hpp
+@@ -0,0 +1,56 @@
++#pragma once
++
++#ifndef _WIN32
++
++#include "export.hpp"
++#include "key.hpp"
++
++#include <functional>
++#include <memory>
++#include <vector>
++
++#include <QMutex>
++#include <QThread>
++
++// Linux OpenTrack historically supported only keyboard shortcuts.  This
++// worker reads joystick buttons from evdev so the existing joystick shortcut
++// settings can be used on Linux too.
++class OTR_INPUT_EXPORT LinuxJoystickWorker final : private QThread
++{
++    using fun = std::function<void(const Key&)>;
++    struct State;
++
++    std::unique_ptr<State> state;
++    std::vector<std::unique_ptr<fun>> receivers;
++    QMutex mutex;
++
++    LinuxJoystickWorker();
++    void run() override;
++    void emit_key(const Key& key);
++
++    static std::unique_ptr<LinuxJoystickWorker>& instance_ptr();
++    static LinuxJoystickWorker& instance();
++    fun* add_receiver(fun& receiver);
++    void remove_receiver(fun* receiver);
++
++public:
++    ~LinuxJoystickWorker() override;
++    LinuxJoystickWorker(const LinuxJoystickWorker&) = delete;
++    LinuxJoystickWorker& operator=(const LinuxJoystickWorker&) = delete;
++
++    class Token
++    {
++        fun* receiver;
++
++    public:
++        Token(const Token&) = delete;
++        Token& operator=(const Token&) = delete;
++        Token(Token&&) = delete;
++        Token& operator=(Token&&) = delete;
++
++        explicit Token(fun fn) : receiver(instance().add_receiver(fn)) {}
++        ~Token() { instance().remove_receiver(receiver); }
++    };
++};
++
++#endif
+diff --git a/input/linux-joystick-shortcuts.cpp b/input/linux-joystick-shortcuts.cpp
+new file mode 100644
+index 0000000..18db262
+--- /dev/null
++++ b/input/linux-joystick-shortcuts.cpp
+@@ -0,0 +1,233 @@
++#ifndef _WIN32
++
++#include "linux-joystick-shortcuts.hpp"
++#include "compat/thread-name.hpp"
++
++#include <algorithm>
++#include <cerrno>
++#include <cstring>
++#include <glob.h>
++#include <memory>
++#include <string>
++#include <unordered_set>
++#include <utility>
++#include <vector>
++
++#include <fcntl.h>
++#include <libevdev/libevdev.h>
++#include <linux/input-event-codes.h>
++#include <unistd.h>
++
++#include <QMutexLocker>
++
++namespace {
++
++struct EvdevDeleter
++{
++    void operator()(libevdev* device) const
++    {
++        if (device)
++            libevdev_free(device);
++    }
++};
++
++struct Device
++{
++    std::string path;
++    int fd = -1;
++    std::unique_ptr<libevdev, EvdevDeleter> evdev;
++    QString guid;
++
++    Device(std::string path_, int fd_, libevdev* evdev_, QString guid_) :
++        path(std::move(path_)), fd(fd_), evdev(evdev_), guid(std::move(guid_))
++    {
++    }
++
++    ~Device()
++    {
++        if (fd >= 0)
++            close(fd);
++    }
++
++    Device(const Device&) = delete;
++    Device& operator=(const Device&) = delete;
++};
++
++bool is_joystick(libevdev* device)
++{
++    if (!libevdev_has_event_type(device, EV_ABS))
++        return false;
++
++    for (int code = BTN_JOYSTICK; code <= BTN_THUMBR; ++code)
++        if (libevdev_has_event_code(device, EV_KEY, code))
++            return true;
++
++    return false;
++}
++
++QString device_guid(libevdev* device)
++{
++    const char* name = libevdev_get_name(device);
++    const char* unique = libevdev_get_uniq(device);
++    return QStringLiteral("evdev:%1:%2:%3:%4:%5:%6")
++        .arg(libevdev_get_id_bustype(device), 4, 16, QLatin1Char('0'))
++        .arg(libevdev_get_id_vendor(device), 4, 16, QLatin1Char('0'))
++        .arg(libevdev_get_id_product(device), 4, 16, QLatin1Char('0'))
++        .arg(libevdev_get_id_version(device), 4, 16, QLatin1Char('0'))
++        .arg(QString::fromUtf8(name ? name : "unknown"))
++        .arg(QString::fromUtf8(unique ? unique : ""));
++}
++
++int button_index(unsigned code)
++{
++    // Match DirectInput's zero-based presentation for standard joystick and
++    // gamepad buttons while retaining unusual evdev codes verbatim.
++    if (code >= BTN_JOYSTICK && code <= BTN_THUMBR)
++        return static_cast<int>(code - BTN_JOYSTICK);
++    return static_cast<int>(code);
++}
++
++} // namespace
++
++struct LinuxJoystickWorker::State
++{
++    std::vector<std::unique_ptr<Device>> devices;
++    unsigned refresh_countdown = 0;
++
++    void refresh()
++    {
++        std::unordered_set<std::string> known;
++        for (const auto& device : devices)
++            known.insert(device->path);
++
++        glob_t matches {};
++        if (glob("/dev/input/event*", GLOB_NOSORT, nullptr, &matches) != 0)
++            return;
++
++        for (std::size_t i = 0; i < matches.gl_pathc; ++i)
++        {
++            std::string path(matches.gl_pathv[i]);
++            if (known.count(path))
++                continue;
++
++            const int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
++            if (fd < 0)
++                continue;
++
++            libevdev* raw = nullptr;
++            if (libevdev_new_from_fd(fd, &raw) < 0)
++            {
++                close(fd);
++                continue;
++            }
++
++            if (!is_joystick(raw))
++            {
++                libevdev_free(raw);
++                close(fd);
++                continue;
++            }
++
++            devices.push_back(std::make_unique<Device>(
++                std::move(path), fd, raw, device_guid(raw)));
++        }
++        globfree(&matches);
++    }
++};
++
++LinuxJoystickWorker::LinuxJoystickWorker() : state(std::make_unique<State>())
++{
++    start(QThread::HighPriority);
++}
++
++LinuxJoystickWorker::~LinuxJoystickWorker()
++{
++    requestInterruption();
++    wait();
++}
++
++std::unique_ptr<LinuxJoystickWorker>& LinuxJoystickWorker::instance_ptr()
++{
++    static std::unique_ptr<LinuxJoystickWorker> worker(new LinuxJoystickWorker);
++    return worker;
++}
++
++LinuxJoystickWorker& LinuxJoystickWorker::instance()
++{
++    return *instance_ptr();
++}
++
++void LinuxJoystickWorker::emit_key(const Key& key)
++{
++    for (const auto& receiver : receivers)
++        (*receiver)(key);
++}
++
++void LinuxJoystickWorker::run()
++{
++    portable::set_curthread_name("evdev shortcuts");
++
++    while (!isInterruptionRequested())
++    {
++        {
++            QMutexLocker lock(&mutex);
++            if (!receivers.empty())
++            {
++                if (state->refresh_countdown == 0)
++                {
++                    state->refresh();
++                    state->refresh_countdown = 50;
++                }
++                --state->refresh_countdown;
++
++                for (auto it = state->devices.begin(); it != state->devices.end();)
++                {
++                    Device& device = **it;
++                    bool removed = false;
++                    input_event event {};
++                    int status = 0;
++                    while ((status = libevdev_next_event(
++                                device.evdev.get(), LIBEVDEV_READ_FLAG_NORMAL, &event)) == 0)
++                    {
++                        if (event.type != EV_KEY || event.code < BTN_JOYSTICK ||
++                            event.code > BTN_THUMBR || event.value == 2)
++                            continue;
++
++                        Key key;
++                        key.guid = device.guid;
++                        key.keycode = button_index(event.code);
++                        key.held = event.value != 0;
++                        emit_key(key);
++                    }
++                    if (status == -ENODEV)
++                        removed = true;
++
++                    if (removed)
++                        it = state->devices.erase(it);
++                    else
++                        ++it;
++                }
++            }
++        }
++        QThread::msleep(20);
++    }
++}
++
++LinuxJoystickWorker::fun* LinuxJoystickWorker::add_receiver(fun& receiver)
++{
++    QMutexLocker lock(&mutex);
++    receivers.push_back(std::make_unique<fun>(receiver));
++    state->refresh_countdown = 0;
++    return receivers.back().get();
++}
++
++void LinuxJoystickWorker::remove_receiver(fun* receiver)
++{
++    QMutexLocker lock(&mutex);
++    const auto it = std::find_if(receivers.begin(), receivers.end(),
++        [receiver](const auto& candidate) { return candidate.get() == receiver; });
++    if (it != receivers.end())
++        receivers.erase(it);
++}
++
++#endif
+diff --git a/gui/listener.h b/gui/listener.h
+index 011ca13..0406a57 100644
+--- a/gui/listener.h
++++ b/gui/listener.h
+@@ -12,5 +12,7 @@
+ #ifdef _WIN32
+ #   include "input/keybinding-worker.hpp"
++#else
++#   include "input/linux-joystick-shortcuts.hpp"
+ #endif
+ 
+ #include "ui_listener.h"
+@@ -25,9 +27,12 @@ class OTR_GUI_EXPORT keyboard_listener : public QDialog
+ #ifdef _WIN32
+     void receive_key(const Key& k);
+ 
+     KeybindingWorker::Token token{[this](const Key& k) {receive_key(k);}};
+ #else
++    void receive_joystick_button(const Key& k);
+     void keyPressEvent(QKeyEvent* event) override;
++
++    LinuxJoystickWorker::Token token{[this](const Key& k) { receive_joystick_button(k); }};
+ #endif
+ 
+     Ui_keyboard_listener ui;
+diff --git a/gui/listener.cpp b/gui/listener.cpp
+index a2aa3c2..387b530 100644
+--- a/gui/listener.cpp
++++ b/gui/listener.cpp
+@@ -47,6 +47,11 @@ keyboard_listener::keyboard_listener(QWidget* parent) : QDialog(parent)
+ }
+ 
+ #if !defined _WIN32
++void keyboard_listener::receive_joystick_button(const Key& key)
++{
++    emit joystick_button_pressed(key.guid, key.keycode, key.held);
++}
++
+ void keyboard_listener::keyPressEvent(QKeyEvent* event)
+ {
+     switch (event->key())
+diff --git a/input/shortcuts.h b/input/shortcuts.h
+index 68ac34f..2adbd82 100644
+--- a/input/shortcuts.h
++++ b/input/shortcuts.h
+@@ -13,6 +13,7 @@
+ #ifdef _WIN32
+ #   include "input/keybinding-worker.hpp"
+ #else
++#   include "input/linux-joystick-shortcuts.hpp"
+ #   include "qxt-mini/QxtGlobalShortcut"
+ #endif
+ 
+@@ -30,27 +31,35 @@ using namespace options;
+ 
+ class OTR_INPUT_EXPORT Shortcuts final
+ {
+-#ifdef _WIN32
+     void receiver(const Key& k);
++#ifndef _WIN32
++    struct LinuxBinding
++    {
++        QxtGlobalShortcut* keyboard = nullptr;
++        QString guid;
++        int button = -1;
++    };
+ #endif
+ 
+ public:
+     using K =
+ #ifndef _WIN32
+-    QxtGlobalShortcut*
++    LinuxBinding
+ #else
+     Key
+ #endif
+     ;
+ 
+     using fun = std::function<void(bool)>;
+     using tt = std::tuple<K, fun, bool>;
+     using t_key = std::tuple<key_opts&, fun, bool>;
+     using t_keys = std::vector<t_key>;
+     std::vector<tt> keys;
+ #ifdef _WIN32
+     KeybindingWorker::Token key_token {[this](const Key& k) { receiver(k); }};
+ #if OPENTRACK_HAS_GAMEINPUT
+     std::unique_ptr<opentrack::gameinput::Worker> gi;
+ #endif
++#else
++    LinuxJoystickWorker::Token joystick_token {[this](const Key& k) { receiver(k); }};
+ #endif
+diff --git a/input/shortcuts.cpp b/input/shortcuts.cpp
+index dbd8bd9..d9e301e 100644
+--- a/input/shortcuts.cpp
++++ b/input/shortcuts.cpp
+@@ -23,12 +23,9 @@ void Shortcuts::free_binding(K& key)
+ {
+ #ifndef _WIN32
+-    if (key)
+-    {
+-        //key->setEnabled(false);
+-        //key->setShortcut(QKeySequence());
+-        delete key;
+-        key = nullptr;
+-    }
++    delete key.keyboard;
++    key.keyboard = nullptr;
++    key.guid = {};
++    key.button = -1;
+ #else
+     key.keycode = 0;
+     key.guid = {};
+@@ -41,20 +38,24 @@ bool Shortcuts::make_shortcut(K& key, const key_opts& k, bool held)
+     (void)held;
+     using sh = QxtGlobalShortcut;
+-    if (key)
++    if (key.keyboard)
+     {
+         free_binding(key);
+     }
+ 
+-    key = new sh;
++    if (!k.guid->isEmpty())
++    {
++        key.guid = k.guid;
++        key.button = k.button;
++        return true;
++    }
+ 
+     if (k.keycode != "")
+     {
+-        key->setShortcut(QKeySequence::fromString(k.keycode, QKeySequence::PortableText));
+-        key->setEnabled();
++        key.keyboard = new sh;
++        key.keyboard->setShortcut(QKeySequence::fromString(k.keycode, QKeySequence::PortableText));
++        key.keyboard->setEnabled();
+         return true;
+     }
+-    delete key;
+-    key = nullptr;
+     return false;
+ #else
+     key = {};
+@@ -104,8 +105,6 @@ bool Shortcuts::make_shortcut(K& key, const key_opts& k, bool held)
+ #endif
+ }
+ 
+-#ifdef _WIN32
+-
+ void Shortcuts::receiver(const Key& key)
+ {
+     const auto sz = (unsigned)keys.size();
+@@ -115,4 +114,12 @@ void Shortcuts::receiver(const Key& key)
+         auto& [k, f, held] = keys[i];
++#ifndef _WIN32
++        if (k.guid.isEmpty())
++            continue;
++        if (key.guid != k.guid || key.keycode != k.button)
++            continue;
++        if (!key.held && held)
++            continue;
++#else
+         if (key.guid != k.guid)
+             continue;
+         if (key.keycode != k.keycode)
+@@ -129,6 +134,7 @@ void Shortcuts::receiver(const Key& key)
+                 continue;
+ #endif
+         }
++#endif
+ 
+         f(key.held);
+     }
+@@ -136,8 +142,6 @@ void Shortcuts::receiver(const Key& key)
+ 
+ }
+ 
+-#endif
+-
+ Shortcuts::~Shortcuts() noexcept { reload({}); }
+ 
+ Shortcuts::Shortcuts()
+@@ -152,9 +156,7 @@ void Shortcuts::reload(const t_keys& keys_)
+ #ifndef _WIN32
+     for (tt& tuple : keys)
+     {
+-        K k;
+-        std::tie(k, std::ignore, std::ignore) = tuple;
+-        delete k;
++        free_binding(std::get<0>(tuple));
+     }
+ #endif
+     keys = std::vector<tt>();
+@@ -165,7 +167,7 @@ void Shortcuts::reload(const t_keys& keys_)
+ #ifdef _WIN32
+         K k;
+ #else
+-        K k(nullptr);
++        K k;
+ #endif
+         bool got_shortcut = make_shortcut(k, opts, held);
+ 
+@@ -178,7 +180,10 @@ void Shortcuts::reload(const t_keys& keys_)
+             tt& kk_ = keys.back();
+             auto fn = std::get<1>(kk_);
+             bool held_ = held;
+-            QObject::connect(k, &QxtGlobalShortcut::activated, [fn, held_](bool keydown) {
++            auto* keyboard = std::get<0>(kk_).keyboard;
++            if (!keyboard)
++                continue;
++            QObject::connect(keyboard, &QxtGlobalShortcut::activated, [fn, held_](bool keydown) {
+                 if (keydown || !held_)
+                     fn(keydown);
+             });

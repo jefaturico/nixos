@@ -2,19 +2,27 @@
 
 let
   sourceRoot = ../../eureka;
-  # Local Rust checks create a large target/ tree.  Never copy those build
-  # artifacts into the Nix source; .gitignore is the single exclusion list.
-  src = pkgs.nix-gitignore.gitignoreSource [ ] sourceRoot;
+  # Lisp and test edits must not invalidate the comparatively expensive native
+  # build.  Include only files Cargo and the protocol generator consume.
+  nativeSource = pkgs.lib.fileset.toSource {
+    root = sourceRoot;
+    fileset = pkgs.lib.fileset.unions [
+      (sourceRoot + "/Cargo.lock")
+      (sourceRoot + "/Cargo.toml")
+      (sourceRoot + "/protocol")
+      (sourceRoot + "/src")
+    ];
+  };
 
   module = pkgs.rustPlatform.buildRustPackage {
     name = "libeureka";
-    inherit src;
+    src = nativeSource;
     nativeBuildInputs = [ pkgs.pkg-config ];
     buildInputs = [
       pkgs.emacs-pgtk
       pkgs.libxkbcommon
     ];
-    cargoLock.lockFile = src + "/Cargo.lock";
+    cargoLock.lockFile = nativeSource + "/Cargo.lock";
 
     postInstall = ''
       mkdir -p $out/share/emacs/site-lisp

@@ -1,5 +1,5 @@
 {
-  description = "NixOS Flake for Titan, Tethys, and Iapetus";
+  description = "NixOS Flake for Titan, Tethys, Prometheus, and Iapetus";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
@@ -52,6 +52,7 @@
       nixosConfigurations = {
         titan = mkDesktopHost "titan";
         tethys = mkDesktopHost "tethys";
+        prometheus = mkDesktopHost "prometheus";
         iapetus = mkServerHost "iapetus";
 
         # Temporary aliases for rebuilding machines that still have their old hostname.

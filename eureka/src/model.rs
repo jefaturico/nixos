@@ -23,7 +23,7 @@ impl ClientLifecycle {
     }
 
     pub(crate) fn request_close(&mut self) -> bool {
-        if !matches!(self, Self::Discovered | Self::Active) {
+        if *self == Self::CloseRequested {
             return false;
         }
         *self = Self::CloseRequested;
@@ -88,13 +88,16 @@ mod tests {
     }
 
     #[test]
-    fn lifecycle_rejects_duplicate_and_late_events() {
+    fn lifecycle_coalesces_pending_close_and_allows_retry() {
         let mut lifecycle = ClientLifecycle::Discovered;
         assert!(lifecycle.request_close());
         assert!(!lifecycle.request_close());
         assert!(!lifecycle.buffer_ready());
         assert!(lifecycle.take_close_request());
         assert!(!lifecycle.take_close_request());
+        assert!(lifecycle.request_close());
+        assert_eq!(lifecycle, ClientLifecycle::CloseRequested);
+        assert!(lifecycle.take_close_request());
     }
 
     #[test]

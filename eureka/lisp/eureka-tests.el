@@ -31,7 +31,7 @@
         (eureka--post-command-restore-focus)
         (should (= scheduled 1))))))
 
-(ert-deftest eureka-client-close-is-requested-once-and-keeps-buffer ()
+(ert-deftest eureka-client-close-can-be-retried-and-keeps-buffer ()
   (let ((eureka-handle t)
         (eureka-window 7)
         (eureka--closed-by-wm nil)
@@ -45,9 +45,77 @@
       (should-not (eureka--confirm-client-close))
       (should eureka--close-requested)
       (should-not (eureka--confirm-client-close))
-      (should (= requests 1))
+      (should (= requests 2))
       (setq eureka--closed-by-wm t)
       (should (eureka--confirm-client-close)))))
+
+(ert-deftest eureka-batched-key-events-preserve-native-order ()
+  (let ((commands '((key-event . ?a) (key-event . ?b)))
+        (unread-command-events '(?z)))
+    (cl-letf (((symbol-function 'eureka-get-next-command)
+               (lambda (_) (pop commands)))
+              ((symbol-function 'eureka--sync-state) #'ignore))
+      (eureka--handle-commands))
+    (should (equal unread-command-events
+                   '((t . ?a) (t . ?b) ?z)))))
+
+(ert-deftest eureka-batched-key-events-survive-later-handler-error ()
+  (let ((first t)
+        (unread-command-events '(?z)))
+    (cl-letf (((symbol-function 'eureka-get-next-command)
+               (lambda (_)
+                 (if first
+                     (progn
+                       (setq first nil)
+                       '(key-event . ?a))
+                   (error "test error")))))
+      (should-error (eureka--handle-commands)))
+    (should (equal unread-command-events '((t . ?a) ?z)))))
+
+(ert-deftest eureka-command-handler-retries-after-error ()
+  (let ((eureka-handle t)
+        (retries 0))
+    (cl-letf (((symbol-function 'eureka--handle-commands)
+               (lambda () (error "test error")))
+              ((symbol-function 'eureka--handle-event)
+               (lambda (&rest _) (cl-incf retries)))
+              ((symbol-function 'message) #'ignore))
+      (eureka--run-command-handler))
+    (should (= retries 1))))
+
+(ert-deftest eureka-command-handler-does-not-retry-after-disable ()
+  (let ((eureka-handle t)
+        (retries 0))
+    (cl-letf (((symbol-function 'eureka--handle-commands)
+               (lambda ()
+                 (setq eureka-handle nil)
+                 (error "test fatal error")))
+              ((symbol-function 'eureka--handle-event)
+               (lambda (&rest _)
+                 (when eureka-handle
+                   (cl-incf retries))))
+              ((symbol-function 'message) #'ignore))
+      (eureka--run-command-handler))
+    (should (= retries 0))))
+
+(ert-deftest eureka-disable-removes-client-mirrors-and-buffer-predicate ()
+  (let ((client (generate-new-buffer " eureka-disable-client"))
+        (eureka-handle nil))
+    (unwind-protect
+        (progn
+          (with-current-buffer client
+            (eureka-mode)
+            (setq-local eureka-window 7))
+          (puthash 7 client eureka--buffers-by-window-id)
+          (set-frame-parameter nil 'buffer-predicate
+                               #'eureka--buffer-predicate)
+          (cl-letf (((symbol-function 'message) #'ignore))
+            (eureka-disable))
+          (should-not (buffer-live-p client))
+          (should (= (hash-table-count eureka--buffers-by-window-id) 0))
+          (should-not (frame-parameter nil 'buffer-predicate)))
+      (when (buffer-live-p client)
+        (kill-buffer client)))))
 
 (ert-deftest eureka-focus-only-sync-omits-layout-recalculation ()
   (let ((eureka-handle t)

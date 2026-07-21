@@ -23,7 +23,6 @@ in
       GTK_CSD = "0";
       QT_QPA_PLATFORM = "wayland";
       QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
-      NNN_OPTS = "eEHR"; # entry, exit on q, hidden, relative
       PATH = "$HOME/.local/bin:$PATH";
       XDG_DATA_DIRS = "$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS";
     };

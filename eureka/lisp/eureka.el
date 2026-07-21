@@ -29,6 +29,10 @@
   "Hook run at the end of `eureka-enable'."
   :type 'hook)
 
+(defcustom eureka-disable-hook nil
+  "Hook run after Eureka has released its session resources."
+  :type 'hook)
+
 (defcustom eureka-input-repeat-rate 60
   "Keyboard repeat rate configured through River."
   :type 'integer)
@@ -272,70 +276,77 @@ to the user's normal `display-buffer' rules."
   ;; The process filter only schedules this function, and
   ;; `eureka--command-handler-scheduled' coalesces notifications. Emacs executes
   ;; this body serially, so an additional mutex adds no protection.
-    (while-let ((cmd (eureka-get-next-command eureka-handle)))
-      (pcase cmd
-        (`(key-event . ,key)
-         (setq eureka--focus-dirty t
-               eureka--restore-focus-after-command t)
-         (push (cons t key) unread-command-events))
+  (let (injected-events)
+    (unwind-protect
+        (progn
+          (while-let ((cmd (eureka-get-next-command eureka-handle)))
+            (pcase cmd
+              (`(key-event . ,key)
+               (setq eureka--focus-dirty t
+                     eureka--restore-focus-after-command t)
+               (push (cons t key) injected-events))
 
-        (`(new-window . ,window)
-         (let ((buffer (eureka--create-buffer window)))
-           ;; River must not leave the client undisplayed merely because
-           ;; an Emacs display rule or advice failed. Activate the native
-           ;; window once its backing buffer exists, then attempt placement.
-           (eureka-notify-buffer-created eureka-handle window)
-           (condition-case err
-               (eureka--display-new-buffer buffer)
-             (error
-              (message "eureka: could not display new window buffer: %s" err)))
-           (eureka--mark-layout-dirty)))
+              (`(new-window . ,window)
+               (let ((buffer (eureka--create-buffer window)))
+                 ;; River must not leave the client undisplayed merely because
+                 ;; an Emacs display rule or advice failed. Activate the native
+                 ;; window once its backing buffer exists, then attempt placement.
+                 (eureka-notify-buffer-created eureka-handle window)
+                 (condition-case err
+                     (eureka--display-new-buffer buffer)
+                   (error
+                    (message "eureka: could not display new window buffer: %s" err)))
+                 (eureka--mark-layout-dirty)))
 
-        (`(window-closed . ,window)
-         (when-let* ((buf (eureka--find-buffer-for-window window)))
-           (eureka--kill-closed-buffer buf)))
+              (`(window-closed . ,window)
+               (when-let* ((buf (eureka--find-buffer-for-window window)))
+                 (eureka--kill-closed-buffer buf)))
 
-        (`(minimize-requested . ,window)
-         (when-let* ((buf (eureka--find-buffer-for-window window)))
-           (with-current-buffer buf
-             (bury-buffer))))
+              (`(minimize-requested . ,window)
+               (when-let* ((buf (eureka--find-buffer-for-window window)))
+                 (with-current-buffer buf
+                   (bury-buffer))))
 
-        (`(focused . ,window)
-         (when-let* ((buf (eureka--find-buffer-for-window window))
-                     (win (get-buffer-window buf t)))
-           (select-window win 'norecord)))
+              (`(focused . ,window)
+               (when-let* ((buf (eureka--find-buffer-for-window window))
+                           (win (get-buffer-window buf t)))
+                 (select-window win 'norecord)))
 
-        (`(fatal-error . ,message)
-         (eureka-disable)
-         (error "eureka native window manager stopped: %s" message))
+              (`(fatal-error . ,message)
+               (eureka-disable)
+               (error "eureka native window manager stopped: %s" message))
 
-        (`(app-id-change ,window ,app-id)
-         (when-let* ((buf (eureka--find-buffer-for-window window)))
-           (with-current-buffer buf
-             (setq eureka-app-id app-id))))
+              (`(app-id-change ,window ,app-id)
+               (when-let* ((buf (eureka--find-buffer-for-window window)))
+                 (with-current-buffer buf
+                   (setq eureka-app-id app-id))))
 
-        (`(title-change ,window ,title)
-         (when-let* ((buf (eureka--find-buffer-for-window window)))
-           (with-current-buffer buf
-             (setq eureka-title title)
-             (rename-buffer (eureka--make-buffer-name eureka-app-id title) t))))
+              (`(title-change ,window ,title)
+               (when-let* ((buf (eureka--find-buffer-for-window window)))
+                 (with-current-buffer buf
+                   (setq eureka-title title)
+                   (rename-buffer (eureka--make-buffer-name eureka-app-id title) t))))
 
-        ('frame-request (make-frame))
+              ('frame-request (make-frame))
 
-        (`(discard-frame . ,frame-name)
-         (when-let* ((frame-names (make-frame-names-alist))
-                     (frame (alist-get frame-name frame-names nil nil #'equal)))
-           (delete-frame frame)))
+              (`(discard-frame . ,frame-name)
+               (when-let* ((frame-names (make-frame-names-alist))
+                           (frame (alist-get frame-name frame-names nil nil #'equal)))
+                 (delete-frame frame)))
 
-        (`(message . ,msg)
-         (message "eureka: %s" msg))
+              (`(message . ,msg)
+               (message "eureka: %s" msg))
 
-        (_ (message "eureka: ignoring unknown native command: %s" cmd))))
+              (_ (message "eureka: ignoring unknown native command: %s" cmd))))
 
-    ;; Commands above may display, bury, select, or destroy windows.  Snapshot
-    ;; geometry afterwards so the native side never receives the layout from
-    ;; immediately before the event it is handling.
-  (eureka--sync-state))
+          ;; Commands above may display, bury, select, or destroy windows.
+          ;; Snapshot geometry afterwards so the native side never receives
+          ;; the layout from immediately before the event it is handling.
+          (eureka--sync-state))
+      ;; Preserve the native FIFO order while keeping intercepted keys ahead
+      ;; of later direct input already waiting in Emacs.
+      (setq unread-command-events
+            (nconc (nreverse injected-events) unread-command-events)))))
 
 (defun eureka--handle-event (&rest _) ;; unused process filter args
   (when (and eureka-handle (not eureka--command-handler-scheduled))
@@ -348,7 +359,12 @@ to the user's normal `display-buffer' rules."
   (when eureka-handle
     (condition-case err
         (eureka--handle-commands)
-      (error (message "eureka: command handler failed: %s" err)))))
+      (error
+       (message "eureka: command handler failed: %s" err)
+       ;; The native wake flag is cleared only after the queue is observed
+       ;; empty.  Retry after a bad command so future notifications cannot
+       ;; remain suppressed indefinitely.
+       (eureka--handle-event)))))
 
 ;; Major mode for eureka-managed buffers
 (defvar-local eureka-window nil
@@ -368,7 +384,11 @@ to the user's normal `display-buffer' rules."
    (eureka--closed-by-wm t)
    ((not eureka-handle) t)
    (eureka--close-requested
-    (message "eureka: waiting for the client to close")
+    ;; River exposes a cooperative close request, not a safe force-kill
+    ;; operation.  Retry the request while retaining the buffer until the
+    ;; client confirms that it closed.
+    (eureka-close-window eureka-handle eureka-window)
+    (message "eureka: close requested again; the application may refuse")
     nil)
    (t
     (eureka-close-window eureka-handle eureka-window)
@@ -641,35 +661,47 @@ starting Emacs inside of river."
 (defun eureka-disable ()
   "Disable Eureka and remove all global hooks and advice it installed."
   (interactive)
-  (when eureka-handle
-    (ignore-errors (eureka-stop-wm eureka-handle)))
-  (setq eureka-handle nil
-        eureka--layout-dirty t
-        eureka--focus-dirty t
-        eureka--restore-focus-after-command nil
-        eureka--command-handler-scheduled nil)
-  (clrhash eureka--buffers-by-window-id)
-  (setq eureka--layout-generation 0)
-  (setq eureka--frame-prefix nil)
-  (when (timerp eureka--sync-timer)
-    (cancel-timer eureka--sync-timer))
-  (setq eureka--sync-timer nil)
-  (when (process-live-p eureka--event-process)
-    (delete-process eureka--event-process))
-  (setq eureka--event-process nil)
-  (remove-hook 'after-make-frame-functions #'eureka--set-frame-name)
-  (remove-hook 'window-configuration-change-hook #'eureka--mark-layout-dirty)
-  (remove-hook 'window-selection-change-functions #'eureka--mark-focus-dirty)
-  (remove-hook 'window-buffer-change-functions #'eureka--mark-layout-dirty)
-  (remove-hook 'minibuffer-setup-hook #'eureka--focus-frame-now)
-  (remove-hook 'minibuffer-exit-hook #'eureka--mark-focus-dirty)
-  (remove-hook 'tab-bar-tab-post-select-functions #'eureka--mark-layout-dirty)
-  (remove-hook 'post-command-hook #'eureka--post-command-restore-focus)
-  (advice-remove 'split-window-below #'eureka--split-window-advice)
-  (advice-remove 'split-window-right #'eureka--split-window-advice)
-  (advice-remove 'set-window-buffer #'eureka--set-window-buffer-advice)
-  (advice-remove 'handle-focus-in #'eureka--suppress-focus-event)
-  (advice-remove 'handle-focus-out #'eureka--suppress-focus-event)
-  (message "Eureka disabled"))
+  (let ((client-buffers
+         (seq-filter #'eureka--is-eureka-buffer (buffer-list))))
+    (when eureka-handle
+      (ignore-errors (eureka-stop-wm eureka-handle)))
+    (setq eureka-handle nil
+          eureka--layout-dirty t
+          eureka--focus-dirty t
+          eureka--restore-focus-after-command nil
+          eureka--command-handler-scheduled nil)
+    ;; These buffers mirror native clients; they are not the clients themselves.
+    ;; Removing them after dropping the handle preserves the applications while
+    ;; ensuring no stale window IDs survive internal failure cleanup.
+    (dolist (buffer client-buffers)
+      (when (buffer-live-p buffer)
+        (kill-buffer buffer)))
+    (clrhash eureka--buffers-by-window-id)
+    (setq eureka--layout-generation 0)
+    (setq eureka--frame-prefix nil)
+    (when (timerp eureka--sync-timer)
+      (cancel-timer eureka--sync-timer))
+    (setq eureka--sync-timer nil)
+    (when (process-live-p eureka--event-process)
+      (delete-process eureka--event-process))
+    (setq eureka--event-process nil)
+    (remove-hook 'after-make-frame-functions #'eureka--set-frame-name)
+    (remove-hook 'window-configuration-change-hook #'eureka--mark-layout-dirty)
+    (remove-hook 'window-selection-change-functions #'eureka--mark-focus-dirty)
+    (remove-hook 'window-buffer-change-functions #'eureka--mark-layout-dirty)
+    (remove-hook 'minibuffer-setup-hook #'eureka--focus-frame-now)
+    (remove-hook 'minibuffer-exit-hook #'eureka--mark-focus-dirty)
+    (remove-hook 'tab-bar-tab-post-select-functions #'eureka--mark-layout-dirty)
+    (remove-hook 'post-command-hook #'eureka--post-command-restore-focus)
+    (advice-remove 'split-window-below #'eureka--split-window-advice)
+    (advice-remove 'split-window-right #'eureka--split-window-advice)
+    (advice-remove 'set-window-buffer #'eureka--set-window-buffer-advice)
+    (advice-remove 'handle-focus-in #'eureka--suppress-focus-event)
+    (advice-remove 'handle-focus-out #'eureka--suppress-focus-event)
+    ;; `undecorated' belongs to the surrounding Emacs configuration, but this
+    ;; buffer predicate is installed solely by Eureka.
+    (modify-all-frames-parameters '((buffer-predicate . nil)))
+    (run-hooks 'eureka-disable-hook)
+    (message "Eureka disabled")))
 
 (provide 'eureka)
