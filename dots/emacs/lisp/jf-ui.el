@@ -34,6 +34,16 @@
 
 (setq display-line-numbers-type t)
 
+(use-package visual-fill-column
+  :commands visual-fill-column-mode)
+
+(defun jf/reading-layout ()
+  "Display the current buffer in a centered 80-column reading area."
+  (setq-local visual-fill-column-width 80
+              visual-fill-column-center-text t)
+  (visual-line-mode 1)
+  (visual-fill-column-mode 1))
+
 (defun jf/display-line-numbers-unless-large ()
   (unless (> (buffer-size) 100000)
     (display-line-numbers-mode 1)))

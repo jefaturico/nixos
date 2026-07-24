@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   ...
 }:
@@ -7,8 +8,26 @@ let
   eurekaPackage = import ./packages/eureka.nix { inherit pkgs; };
   jrwmPackage = pkgs.callPackage ./packages/jrwm.nix { };
 
+  # The nixpkgs snapshot predates gptel's ChatGPT Plus/Pro OAuth backend.
+  # Pin the upstream revision so subscription authentication works without an
+  # OpenAI API key.  Update the revision and hash together.
+  gptelOauth = (pkgs.emacsPackagesFor pkgs.emacs-pgtk).gptel.overrideAttrs (_old: {
+    version = "0.9.9.5-unstable-2026-07-22";
+    src = pkgs.fetchFromGitHub {
+      owner = "karthink";
+      repo = "gptel";
+      rev = "8701e2bd80c5d2091ce2decef5d34d6fce4a3ada";
+      hash = "sha256-RTFLoswKWkMsB1KNMtIdlcM6/LnsL5/seQHsHglFxWs=";
+    };
+  });
+
   eurekaEmacs = (pkgs.emacsPackagesFor pkgs.emacs-pgtk).emacsWithPackages (
-    import ./emacs-packages.nix { extraPackages = [ eurekaPackage ]; }
+    import ./emacs-packages.nix {
+      extraPackages = [
+        eurekaPackage
+        gptelOauth
+      ];
+    }
   );
 
   eurekaSessionVariables = {
@@ -20,6 +39,14 @@ let
     XKB_DEFAULT_LAYOUT = "us";
     XKB_DEFAULT_VARIANT = "altgr-intl";
     XKB_DEFAULT_OPTIONS = "altwin:menu_win";
+  };
+
+  riverPortalBackends = {
+    default = [ "gtk" ];
+    "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+    "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+    "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+    "org.freedesktop.impl.portal.Inhibit" = [ "none" ];
   };
 
   eurekaSessionExports = pkgs.lib.concatStringsSep "\n" (
@@ -282,7 +309,12 @@ let
         --service-type=exec \
         --setenv="XDG_RUNTIME_DIR=$runtime_dir" \
         --setenv="WAYLAND_DISPLAY=$wayland_display" \
-        --setenv="PATH=${pkgs.lib.makeBinPath [ pkgs.foot pkgs.fuzzel ]}:$PATH" \
+        --setenv="PATH=${
+          pkgs.lib.makeBinPath [
+            pkgs.foot
+            pkgs.fuzzel
+          ]
+        }:$PATH" \
         ${jrwmPackage}/bin/jrwm
 
       sleep 0.5
@@ -305,7 +337,10 @@ in
 {
   services.displayManager = {
     defaultSession = "eureka";
-    sessionPackages = [ eurekaDesktopSession eurekaDebugDesktopSession ];
+    sessionPackages = [
+      eurekaDesktopSession
+      eurekaDebugDesktopSession
+    ];
   };
 
   environment.sessionVariables = eurekaSessionVariables;
@@ -335,13 +370,9 @@ in
       pkgs.xdg-desktop-portal-gtk
     ];
     config = {
-      river = {
-        default = [ "gtk" ];
-        "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
-        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-        "org.freedesktop.impl.portal.Inhibit" = [ "none" ];
-      };
+      river = riverPortalBackends;
+      eureka = riverPortalBackends;
+      eureka-debug = riverPortalBackends;
     };
   };
 }

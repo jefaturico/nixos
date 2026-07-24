@@ -8,17 +8,6 @@
 
 ;;; Eureka input policy
 
-(defvar-local jf-eureka--initial-placeholder nil
-  "Non-nil when this buffer is only the initial workspace placeholder.")
-
-(defun jf-eureka--placeholder-buffer-p (buffer)
-  "Return non-nil when BUFFER should be replaced by the first Eureka client."
-  (with-current-buffer buffer
-    (or jf-eureka--initial-placeholder
-        (string= (buffer-name) "*scratch*"))))
-
-(setopt eureka-placeholder-buffer-predicate #'jf-eureka--placeholder-buffer-p)
-
 (setopt eureka-intercept-prefixes
         '("C-x" "C-u" "C-h" "M-x" "s-x" "s-v" "s-<return>"
           "s-q" "s-k" "s-b" "s-o"
@@ -77,7 +66,8 @@
                       (jf-eureka-move-buffer-to-workspace workspace-digit)))))
 
 (global-set-key (kbd "s-x") #'jf-eureka-launch-program)
-(global-set-key (kbd "s-v") #'vterm-other-window)
+(global-set-key (kbd "s-v") #'jf/vterm-new)
+(global-set-key (kbd "s-c") #'jf/codex)
 (global-set-key (kbd "s-q") #'delete-window)
 (global-set-key (kbd "s-k") #'kill-current-buffer)
 (global-set-key (kbd "s-b") #'consult-buffer)

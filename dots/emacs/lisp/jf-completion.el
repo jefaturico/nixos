@@ -40,7 +40,7 @@
 (use-package which-key
   :defer 2
   :config
-  (setq which-key-idle-delay 1.0
+  (setq which-key-idle-delay 0.0
         which-key-idle-secondary-delay 0.05)
   (which-key-mode))
 

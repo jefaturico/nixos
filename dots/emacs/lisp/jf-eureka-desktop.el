@@ -143,6 +143,35 @@
   (interactive)
   (jf-eureka--set-brightness "10%-"))
 
+;;; Lid action
+
+(defconst jf-eureka--lid-monitor-service "lid-monitor-only.service"
+  "User service implementing the runtime monitor-only lid action.")
+
+(defun jf-eureka--lid-monitor-only-p ()
+  "Return non-nil when the monitor-only lid action is active."
+  (zerop
+   (call-process
+    "systemctl" nil nil nil "--user" "is-active" "--quiet"
+    jf-eureka--lid-monitor-service)))
+
+(defun jf-eureka-toggle-lid-action ()
+  "Toggle lid close between suspend and turning off the monitor.
+
+Suspend is the default.  The monitor-only action lasts for the current
+graphical session.  It still suspends when the lid is closed at 10% battery
+or less, or when the battery falls to 10% while the lid remains closed."
+  (interactive)
+  (unless (executable-find "systemctl")
+    (user-error "systemctl not found"))
+  (let* ((monitor-only (jf-eureka--lid-monitor-only-p))
+         (verb (if monitor-only "stop" "start")))
+    (jf-eureka--call-process-string
+     "systemctl" "--user" verb jf-eureka--lid-monitor-service)
+    (jf-eureka--notify
+     "Lid action"
+     (if monitor-only "suspend" "turn off monitor"))))
+
 ;;; Workspaces
 
 (defun jf-eureka-workspace-name (digit)

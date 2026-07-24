@@ -1,28 +1,14 @@
-;;; jf-org.el --- Org editing and agenda dashboard -*- lexical-binding: t; -*-
+;;; jf-org.el --- Org editing and agenda -*- lexical-binding: t; -*-
 
 (require 'cl-lib)
-(require 'savehist)
 (require 'use-package)
 
-(declare-function jf/startup-mark "early-init" (event))
-
-(defvar org-agenda-custom-commands)
+;; Declared by org-agenda.el.  Declare them special before the lexical bindings
+;; below are read, even though org-agenda itself is loaded lazily.
+(defvar org-agenda-buffer-name "*Org Agenda*")
+(defvar org-agenda-skip-function nil)
 
 ;;; Presentation helpers
-
-(use-package visual-fill-column
-  :custom (visual-fill-column-center-text t)
-  :commands visual-fill-column-mode)
-
-(defun jf/visual-fill-org ()
-  "Center Org buffers in a readable column width."
-  (setq visual-fill-column-width 72)
-  (visual-fill-column-mode 1))
-
-(defun jf/visual-fill-agenda ()
-  "Center agenda buffers in a wider column."
-  (setq visual-fill-column-width 100)
-  (visual-fill-column-mode 1))
 
 (defface jf/org-agenda-top-padding
   '((t (:inherit default :height 0.25 :extend t :box nil
@@ -71,11 +57,18 @@
 
 ;;; Org editing
 
+(defconst jf/org-drill-directory
+  (expand-file-name "~/documents/org/drill/")
+  "Directory containing Org-Drill card files.")
+
+(defun jf/org-drill-capture-file ()
+  "Return the default flashcard file, creating its directory if needed."
+  (make-directory jf/org-drill-directory t)
+  (expand-file-name "flashcards.org" jf/org-drill-directory))
+
 (use-package org
-  :hook ((org-mode . visual-line-mode)
-         (org-mode . jf/visual-fill-org)
+  :hook ((org-mode . jf/reading-layout)
          (org-mode . jf/org-disable-prose-completion)
-         (org-agenda-mode . jf/visual-fill-agenda)
          (org-agenda-mode . jf/org-agenda-add-top-padding))
   :config
   (setq org-directory "~/documents/org/"
@@ -91,9 +84,17 @@
            (file "~/documents/org/inbox.org")
            "* [%<%Y-%m-%d %H:%M>] %?"
           :empty-lines 1)
-          ("a" "agenda task" entry
+          ("t" "task" entry
            (file+headline "~/documents/org/agenda.org" "Tasks")
-           "* TODO %? %^g"
+           "* TODO %?"
+           :empty-lines 1)
+          ("e" "event" entry
+           (file+headline "~/documents/org/agenda.org" "Events")
+           "* %?\n%^T"
+           :empty-lines 1)
+          ("f" "flashcard" entry
+           (file jf/org-drill-capture-file)
+           "* %^{Question} :drill:\n** Answer\n%?"
            :empty-lines 1))
 
         org-agenda-files '("~/documents/org/agenda.org")
@@ -102,7 +103,6 @@
         org-hide-emphasis-markers t
         org-startup-truncated nil
         org-return-follows-link t
-        org-agenda-span 'day
         org-agenda-window-setup 'current-window
         org-agenda-block-separator nil
         org-agenda-compact-blocks t
@@ -147,10 +147,11 @@
         (lambda (message)
           (notifications-notify :title "Org timer" :body message))))
 
-;;; Agenda lifecycle and dashboard
+;;; Agenda lifecycle and startup
 
-(defun jf/org-archive-completed-before-today ()
-  "Archive completed agenda entries closed before the current calendar day."
+(defun jf/org-agenda-archive-completed ()
+  "Archive agenda tasks completed before the current calendar day."
+  (interactive)
   (require 'org)
   (require 'org-archive)
   (let* ((now (decode-time))
@@ -186,156 +187,36 @@
                (cl-incf archived)))
             (when (buffer-modified-p)
               (save-buffer))))))
+    (message "Archived %d completed task%s"
+             archived (if (= archived 1) "" "s"))
     archived))
 
-(defvar jf/org-archive-last-run-date nil
-  "Calendar date when automatic Org archival last completed.")
-
-(defvar jf/org-archive-timer nil
-  "Idle timer responsible for once-daily Org archival.")
-
-(add-to-list 'savehist-additional-variables 'jf/org-archive-last-run-date)
-
-(defun jf/org-archive-daily-maintenance ()
-  "Archive old completed tasks once per calendar day while Emacs is idle."
-  (let ((today (format-time-string "%Y-%m-%d")))
-    (unless (equal today jf/org-archive-last-run-date)
-      (let ((count (jf/org-archive-completed-before-today)))
-        (setq jf/org-archive-last-run-date today)
-        (when (> count 0)
-          (message "Archived %d completed task%s from previous days"
-                   count (if (= count 1) "" "s")))))))
-
-(when (timerp jf/org-archive-timer)
-  (cancel-timer jf/org-archive-timer))
-(setq jf/org-archive-timer
-      (run-with-idle-timer 60 3600 #'jf/org-archive-daily-maintenance))
-
-(defun jf/initial-agenda-buffer ()
-  "Build and return the agenda used as the initial buffer."
-  (jf/startup-mark "initial agenda start")
-  (jf/startup-mark "require org-agenda start")
-  (require 'org-agenda)
-  (jf/startup-mark "require org-agenda end")
-  (let ((this-command 'jf/org-agenda-dashboard)
-        ;; Restoring an on-disk element cache costs far more than parsing the
-        ;; 1.8 KB agenda source.  Keep persistent caching for normal Org files.
-        (org-element-cache-persistent nil))
-    (jf/startup-mark "agenda dashboard start")
-    (jf/org-agenda-dashboard)
-    (jf/startup-mark "agenda dashboard end")
-    ;; The graphical Eureka session treats this startup dashboard as an empty
-    ;; workspace: its first Wayland client replaces it instead of opening an
-    ;; additional Emacs window.
-    (setq-local jf-eureka--initial-placeholder t)
-    ;; Measure the point at which the requested initial buffer has actually
-    ;; been painted, rather than merely constructed in Lisp.
-    (redisplay t)
-    (jf/startup-mark "initial agenda first redisplay")
-    (current-buffer)))
-
-(defun jf/org-agenda--has-entries-p (match &optional undated)
-  "Return non-nil when an agenda entry matches MATCH.
-When UNDATED is non-nil, also require no schedule or deadline."
-  (catch 'found
-    (org-map-entries
-     (lambda ()
-       (when (or (not undated)
-                 (and (not (org-entry-get nil "SCHEDULED"))
-                      (not (org-entry-get nil "DEADLINE"))))
-         (throw 'found t)))
-     match 'agenda)
-    nil))
-
-(defun jf/org-agenda--compare-explicit-priority (a b)
-  "Order agenda lines A and B by explicit priority, with none last."
-  (let ((priority-a (if (string-match "\\[#[A-Z]\\]" a)
-                        (aref (match-string 0 a) 2)
-                      256))
-        (priority-b (if (string-match "\\[#[A-Z]\\]" b)
-                        (aref (match-string 0 b) 2)
-                      256)))
-    (cond ((< priority-a priority-b) -1)
-          ((> priority-a priority-b) 1))))
-
-(defun jf/org-agenda--separate-dashboard-sections ()
-  "Put exactly one blank line before secondary dashboard sections."
-  (let ((inhibit-read-only t))
-    (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward
-              "^\\(?:Upcoming Deadlines\\|Tasks Without a Date\\)$"
-              nil t)
-        (goto-char (line-beginning-position))
-        (let ((header-start (point)))
-          (skip-chars-backward "\n")
-          (delete-region (point) header-start)
-          (insert "\n\n")
-          (forward-line 1)))))
-  (unless (org-get-at-bol 'org-marker)
-    (goto-char (point-min))
-    (while (and (not (eobp))
-                (not (org-get-at-bol 'org-marker)))
-      (forward-line 1))))
-
-(defun jf/org-agenda-later (arg)
-  "Move the calendar component forward by ARG spans.
-This also works when point is in another component of a composite agenda."
-  (interactive "p")
-  (let ((agenda-position
-         (text-property-any (point-min) (point-max)
-                            'org-agenda-type 'agenda)))
-    (unless agenda-position
-      (user-error "This agenda has no calendar component"))
-    (goto-char agenda-position)
-    (setq org-agenda-type 'agenda)
-    (org-agenda-later arg)))
-
-(defun jf/org-agenda-earlier (arg)
-  "Move the calendar component backward by ARG spans."
-  (interactive "p")
-  (jf/org-agenda-later (- arg)))
-
-(with-eval-after-load 'org-agenda
-  (keymap-set org-agenda-mode-map "b" #'jf/org-agenda-earlier)
-  (keymap-set org-agenda-mode-map "f" #'jf/org-agenda-later))
-
-(defun jf/org-agenda-dashboard ()
-  "Show today's schedule and non-empty deadline and undated task blocks."
-  (interactive)
-  (require 'org-agenda)
-  (let* ((deadline-match "DEADLINE>=\"<+1d>\"+DEADLINE<=\"<+14d>\"")
-         (blocks
-          `((agenda ""
-                    ((org-agenda-overriding-header "")
-                     (org-agenda-span 1)))
-            ,@(when (jf/org-agenda--has-entries-p deadline-match)
-                `((tags-todo
-                   ,deadline-match
-                   ((org-agenda-overriding-header "Upcoming Deadlines")
-                    (org-agenda-sorting-strategy '(deadline-up))))))
-            ,@(when (jf/org-agenda--has-entries-p "/TODO" t)
-                '((todo
-                   "TODO"
-                   ((org-agenda-overriding-header "Tasks Without a Date")
-                    (org-agenda-skip-function
-                     '(org-agenda-skip-entry-if 'scheduled 'deadline))
-                    (org-agenda-cmp-user-defined
-                     #'jf/org-agenda--compare-explicit-priority)
-                    (org-agenda-sorting-strategy '(user-defined-up))))))))
-         (settings
-          '((org-agenda-finalize-hook
-             '(jf/org-agenda--separate-dashboard-sections))))
-         (org-agenda-custom-commands
-          `(("d" "Dashboard" ,blocks ,settings))))
-    (org-agenda nil "d")))
-
-(setq initial-buffer-choice #'jf/initial-agenda-buffer)
+;; Cancel the legacy automatic job when reloading this file in a session that
+;; was started with the old configuration.  Fresh sessions create no archive
+;; timer and perform no automatic agenda-file writes.
+(when (and (boundp 'jf/org-archive-timer)
+           (timerp (symbol-value 'jf/org-archive-timer)))
+  (cancel-timer (symbol-value 'jf/org-archive-timer)))
 
 ;;; Extensions
 
 (use-package org-fragtog
   :hook (org-mode . org-fragtog-mode))
+
+(defun jf/org-drill ()
+  "Review due cards from every Org file in `jf/org-drill-directory'."
+  (interactive)
+  (require 'org-drill)
+  (let ((files (and (file-directory-p jf/org-drill-directory)
+                    (directory-files jf/org-drill-directory t
+                                     "^[^.].*\\.org\\'"))))
+    (unless files
+      (user-error "No drill files in %s; capture a flashcard first"
+                  jf/org-drill-directory))
+    (org-drill files)))
+
+(use-package org-drill
+  :commands org-drill)
 
 (provide 'jf-org)
 ;;; jf-org.el ends here

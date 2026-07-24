@@ -1,4 +1,5 @@
 {
+  inputs,
   lib,
   osConfig,
   pkgs,
@@ -41,6 +42,9 @@ in
     username = "jefaturico";
     homeDirectory = "/home/jefaturico";
     stateVersion = "26.05";
+    packages = [
+      inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.codex
+    ];
 
     file = {
       ".config/moxide/settings.toml".text = ''

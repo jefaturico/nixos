@@ -118,12 +118,18 @@
       large-file-warning-threshold (* 200 1024 1024)
       read-process-output-max (* 1024 1024)
       ring-bell-function 'ignore
-      browse-url-browser-function 'browse-url-xdg-open
+      browse-url-browser-function 'eww-browse-url
+      browse-url-secondary-browser-function 'browse-url-generic
+      browse-url-generic-program "brave"
+      eww-search-prefix "https://html.duckduckgo.com/html/?q="
+      shr-inhibit-images t
+      shr-use-colors nil
       jit-lock-stealth-time 2
       jit-lock-chunk-size 8000
       jit-lock-defer-time 0.1
       fast-but-imprecise-scrolling t
       redisplay-skip-fontification-on-input t
+      auto-window-vscroll nil
       bidi-display-reordering nil
       bidi-paragraph-direction 'left-to-right
       inhibit-compacting-font-caches t

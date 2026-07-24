@@ -6,9 +6,7 @@
 ;;; Language servers
 
 (use-package eglot
-  :hook ((typst-ts-mode . eglot-ensure)
-         (python-ts-mode . eglot-ensure)
-         (nix-mode . eglot-ensure))
+  :commands eglot
   :config
   (setq eglot-events-buffer-config '(:size 0 :format full)
         eglot-sync-connect nil
@@ -21,6 +19,15 @@
                  ("basedpyright-langserver" "--stdio")))
   (add-to-list 'eglot-server-programs
                '(nix-mode . ("nil"))))
+
+;;; Syntax highlighting
+
+(use-package markdown-mode
+  :mode (("\\.md\\'" . markdown-mode)
+         ("\\.markdown\\'" . markdown-mode)))
+
+(use-package nix-mode
+  :mode "\\.nix\\'")
 
 (when (and (treesit-available-p)
            (treesit-language-available-p 'python))

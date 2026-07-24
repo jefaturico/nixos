@@ -45,6 +45,8 @@
     };
   };
 
+  # security.pam.services.sshd.startSession = true;
+
   services = {
     displayManager = {
       ly = {

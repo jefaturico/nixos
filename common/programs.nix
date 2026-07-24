@@ -40,8 +40,8 @@ in
       sessionVariables = {
         EDITOR = "emacsclient --tty --alternate-editor=emacs";
         VISUAL = "emacsclient --create-frame --wait --alternate-editor=emacs";
-        BROWSER = "brave";
-        DEFAULT_BROWSER = "brave";
+        BROWSER = "eww-browser";
+        DEFAULT_BROWSER = "eww-browser";
         LEDGER_FILE = "$HOME/documents/personal/finance/main.journal";
       };
       initExtra = ''
@@ -292,6 +292,7 @@ in
       hugo
       hledger
       markdown-oxide
+      moonlight-qt
       nil
       nixfmt
       ripgrep
@@ -302,6 +303,7 @@ in
       shfmt
       uget
       subsurface
+      waypipe
       qbittorrent
       python3
       zoxide

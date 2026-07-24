@@ -30,9 +30,9 @@
   services.thermald.enable = true;
 
   services.logind.settings.Login = {
-    HandleLidSwitch = "ignore";
-    HandleLidSwitchDocked = "ignore";
-    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchDocked = "suspend";
+    HandleLidSwitchExternalPower = "suspend";
   };
 
   zramSwap = {
@@ -51,7 +51,4 @@
       libvdpau-va-gl
     ];
   };
-  environment.systemPackages = with pkgs; [
-    moonlight-qt
-  ];
 }

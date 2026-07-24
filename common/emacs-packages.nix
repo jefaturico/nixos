@@ -10,14 +10,17 @@ extraPackages
   corfu
   ednc
   ef-themes
+  elfeed
   gcmh
   hledger-mode
+  markdown-mode
   marginalia
   nix-mode
   orderless
   org-fragtog
   org-roam
   org-roam-ui
+  org-drill
   pdf-tools
   (treesit-grammars.with-grammars (grammars: [
     grammars.tree-sitter-python

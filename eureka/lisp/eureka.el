@@ -260,12 +260,14 @@ untouched."
 
 (defun eureka--display-new-buffer (buffer)
   "Display and select a newly created Eureka BUFFER.
-Replace a configured placeholder in the active workspace before falling back
-to the user's normal `display-buffer' rules."
+Replace a configured placeholder in the active workspace, or replace the
+buffer in the selected window."
   (let ((window (or (when-let ((placeholder (eureka--placeholder-window)))
                       (set-window-buffer placeholder buffer)
                       placeholder)
-                    (display-buffer buffer))))
+                    (progn
+                      (set-window-buffer (selected-window) buffer)
+                      (selected-window)))))
     (when (window-live-p window)
       (select-window window)
       window)))

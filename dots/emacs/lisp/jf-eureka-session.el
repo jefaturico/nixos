@@ -48,7 +48,10 @@
   (when (jf-eureka--confirm-destructive-session-action "power off")
     (when (fboundp 'jf/release-shutdown-inhibitor)
       (jf/release-shutdown-inhibitor))
-    (jf-eureka-run "systemctl" "poweroff")))
+    ;; Releasing an inhibitor process is asynchronous.  Do not let logind
+    ;; reject this already-confirmed request if it observes the inhibitor
+    ;; during the small window before its file descriptor is closed.
+    (jf-eureka-run "systemctl" "--check-inhibitors=no" "poweroff")))
 
 (defun jf-eureka-reboot ()
   "Reboot the system."
@@ -56,7 +59,7 @@
   (when (jf-eureka--confirm-destructive-session-action "reboot")
     (when (fboundp 'jf/release-shutdown-inhibitor)
       (jf/release-shutdown-inhibitor))
-    (jf-eureka-run "systemctl" "reboot")))
+    (jf-eureka-run "systemctl" "--check-inhibitors=no" "reboot")))
 
 (defun jf-eureka-suspend ()
   "Suspend the system."
@@ -79,8 +82,8 @@
   (y-or-n-p (format "Really %s? " action)))
 
 (defvar jf-eureka-power-menu-actions
-  '(("Exit session" . jf-eureka-exit-session)
-    ("Suspend" . jf-eureka-suspend)
+  '(("Suspend" . jf-eureka-suspend)
+    ("Exit session" . jf-eureka-exit-session)
     ("Reboot" . jf-eureka-reboot)
     ("Power off" . jf-eureka-poweroff))
   "Power/session actions shown by `jf-eureka-power-menu'.")

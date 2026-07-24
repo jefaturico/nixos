@@ -150,18 +150,17 @@
         (kill-buffer placeholder)
         (kill-buffer client)))))
 
-(ert-deftest eureka-new-buffer-selects-displayed-window ()
+(ert-deftest eureka-new-buffer-replaces-selected-window-buffer ()
   (let ((eureka-placeholder-buffer-predicate nil)
-        (client (generate-new-buffer " eureka-client"))
-        selected)
+        (original (generate-new-buffer " eureka-original"))
+        (client (generate-new-buffer " eureka-client")))
     (unwind-protect
-        (cl-letf (((symbol-function 'display-buffer)
-                   (lambda (_buffer) (selected-window)))
-                  ((symbol-function 'select-window)
-                   (lambda (window &optional _norecord)
-                     (setq selected window))))
-          (eureka--display-new-buffer client)
-          (should (eq selected (selected-window))))
+        (progn
+          (set-window-buffer (selected-window) original)
+          (should (eq (eureka--display-new-buffer client)
+                      (selected-window)))
+          (should (eq (window-buffer) client)))
+      (kill-buffer original)
       (kill-buffer client))))
 
 (ert-deftest eureka-intercepted-prefix-keeps-focus-on-emacs ()

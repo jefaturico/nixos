@@ -3,6 +3,7 @@ let
   syncthingDevices = {
     titan.id = "OQUT2EC-CERWR4S-PJCPFUU-BUMZJZL-EVH66K6-I2YKDX3-6A7RS3I-Z3LLFAW";
     tethys.id = "2STWXA4-JBLZ5FM-ZDFPSR2-VE63IJP-SI4LVAW-ECSVLL4-PRFI27E-6VELQQG";
+    prometheus.id = "4FRYUNK-DRTUVOV-OQ2RHP2-VY7GETS-XNCLXIS-M5AADSR-B6GNHWI-FBQXKAP";
     iapetus.id = "K5ROMZZ-E7WR4MM-EYYOLC5-UNOSCJ2-IIMYRGH-LOQOBZZ-DAV3EK6-CVDZ6AG";
     rhea.id = "HX2Y3DU-MX2MRNK-WLIJKQL-C4GQNVZ-LG5HRPA-YHRF2TH-23OQ4LA-PU3XBAM";
   };
@@ -11,11 +12,22 @@ let
   spokeHosts = [
     "titan"
     "tethys"
+    "prometheus"
   ];
 
   directPeers = {
-    titan = [ "tethys" ];
-    tethys = [ "titan" ];
+    titan = [
+      "tethys"
+      "prometheus"
+    ];
+    tethys = [
+      "titan"
+      "prometheus"
+    ];
+    prometheus = [
+      "titan"
+      "tethys"
+    ];
   };
 
   syncPeers =
@@ -64,8 +76,6 @@ let
     (mkFolder id path)
     // {
       ignorePatterns = [
-        "(?d).git"
-        "(?d).git/**"
         ".agents"
         ".agents/**"
         ".codex"

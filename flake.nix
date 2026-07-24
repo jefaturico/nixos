@@ -3,6 +3,9 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
+    # Keep the fast-moving Codex CLI current without moving the system off the
+    # stable NixOS release.
+    nixpkgs-unstable.url = "nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -21,6 +24,7 @@
         home-manager = {
           useGlobalPkgs = true;
           useUserPackages = true;
+          extraSpecialArgs = { inherit inputs; };
           users.jefaturico = import ./common/home.nix;
           backupFileExtension = "backup";
         };
@@ -30,6 +34,7 @@
         host:
         nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
+          specialArgs = { inherit inputs; };
           modules = [
             (./hosts + "/${host}/software.nix")
             home-manager.nixosModules.home-manager

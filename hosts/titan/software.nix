@@ -32,12 +32,22 @@
     openFirewall = true;
   };
   users.groups.uinput.members = [ "jefaturico" ];
-  systemd.user.services.sunshine.environment = {
-    LD_LIBRARY_PATH = "/run/opengl-driver/lib";
-    LIBVA_DRIVER_NAME = "nvidia";
-    GBM_BACKEND = "nvidia-drm";
-    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-    NVD_BACKEND = "direct";
+  systemd.user.services.sunshine = {
+    after = [
+      "pipewire.service"
+      "wireplumber.service"
+    ];
+    wants = [
+      "pipewire.service"
+      "wireplumber.service"
+    ];
+    environment = {
+      LD_LIBRARY_PATH = "/run/opengl-driver/lib";
+      LIBVA_DRIVER_NAME = "nvidia";
+      GBM_BACKEND = "nvidia-drm";
+      __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+      NVD_BACKEND = "direct";
+    };
   };
 
   security.polkit.enable = true;

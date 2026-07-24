@@ -1,5 +1,28 @@
 { pkgs, ... }:
 let
+  ewwBrowser = pkgs.writeShellApplication {
+    name = "eww-browser";
+    runtimeInputs = [
+      pkgs.emacs-pgtk
+      pkgs.python3
+    ];
+    text = ''
+      url="''${1:-}"
+      if [ -z "$url" ]; then
+        echo "usage: eww-browser URL" >&2
+        exit 2
+      fi
+
+      # JSON strings use escaping accepted by the Emacs Lisp reader, avoiding
+      # code injection or broken quoting for URLs passed in by other programs.
+      url_literal="$(${pkgs.python3}/bin/python3 -c \
+        'import json, sys; print(json.dumps(sys.argv[1]))' "$url")"
+      exec ${pkgs.emacs-pgtk}/bin/emacsclient \
+        --alternate-editor=${pkgs.emacs-pgtk}/bin/emacs \
+        --eval "(eww-browse-url $url_literal)"
+    '';
+  };
+
   stremioNoCsd = pkgs.writeShellApplication {
     name = "stremio-no-csd";
     runtimeInputs = [ pkgs.flatpak ];
@@ -10,7 +33,10 @@ let
 in
 {
   home = {
-    packages = [ stremioNoCsd ];
+    packages = [
+      ewwBrowser
+      stremioNoCsd
+    ];
 
     pointerCursor = {
       gtk.enable = true;
@@ -41,6 +67,21 @@ in
       Categories=Utility;TextEditor;
       MimeType=text/plain;text/markdown;application/x-shellscript;
       StartupNotify=true
+    '';
+
+    dataFile."applications/jf-eww.desktop".text = ''
+      [Desktop Entry]
+      Name=EWW
+      GenericName=Web Browser
+      Comment=Browse the web in Emacs
+      Exec=${ewwBrowser}/bin/eww-browser %U
+      TryExec=${ewwBrowser}/bin/eww-browser
+      Icon=emacs
+      Type=Application
+      Terminal=false
+      Categories=Network;WebBrowser;
+      MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
+      StartupNotify=false
     '';
 
     # Stremio supports undecorated windows natively.  Override the exported
@@ -87,11 +128,11 @@ in
         "text/plain" = [ "jf-emacsclient.desktop" ];
         "text/markdown" = [ "jf-emacsclient.desktop" ];
         "application/x-shellscript" = [ "jf-emacsclient.desktop" ];
-        "text/html" = "brave-browser.desktop";
-        "x-scheme-handler/http" = "brave-browser.desktop";
-        "x-scheme-handler/https" = "brave-browser.desktop";
-        "x-scheme-handler/about" = "brave-browser.desktop";
-        "x-scheme-handler/unknown" = "brave-browser.desktop";
+        "text/html" = "jf-eww.desktop";
+        "x-scheme-handler/http" = "jf-eww.desktop";
+        "x-scheme-handler/https" = "jf-eww.desktop";
+        "x-scheme-handler/about" = "jf-eww.desktop";
+        "x-scheme-handler/unknown" = "jf-eww.desktop";
       };
     };
   };

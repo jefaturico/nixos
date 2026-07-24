@@ -26,12 +26,63 @@
               (auto-revert-mode -1)
               (cursor-sensor-mode -1))))
 
+;;; Feeds
+
+(use-package elfeed
+  :commands elfeed
+  :bind ("C-c f" . elfeed)
+  :custom
+  (elfeed-feeds
+   '("https://www.europapress.es/rss/rss.aspx?ch=66"
+     "https://feeds.bbci.co.uk/news/world/rss.xml"))
+  :hook (elfeed-show-mode . jf/reading-layout)
+  :config
+  (keymap-set elfeed-show-mode-map "o" #'elfeed-show-visit))
+
+;;; Web reading
+
+(use-package eww
+  :ensure nil
+  :commands eww
+  :hook (eww-mode . jf/reading-layout)
+  :custom
+  (eww-readable-adds-to-history nil))
+
 ;;; Terminal
 
 (use-package vterm
-  :commands (vterm vterm-other-window)
+  :commands (vterm vterm-other-window vterm-send-return vterm-send-string)
   :config
   (setq vterm-shell "/run/current-system/sw/bin/bash"))
+
+(defun jf/vterm-new ()
+  "Create a new vterm in another window.
+
+Unlike `vterm-other-window', always use a fresh buffer instead of returning to
+an existing *vterm* buffer."
+  (interactive)
+  (vterm-other-window (generate-new-buffer-name "*vterm*")))
+
+(defun jf/codex (&optional directory)
+  "Start a new Codex session in a fresh vterm.
+
+Prompt for DIRECTORY, defaulting to ~/nixos.  Every invocation creates an
+independent Codex process."
+  (interactive
+   (let ((default (expand-file-name "~/nixos/")))
+     (list (read-directory-name "Codex directory: " default default t))))
+  (unless (executable-find "codex")
+    (user-error "codex executable not found"))
+  (let* ((default-directory
+          (file-name-as-directory (expand-file-name (or directory
+                                                        default-directory))))
+         (project-name (file-name-nondirectory
+                        (directory-file-name default-directory)))
+         (buffer-name
+          (generate-new-buffer-name (format "*codex:%s*" project-name))))
+    (vterm buffer-name)
+    (vterm-send-string "exec codex")
+    (vterm-send-return)))
 
 ;;; Finance
 
@@ -163,7 +214,8 @@
   "Return TEXT as a URL or a search URL."
   (if (string-match-p "\\`\\(?:[[:alpha:]][[:alnum:]+.-]*://\\|about:\\)" text)
       text
-    (format "https://duckduckgo.com/?q=%s" (url-hexify-string text))))
+    (format "https://html.duckduckgo.com/html/?q=%s"
+            (url-hexify-string text))))
 
 (defun jf/browser-open-or-search ()
   "Open a URL or search arbitrary text in the default browser."
