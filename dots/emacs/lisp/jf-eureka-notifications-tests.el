@@ -73,5 +73,45 @@
               :warning
               "*Critical Notifications*")))))
 
+(ert-deftest jf-eureka-battery-critical-notification-is-tagged ()
+  (let ((notification
+         (ednc--notification-create
+          :id 2
+          :summary "Battery Critical"
+          :body "Level: 10%"
+          :hints '(("x-jf-battery-critical" ("guard"))))))
+    (should (jf-eureka-notification--battery-critical-p notification))))
+
+(ert-deftest jf-eureka-battery-critical-acknowledges-warning ()
+  (let (written)
+    (cl-letf (((symbol-function 'file-exists-p) (lambda (_) t))
+              ((symbol-function 'jf-eureka-critical-notifications-clear)
+               #'ignore)
+              ((symbol-function 'write-region)
+               (lambda (_start _end filename &rest _)
+                 (setq written filename))))
+      (jf-eureka-battery-critical-acknowledge))
+    (should (string-suffix-p "/battery-critical-ack" written))))
+
+(ert-deftest jf-eureka-battery-critical-buffer-kill-acknowledges-warning ()
+  (let (acknowledged)
+    (with-temp-buffer
+      (setq jf-eureka-battery-critical--decision nil)
+      (cl-letf (((symbol-function 'jf-eureka-battery-critical--write-ack)
+                 (lambda () (setq acknowledged t))))
+        (jf-eureka-battery-critical--acknowledge-on-kill)))
+    (should acknowledged)))
+
+(ert-deftest jf-eureka-battery-critical-no-does-not-acknowledge ()
+  (let (acknowledged)
+    (with-temp-buffer
+      (cl-letf (((symbol-function 'jf-eureka-critical-notifications-clear)
+                 #'ignore)
+                ((symbol-function 'jf-eureka-battery-critical--write-ack)
+                 (lambda () (setq acknowledged t))))
+        (jf-eureka-battery-critical-allow-suspend)
+        (should (eq jf-eureka-battery-critical--decision 'allow-suspend))))
+    (should-not acknowledged)))
+
 (provide 'jf-eureka-notifications-tests)
 ;;; jf-eureka-notifications-tests.el ends here

@@ -24,6 +24,8 @@
 
 ;; Standalone commands and integrations.
 (require 'jf-tools)
+(require 'jf-network)
+(require 'jf-nixos)
 (require 'jf-gptel)
 
 ;; Global bindings that cross module boundaries.

@@ -7,6 +7,9 @@
 (defvar jf-eureka--application-cache nil
   "Cached application launcher candidates.")
 
+(defvar jf-eureka--desktop-ids (make-hash-table :test #'equal)
+  "Desktop-file IDs keyed by their absolute file names.")
+
 (defun jf-eureka--application-dirs ()
   "Return existing XDG application directories in precedence order."
   (delete-dups
@@ -49,6 +52,7 @@ XDG application directories."
     (let ((seen (make-hash-table :test #'equal))
           (ids (make-hash-table :test #'equal))
           applications)
+      (clrhash jf-eureka--desktop-ids)
       (dolist (directory (jf-eureka--application-dirs))
         (dolist (file (directory-files-recursively directory "\\.desktop\\'"))
           (let ((id (jf-eureka--desktop-id file directory)))
@@ -57,6 +61,7 @@ XDG application directories."
               (puthash id t seen)
               (when-let ((application (jf-eureka--desktop-entry file)))
                 (puthash file id ids)
+                (puthash file id jf-eureka--desktop-ids)
                 (push application applications))))))
       (let ((name-counts (make-hash-table :test #'equal)))
         (dolist (application applications)
@@ -75,6 +80,37 @@ XDG application directories."
                (lambda (a b) (string-lessp (car a) (car b))))))))
   jf-eureka--application-cache)
 
+(defun jf-eureka--desktop-app-id (desktop-file)
+  "Return the standard Wayland app ID for DESKTOP-FILE."
+  (string-remove-suffix
+   ".desktop"
+   (or (gethash desktop-file jf-eureka--desktop-ids)
+       (file-name-nondirectory desktop-file))))
+
+(defun jf-eureka--buffer-for-app-ids (app-ids)
+  "Return the most recently used Eureka buffer matching APP-IDS."
+  (seq-find
+   (lambda (buffer)
+     (and (buffer-live-p buffer)
+          (with-current-buffer buffer
+            (and (eq major-mode 'eureka-mode)
+                 (boundp 'eureka-app-id)
+                 (member eureka-app-id app-ids)))))
+   (buffer-list)))
+
+(defun jf-eureka-launch-or-focus (name app-ids launch-function)
+  "Focus NAME when its Eureka buffer matches APP-IDS, otherwise launch it.
+
+When a matching buffer already exists, display it and ask whether to invoke
+LAUNCH-FUNCTION for another instance."
+  (if-let ((buffer (jf-eureka--buffer-for-app-ids app-ids)))
+      (progn
+        (switch-to-buffer buffer)
+        (when (y-or-n-p
+               (format "%s is already running. Run another instance? " name))
+          (funcall launch-function)))
+    (funcall launch-function)))
+
 (defun jf-eureka-launch-program (&optional refresh)
   "Launch an XDG desktop application using Emacs completion.
 
@@ -87,10 +123,14 @@ With a prefix argument, REFRESH the cached application list first."
          (desktop-file (cdr (assoc choice applications))))
     (unless desktop-file
       (user-error "No desktop file for %s" choice))
-    (make-process :name (concat "launch-program-" choice)
-                  :command (list "gio" "launch" desktop-file)
-                  :noquery t
-                  :connection-type 'pipe)))
+    (jf-eureka-launch-or-focus
+     choice
+     (list (jf-eureka--desktop-app-id desktop-file))
+     (lambda ()
+       (make-process :name (concat "launch-program-" choice)
+                     :command (list "gio" "launch" desktop-file)
+                     :noquery t
+                     :connection-type 'pipe)))))
 
 (provide 'jf-eureka-launcher)
 ;;; jf-eureka-launcher.el ends here

@@ -39,7 +39,6 @@
       ExecStart = "${pkgs.foot}/bin/foot --server";
       Restart = "on-failure";
     };
-    Install.WantedBy = [ "graphical-session.target" ];
   };
 
 }

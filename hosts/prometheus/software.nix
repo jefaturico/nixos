@@ -20,12 +20,18 @@
 
   # The ThinkPad X201i boots in legacy BIOS mode. The shared desktop module
   # defaults to systemd-boot on UEFI, so override it with BIOS GRUB here.
-  boot.loader = {
-    systemd-boot.enable = lib.mkForce false;
-    efi.canTouchEfiVariables = lib.mkForce false;
-    grub = {
-      enable = true;
-      device = "/dev/sda";
+  boot = {
+    loader = {
+      # Boot immediately in the normal case. Holding Shift or pressing Esc/F4
+      # during the firmware handoff still exposes the GRUB menu.
+      timeout = 0;
+      systemd-boot.enable = lib.mkForce false;
+      efi.canTouchEfiVariables = lib.mkForce false;
+      grub = {
+        enable = true;
+        device = "/dev/sda";
+        timeoutStyle = "hidden";
+      };
     };
   };
 

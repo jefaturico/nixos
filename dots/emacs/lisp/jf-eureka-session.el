@@ -82,7 +82,9 @@
   (y-or-n-p (format "Really %s? " action)))
 
 (defvar jf-eureka-power-menu-actions
-  '(("Suspend" . jf-eureka-suspend)
+  '(("NetworkManager" . jf/network-manager)
+    ("NixOS rebuild" . jf/nixos-rebuild)
+    ("Suspend" . jf-eureka-suspend)
     ("Exit session" . jf-eureka-exit-session)
     ("Reboot" . jf-eureka-reboot)
     ("Power off" . jf-eureka-poweroff))

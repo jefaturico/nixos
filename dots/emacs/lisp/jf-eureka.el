@@ -9,18 +9,15 @@
 ;;; Eureka input policy
 
 (setopt eureka-intercept-prefixes
-        '("C-x" "C-u" "C-h" "M-x" "s-x" "s-v" "s-<return>"
-          "s-q" "s-k" "s-b" "s-o"
-          "s-n"
+        '("C-x" "C-u" "C-h" "M-x" "s-x" "s-v" "C-s-v"
+          "s-SPC" "C-s-SPC" "s-<return>" "s-<tab>"
+          "s-q" "s-o"
+          "s-n" "C-s-n" "C-s-r"
           "s-/" "s--" "C-s-f"
           "s-t" "s-w" "C-s-w"
           "s-<escape>"
           "s-d" "s-i"
           "s-u"
-          "s-0" "s-1" "s-2" "s-3" "s-4"
-          "s-5" "s-6" "s-7" "s-8" "s-9"
-          "C-s-0" "C-s-1" "C-s-2" "C-s-3" "C-s-4"
-          "C-s-5" "C-s-6" "C-s-7" "C-s-8" "C-s-9"
           "<XF86AudioRaiseVolume>"
           "<XF86AudioLowerVolume>"
           "<XF86AudioMute>"
@@ -51,41 +48,58 @@
 (require 'jf-eureka-notifications)
 (require 'jf-eureka-desktop)
 
-;;; Workspace and session bindings
-
-(dotimes (digit 10)
-  (let ((key (number-to-string digit))
-        (workspace-digit digit))
-    (global-set-key (kbd (concat "s-" key))
-                    (lambda ()
-                      (interactive)
-                      (jf-eureka-switch-workspace workspace-digit)))
-    (global-set-key (kbd (concat "C-s-" key))
-                    (lambda ()
-                      (interactive)
-                      (jf-eureka-move-buffer-to-workspace workspace-digit)))))
+;;; Context and session bindings
 
 (global-set-key (kbd "s-x") #'jf-eureka-launch-program)
-(global-set-key (kbd "s-v") #'jf/vterm-new)
+(global-set-key (kbd "s-v") #'jf/vterm-context)
+(global-set-key (kbd "C-s-v") #'jf/vterm-new)
 (global-set-key (kbd "s-c") #'jf/codex)
-(global-set-key (kbd "s-q") #'delete-window)
-(global-set-key (kbd "s-k") #'kill-current-buffer)
-(global-set-key (kbd "s-b") #'consult-buffer)
+
+(defun jf-eureka--close-window-preserving-buffer (window buffer)
+  "Remove WINDOW while preserving BUFFER.
+When WINDOW is the frame's only window, bury BUFFER instead."
+  (when (window-live-p window)
+    (if (one-window-p t)
+        (when (buffer-live-p buffer)
+          (bury-buffer buffer))
+      (delete-window window))))
+
+(defun jf-eureka-close-dwim ()
+  "Close the selected view, killing only resource-owning buffers.
+Eureka buffers close their client and vterm buffers terminate their process.
+Other Emacs buffers remain alive and available for later selection."
+  (interactive)
+  (let* ((buffer (current-buffer))
+         (window (selected-window))
+         (eureka-buffer-p (derived-mode-p 'eureka-mode))
+         (kill-buffer-p (or eureka-buffer-p
+                            (derived-mode-p 'vterm-mode))))
+    (if kill-buffer-p
+        ;; Eureka closure is asynchronous: its kill query returns nil after
+        ;; requesting client closure, so still remove the view immediately.
+        (when (or (kill-buffer buffer) eureka-buffer-p)
+          (jf-eureka--close-window-preserving-buffer window buffer))
+      (jf-eureka--close-window-preserving-buffer window buffer))))
+
+(global-set-key (kbd "s-q") #'jf-eureka-close-dwim)
+(global-set-key (kbd "s-SPC") #'jf/consult-buffer-contexts)
+(global-set-key (kbd "C-s-SPC") #'jf/consult-buffer-global)
+(global-set-key (kbd "s-<return>") #'jf-eureka-switch-or-create-context)
+(global-set-key (kbd "s-<tab>") #'tab-bar-switch-to-recent-tab)
+(global-unset-key (kbd "s-b"))
 (global-set-key (kbd "s-n") #'jf-notifications)
+(global-set-key (kbd "C-s-n") #'jf/network-manager)
+(global-set-key (kbd "C-s-r") #'jf/nixos-rebuild)
 (global-unset-key (kbd "s-p"))
-(global-unset-key (kbd "s-<tab>"))
 (global-set-key (kbd "s-o") #'other-window)
 (global-unset-key (kbd "C-s-o"))
 (global-set-key (kbd "s-/") #'split-window-right)
 (global-set-key (kbd "s--") #'split-window-below)
-(global-set-key (kbd "s-<return>") #'delete-other-windows)
 (global-unset-key (kbd "s-f"))
 (global-unset-key (kbd "s-m"))
-(global-unset-key (kbd "s-SPC"))
 (global-set-key (kbd "C-s-f") #'toggle-frame-fullscreen)
 (global-set-key (kbd "s-t") #'jf-eureka-toggle-color-mode)
 (global-set-key (kbd "s-w") #'jf/bookmark-open)
-(global-unset-key (kbd "s-W"))
 (global-set-key (kbd "C-s-w") #'jf/browser-open-or-search)
 (global-set-key (kbd "s-u") #'jf-eureka-usb-open)
 (global-set-key (kbd "s-i") #'jf/systeminfo)

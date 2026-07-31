@@ -117,6 +117,11 @@ in
         # through its native OSC 51 protocol.
         if [[ "$INSIDE_EMACS" == vterm ]]; then
           _vterm_prompt_end() {
+            # Keep the Emacs buffer name useful as the shell changes directory.
+            # Programs that publish their own terminal title temporarily take
+            # precedence until the next shell prompt.
+            local _vterm_title="''${PWD/#$HOME/~}"
+            printf '\e]0;%s\e\\' "$_vterm_title"
             printf '\e]51;A%s@%s:%s\e\\' "''${USER}" "''${HOSTNAME}" "$PWD"
           }
           PS1+='\[$(_vterm_prompt_end)\]'

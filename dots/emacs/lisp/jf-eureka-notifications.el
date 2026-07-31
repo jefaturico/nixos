@@ -18,6 +18,17 @@
 (defvar jf-eureka-notification--presentation-timers nil
   "Pending timers that will display critical notifications.")
 
+(defconst jf-eureka-battery-critical-hint "x-jf-battery-critical")
+
+(defvar-local jf-eureka-battery-critical--decision nil
+  "Decision made for the critical battery warning in this buffer.")
+
+(defun jf-eureka-battery-critical--runtime-file (name)
+  "Return NAME inside the current user's runtime directory."
+  (expand-file-name name
+                    (or (getenv "XDG_RUNTIME_DIR")
+                        (format "/run/user/%d" (user-uid)))))
+
 (defun jf-eureka-notification--hint (notification name)
   "Return hint NAME from EDNC NOTIFICATION."
   (when-let ((entry (assoc name (ednc-notification-hints notification))))
@@ -25,6 +36,45 @@
       (while (and (listp value) (= (length value) 1))
         (setq value (car value)))
       value)))
+
+(defun jf-eureka-notification--battery-critical-p (notification)
+  "Return non-nil when NOTIFICATION is the guarded battery warning."
+  (equal (jf-eureka-notification--hint
+          notification jf-eureka-battery-critical-hint)
+         "guard"))
+
+(defun jf-eureka-battery-critical--write-ack ()
+  "Write the battery acknowledgement marker when a decision is pending."
+  (let ((pending (jf-eureka-battery-critical--runtime-file
+                  "battery-critical-pending"))
+        (ack (jf-eureka-battery-critical--runtime-file
+              "battery-critical-ack")))
+    (when (file-exists-p pending)
+      (write-region "" nil ack nil 'silent)
+      t)))
+
+(defun jf-eureka-battery-critical--acknowledge-on-kill ()
+  "Treat an undecided critical-warning buffer kill as acknowledgement."
+  (unless jf-eureka-battery-critical--decision
+    (setq jf-eureka-battery-critical--decision 'acknowledged)
+    (when (jf-eureka-battery-critical--write-ack)
+      (message "Automatic battery suspend cancelled"))))
+
+(defun jf-eureka-battery-critical-acknowledge ()
+  "Acknowledge the critical battery warning and cancel automatic suspend."
+  (interactive)
+  (setq jf-eureka-battery-critical--decision 'acknowledged)
+  (if (jf-eureka-battery-critical--write-ack)
+      (message "Automatic battery suspend cancelled")
+    (message "The critical-battery decision has already expired"))
+  (jf-eureka-critical-notifications-clear))
+
+(defun jf-eureka-battery-critical-allow-suspend ()
+  "Dismiss the warning without cancelling automatic battery suspend."
+  (interactive)
+  (setq jf-eureka-battery-critical--decision 'allow-suspend)
+  (jf-eureka-critical-notifications-clear)
+  (message "Automatic battery suspend remains scheduled"))
 
 (defun jf-eureka-notification--critical-p (notification)
   "Return non-nil when EDNC NOTIFICATION has critical urgency."
@@ -55,7 +105,11 @@
   "Clear the persistent critical-notification warning buffer."
   (interactive)
   (when-let ((buffer (get-buffer jf-eureka-critical-notifications-buffer)))
-    (kill-buffer buffer)))
+    (if-let ((window (get-buffer-window buffer t)))
+        (condition-case nil
+            (quit-window t window)
+          (error (kill-buffer buffer)))
+      (kill-buffer buffer))))
 
 (defun jf-eureka-notification--show-critical (notification)
   "Append critical NOTIFICATION to a persistent, compact warning buffer."
@@ -64,17 +118,24 @@
                    :warning jf-eureka-critical-notifications-buffer)
   (when-let ((buffer (get-buffer jf-eureka-critical-notifications-buffer)))
     (with-current-buffer buffer
-      (setq-local header-line-format
-                  " Critical notifications — q: clear ")
-      (local-set-key (kbd "q") #'jf-eureka-critical-notifications-clear))
-    (when-let ((window
-                (display-buffer
-                 buffer
-                 '((display-buffer-in-side-window)
-                   (side . bottom)
-                   (slot . 0)
-                   (window-height . 8)))))
-      (fit-window-to-buffer window 10 4))))
+      (if (jf-eureka-notification--battery-critical-p notification)
+          (progn
+            (setq-local jf-eureka-battery-critical--decision nil)
+            (add-hook 'kill-buffer-hook
+                      #'jf-eureka-battery-critical--acknowledge-on-kill
+                      nil t)
+            (setq-local header-line-format
+                        " Critical battery — y: keep running, n: allow suspend ")
+            (local-set-key (kbd "y")
+                           #'jf-eureka-battery-critical-acknowledge)
+            (local-set-key (kbd "n")
+                           #'jf-eureka-battery-critical-allow-suspend))
+        (setq-local header-line-format
+                    " Critical notifications — q: clear ")
+        (local-set-key (kbd "q") #'jf-eureka-critical-notifications-clear)))
+    (when-let ((window (display-buffer buffer)))
+      (when (jf-eureka-notification--battery-critical-p notification)
+        (select-window window)))))
 
 (defun jf-eureka-notification--schedule-critical (notification)
   "Show critical NOTIFICATION after Eureka leaves fullscreen."

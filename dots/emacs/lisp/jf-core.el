@@ -13,6 +13,9 @@
 
 (setq custom-file null-device)
 
+;; Some laptop firmware emits this input event when the lid opens.
+(keymap-global-set "<WakeUp>" #'ignore)
+
 ;;; Session safety
 
 (unless (server-running-p)
@@ -128,6 +131,7 @@
       jit-lock-chunk-size 8000
       jit-lock-defer-time 0.1
       fast-but-imprecise-scrolling t
+      scroll-conservatively 101
       redisplay-skip-fontification-on-input t
       auto-window-vscroll nil
       bidi-display-reordering nil
@@ -144,9 +148,19 @@
   :ensure nil
   :config
   (setq tab-bar-show nil
-        tab-bar-new-tab-choice "*scratch*")
+        tab-bar-new-tab-choice "*scratch*"
+        tab-bar-select-restore-windows nil)
   (tab-bar-mode 1)
-  (tab-bar-rename-tab "1"))
+  (tab-bar-rename-tab "main"))
+
+(use-package tabspaces
+  :demand t
+  :custom
+  (tabspaces-default-tab "main")
+  (tabspaces-include-buffers '("*scratch*"))
+  (tabspaces-session nil)
+  :config
+  (tabspaces-mode 1))
 
 (use-package recentf
   :init

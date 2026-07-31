@@ -59,7 +59,6 @@
 
 (dolist (hook '(eureka-mode-hook
                 vterm-mode-hook
-                pdf-view-mode-hook
                 minibuffer-setup-hook))
   (add-hook hook #'jf/disable-global-hl-line-mode))
 

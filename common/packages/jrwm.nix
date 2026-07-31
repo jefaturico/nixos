@@ -36,7 +36,7 @@ stdenv.mkDerivation {
       --replace-fail '{super,       XKB_KEY_q, binding_close,' \
         '{super,       XKB_KEY_w, binding_close,' \
       --replace-fail 'spawn_binding(super, XKB_KEY_Return, spawn_foot),' \
-        'spawn_binding(super|shift, XKB_KEY_Return, spawn_foot),' \
+        'spawn_binding(super|ctrl, XKB_KEY_Return, spawn_foot),' \
       --replace-fail 'spawn_binding(super, XKB_KEY_space,  spawn_rofi),' \
         'spawn_binding(super, XKB_KEY_space,  spawn_fuzzel),'
   '';

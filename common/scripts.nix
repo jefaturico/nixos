@@ -156,7 +156,7 @@ in
   home.packages = [
     (mkScript "rebuild-push")
   ]
-  ++ lib.optionals (osConfig.networking.hostName == "tethys") [
+  ++ lib.optionals isLaptop [
     batteryCheck
   ]
   ++ lib.optionals isMoonlightClient [
@@ -178,7 +178,7 @@ in
     '';
   };
 
-  systemd.user.services.battery-check = lib.mkIf (osConfig.networking.hostName == "tethys") {
+  systemd.user.services.battery-check = lib.mkIf isLaptop {
     Unit.Description = "Battery status monitor";
     Service = {
       Type = "simple";

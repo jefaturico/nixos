@@ -30,12 +30,47 @@
          ("M-g g" . consult-goto-line)
          ("M-g i" . consult-imenu)
          ("M-g r" . consult-grep))
+  :custom
+  (consult-narrow-key "<")
   :config
   ;; Previewing while moving through recent files and buffers loads too much.
   (consult-customize
    consult-recent-file
    consult-buffer
-   :preview-key "M-."))
+   :preview-key "M-.")
+
+  ;; A dedicated source lets the Eureka bindings choose explicitly between
+  ;; context-local and global buffer lists.
+  (defvar jf/consult-source-context-buffer nil
+    "Consult source containing buffers in the current Tabspaces context.")
+  (setq jf/consult-source-context-buffer
+        (list :name "Context buffers"
+              :narrow ?w
+              :history 'buffer-name-history
+              :category 'buffer
+              :state #'consult--buffer-state
+              :default t
+              :items (lambda ()
+                       (consult--buffer-query
+                        :predicate #'tabspaces--local-buffer-p
+                        :sort 'visibility
+                        :as #'buffer-name)))))
+
+(defun jf/consult-buffer-contexts ()
+  "Select a buffer belonging to the current context."
+  (interactive)
+  (setf (plist-get jf/consult-source-context-buffer :name)
+        (format "Buffers (%s)" (tabspaces--current-tab-name)))
+  (consult-buffer (list jf/consult-source-context-buffer)))
+
+(defun jf/consult-buffer-global ()
+  "Select a live buffer from every context."
+  (interactive)
+  (let ((source (copy-tree consult-source-buffer)))
+    (plist-put source :name "All buffers")
+    (plist-put source :hidden nil)
+    (plist-put source :default t)
+    (consult-buffer (list source))))
 
 (use-package which-key
   :defer 2
@@ -46,7 +81,12 @@
 
 ;;; Completion at point
 
+(defun jf/corfu-prose-setup ()
+  "Keep Corfu available on demand without automatic popups in prose."
+  (setq-local corfu-auto nil))
+
 (use-package corfu
+  :demand t
   :custom
   (corfu-auto t)
   (corfu-auto-delay 0.2)
@@ -56,6 +96,8 @@
   (corfu-max-width 100)
   (corfu-count 14)
   (corfu-preselect 'prompt)
+  :hook
+  (text-mode . jf/corfu-prose-setup)
   :config
   (global-corfu-mode))
 

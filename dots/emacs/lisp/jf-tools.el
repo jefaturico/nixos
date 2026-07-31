@@ -5,27 +5,6 @@
 (require 'url-util)
 (require 'use-package)
 
-;;; Documents
-
-(use-package pdf-tools
-  :mode ("\\.pdf\\'" . pdf-view-mode)
-  :magic ("%PDF" . pdf-view-mode)
-  :config
-  (setq pdf-view-use-scaling t
-        pdf-view-continuous t
-        pdf-view-display-size 'fit-width
-        pdf-view-resize-factor 1.1
-        pdf-cache-image-limit 64
-        pdf-cache-prefetch-delay 0.15
-        pdf-view-max-image-width 2048)
-  (setq-default pdf-view-use-unicode-lighter nil)
-  (add-hook 'pdf-view-mode-hook
-            (lambda ()
-              (pdf-cache-prefetch-minor-mode 1)
-              (display-line-numbers-mode -1)
-              (auto-revert-mode -1)
-              (cursor-sensor-mode -1))))
-
 ;;; Feeds
 
 (use-package elfeed
@@ -53,15 +32,46 @@
 (use-package vterm
   :commands (vterm vterm-other-window vterm-send-return vterm-send-string)
   :config
-  (setq vterm-shell "/run/current-system/sw/bin/bash"))
+  (setq vterm-shell "/run/current-system/sw/bin/bash"
+        vterm-buffer-name-string "*vterm:%s*"))
+
+(defvar-local jf/vterm-role nil
+  "Purpose of this vterm buffer, such as `terminal' or `codex'.")
+
+(defun jf/vterm--ordinary-terminal-p (buffer)
+  "Return non-nil when BUFFER is a regular interactive vterm."
+  (with-current-buffer buffer
+    (and (derived-mode-p 'vterm-mode)
+         (not (or (eq jf/vterm-role 'codex)
+                  (string-prefix-p "*codex:" (buffer-name buffer)))))))
+
+(defun jf/vterm--context-terminal ()
+  "Return the most recent regular vterm in the current context."
+  (seq-find #'jf/vterm--ordinary-terminal-p (tabspaces--buffer-list)))
+
+(defun jf/vterm--display-below (buffer)
+  "Display BUFFER in a newly split window below the selected one."
+  (let ((window (split-window-below)))
+    (select-window window)
+    (switch-to-buffer buffer)
+    buffer))
 
 (defun jf/vterm-new ()
-  "Create a new vterm in another window.
-
-Unlike `vterm-other-window', always use a fresh buffer instead of returning to
-an existing *vterm* buffer."
+  "Create a fresh vterm in a new window below the selected one."
   (interactive)
-  (vterm-other-window (generate-new-buffer-name "*vterm*")))
+  (let ((window (split-window-below)))
+    (select-window window)
+    (let ((buffer (vterm (generate-new-buffer-name "*vterm*"))))
+      (with-current-buffer buffer
+        (setq-local jf/vterm-role 'terminal))
+      buffer)))
+
+(defun jf/vterm-context ()
+  "Show this context's regular vterm below, creating one when absent."
+  (interactive)
+  (if-let ((buffer (jf/vterm--context-terminal)))
+      (jf/vterm--display-below buffer)
+    (jf/vterm-new)))
 
 (defun jf/codex (&optional directory)
   "Start a new Codex session in a fresh vterm.
@@ -81,6 +91,10 @@ independent Codex process."
          (buffer-name
           (generate-new-buffer-name (format "*codex:%s*" project-name))))
     (vterm buffer-name)
+    (setq-local jf/vterm-role 'codex
+                ;; Preserve the deliberate Codex session name instead of
+                ;; replacing it with the shell's dynamic terminal title.
+                vterm-buffer-name-string nil)
     (vterm-send-string "exec codex")
     (vterm-send-return)))
 

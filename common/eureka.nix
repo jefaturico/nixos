@@ -58,7 +58,6 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       systemd
-      xwayland-satellite
     ];
     text = ''
       set -euo pipefail
@@ -97,9 +96,6 @@ let
         XKB_DEFAULT_VARIANT \
         XKB_DEFAULT_OPTIONS >/dev/null 2>&1 || true
       startup_mark "systemd import-environment end"
-
-      xwayland-satellite >/tmp/xwayland-satellite-eureka.log 2>&1 &
-      startup_mark "xwayland-satellite spawned"
 
       startup_mark "exec emacs"
       exec env GTK_THEME=Adwaita:dark GTK_APPLICATION_PREFER_DARK_THEME=1 ${eurekaEmacs}/bin/emacs \
@@ -330,7 +326,7 @@ let
       else
         echo "The unresponsive Eureka Emacs was terminated; check its auto-save files"
       fi
-      echo "Super+Space: launcher; Super+Shift+Return: terminal; Super+w: close"
+      echo "Super+Space: launcher; Super+Ctrl+Return: terminal; Super+w: close"
     '';
   };
 in
@@ -354,7 +350,6 @@ in
     eurekaRecover
     river
     wl-clipboard
-    xwayland-satellite
   ];
 
   xdg.portal = {

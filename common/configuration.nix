@@ -129,8 +129,14 @@
           ids = [ "*" ];
           settings = {
             main = {
-              capslock = "overload(control, esc)";
+              capslock = "layer(capslock)";
               menu = "leftmeta";
+            };
+            "capslock:C" = {
+              n = "down";
+              p = "up";
+              b = "left";
+              f = "right";
             };
           };
         };

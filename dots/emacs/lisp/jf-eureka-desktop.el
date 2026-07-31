@@ -172,58 +172,22 @@ or less, or when the battery falls to 10% while the lid remains closed."
      "Lid action"
      (if monitor-only "suspend" "turn off monitor"))))
 
-;;; Workspaces
+;;; Contexts
 
-(defun jf-eureka-workspace-name (digit)
-  "Return the workspace name for DIGIT."
-  (number-to-string (if (zerop digit) 10 digit)))
+(defvar jf-eureka-context-history nil
+  "Minibuffer history for named Eureka contexts.")
 
-(defun jf-eureka-current-workspace-name ()
-  "Return the current tab-bar workspace name."
-  (let ((current (seq-find (lambda (tab) (eq (car tab) 'current-tab))
-                           (funcall tab-bar-tabs-function))))
-    (alist-get 'name (cdr current))))
-
-(defun jf-eureka-switch-workspace (digit)
-  "Switch to workspace DIGIT, creating it when needed."
-  (interactive "nWorkspace digit: ")
-  (if (active-minibuffer-window)
-      ;; Tab window configurations must not be swapped underneath an active
-      ;; minibuffer.  Finish unwinding the recursive edit first, then switch.
-      (progn
-        (run-at-time 0 nil #'jf-eureka-switch-workspace digit)
-        (abort-recursive-edit))
-    (let ((name (jf-eureka-workspace-name digit)))
-      (tab-bar-switch-to-tab name)
-      (jf-eureka--notify "Workspace" name))))
-
-(defun jf-eureka--remove-buffer-from-current-workspace (buffer)
-  "Stop showing BUFFER in the selected window without killing it."
-  (when (eq (window-buffer (selected-window)) buffer)
-    (if (one-window-p t)
-        (switch-to-prev-buffer (selected-window) 'bury)
-      (delete-window (selected-window)))))
-
-(defun jf-eureka--move-buffer-to-workspace (buffer digit)
-  "Move live BUFFER to workspace DIGIT after any minibuffer has unwound."
-  (when (buffer-live-p buffer)
-    (let ((source-name (jf-eureka-current-workspace-name))
-          (target-name (jf-eureka-workspace-name digit)))
-      (unless (string= source-name target-name)
-        (jf-eureka--remove-buffer-from-current-workspace buffer)
-        (tab-bar-switch-to-tab target-name)
-        (switch-to-buffer buffer)
-        (jf-eureka--notify "Moved to workspace" target-name)))))
-
-(defun jf-eureka-move-buffer-to-workspace (digit)
-  "Move the current buffer to workspace DIGIT."
-  (interactive "nMove buffer to workspace digit: ")
-  (if-let ((minibuffer (active-minibuffer-window)))
-      (let ((buffer (and (window-live-p (minibuffer-selected-window))
-                         (window-buffer (minibuffer-selected-window)))))
-        (run-at-time 0 nil #'jf-eureka--move-buffer-to-workspace buffer digit)
-        (abort-recursive-edit))
-    (jf-eureka--move-buffer-to-workspace (current-buffer) digit)))
+(defun jf-eureka-switch-or-create-context ()
+  "Switch to a named context, or create it if it does not exist."
+  (interactive)
+  (let* ((current (tabspaces--current-tab-name))
+         (context
+          (completing-read
+           (format "Context (%s): " current)
+           (tabspaces--list-tabspaces)
+           nil nil nil 'jf-eureka-context-history current)))
+    (unless (string-empty-p context)
+      (tabspaces-switch-or-create-workspace context))))
 
 ;;; Removable media
 
