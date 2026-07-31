@@ -64,6 +64,13 @@ let
 
       startup_state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/eureka"
       mkdir -p "$startup_state_dir"
+      # Preserve the compositor socket before Emacs starts.  Recovery can then
+      # target this exact River session even if Emacs fails before its server or
+      # Eureka's native module comes up.
+      printf '%s\n' "''${WAYLAND_DISPLAY:?}" \
+        >"$startup_state_dir/current-wayland-display.tmp"
+      mv -f "$startup_state_dir/current-wayland-display.tmp" \
+        "$startup_state_dir/current-wayland-display"
       EUREKA_STARTUP_LOG="$startup_state_dir/startup-$(date -u +%Y%m%dT%H%M%S)-$$.log"
       export EUREKA_STARTUP_LOG
       EUREKA_STARTUP_EPOCH_NS="$(date +%s%N)"
@@ -178,6 +185,53 @@ let
     passthru.providedSessions = [ "eureka-debug" ];
   };
 
+  jrwmRecoveryInit = pkgs.writeShellApplication {
+    name = "jrwm-recovery-init";
+    runtimeInputs = [
+      pkgs.foot
+      pkgs.fuzzel
+    ];
+    text = ''
+      exec ${jrwmPackage}/bin/jrwm
+    '';
+  };
+
+  jrwmRecoverySession = pkgs.writeShellApplication {
+    name = "jrwm-recovery-session";
+    runtimeInputs = [ pkgs.dbus ];
+    text = ''
+      set -euo pipefail
+
+      ${eurekaSessionExports}
+      export XDG_CURRENT_DESKTOP="river:jrwm"
+      export XDG_SESSION_DESKTOP="jrwm-recovery"
+      export XDG_SESSION_TYPE="wayland"
+      unset NIXOS_OZONE_WL
+
+      river_cmd=("${pkgs.river}/bin/river" "-c" "${jrwmRecoveryInit}/bin/jrwm-recovery-init")
+      if [ -z "''${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+        exec dbus-run-session -- "''${river_cmd[@]}"
+      fi
+      exec "''${river_cmd[@]}"
+    '';
+  };
+
+  jrwmRecoveryDesktopSession = pkgs.symlinkJoin {
+    name = "jrwm-recovery-wayland-session";
+    paths = [
+      jrwmRecoverySession
+      (pkgs.writeTextDir "share/wayland-sessions/jrwm-recovery.desktop" ''
+        [Desktop Entry]
+        Name=JrWM (Recovery)
+        Comment=Minimal River session for recovering from Eureka failures
+        Exec=${jrwmRecoverySession}/bin/jrwm-recovery-session
+        Type=Application
+        DesktopNames=river;jrwm
+      '')
+    ];
+    passthru.providedSessions = [ "jrwm-recovery" ];
+  };
+
   eurekaStartupReport = pkgs.writeShellApplication {
     name = "eureka-startup-report";
     runtimeInputs = [ pkgs.coreutils ];
@@ -215,6 +269,7 @@ let
       set -euo pipefail
 
       runtime_dir="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+      state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/eureka"
       wayland_display="''${WAYLAND_DISPLAY:-}"
       mapfile -t emacs_candidates < <(
         pgrep -u "$(id -u)" -f 'emacs.*jf-eureka\.el' || true
@@ -231,6 +286,12 @@ let
             break
           fi
         done
+      fi
+      if [ -z "$wayland_display" ] && [ -r "$state_dir/current-wayland-display" ]; then
+        recorded_display=$(head -n1 "$state_dir/current-wayland-display")
+        if [ -n "$recorded_display" ] && [ -S "$runtime_dir/$recorded_display" ]; then
+          wayland_display="$recorded_display"
+        fi
       fi
       if [ -z "$wayland_display" ]; then
         for socket in "$runtime_dir"/wayland-*; do
@@ -336,6 +397,7 @@ in
     sessionPackages = [
       eurekaDesktopSession
       eurekaDebugDesktopSession
+      jrwmRecoveryDesktopSession
     ];
   };
 

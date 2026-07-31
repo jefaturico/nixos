@@ -73,32 +73,23 @@
 
 ;; Prevent UI flash
 (let ((jf/early-frame-parameters
+       '((internal-border-width . 0)
+         (menu-bar-lines . 0)
+         (tool-bar-lines . 0)
+         (vertical-scroll-bars . nil)
+         (undecorated . t)))
+      (jf/early-color-parameters
        `((background-color . ,jf/early-background)
          (foreground-color . ,jf/early-foreground)
          (cursor-color . ,jf/early-foreground)
          (mouse-color . ,jf/early-foreground)
-         (border-color . ,jf/early-background)
-         (internal-border-width . 0)
-         (menu-bar-lines . 0)
-         (tool-bar-lines . 0)
-         (vertical-scroll-bars . nil)
-         (undecorated . t))))
+         (border-color . ,jf/early-background))))
   (setq default-frame-alist
         (append jf/early-frame-parameters default-frame-alist)
         initial-frame-alist
-        (append jf/early-frame-parameters initial-frame-alist)))
-
-(set-face-attribute 'default nil
-                    :background jf/early-background
-                    :foreground jf/early-foreground)
-(set-face-attribute 'mode-line nil
-                    :background jf/early-background
-                    :foreground jf/early-foreground
-                    :box nil)
-(set-face-attribute 'mode-line-inactive nil
-                    :background jf/early-background
-                    :foreground jf/early-foreground
-                    :box nil)
+        (append jf/early-color-parameters
+                jf/early-frame-parameters
+                initial-frame-alist)))
 
 (fringe-mode 0)
 (setq-default mode-line-format nil)

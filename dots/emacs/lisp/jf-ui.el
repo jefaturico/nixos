@@ -28,11 +28,19 @@
   (setq custom-enabled-themes nil)
   (load-theme (jf/current-system-theme) t)
   (when (fboundp 'jf/apply-org-heading-faces)
-    (jf/apply-org-heading-faces)))
+    (jf/apply-org-heading-faces))
+  (when (fboundp 'jf/apply-mode-line-faces)
+    (jf/apply-mode-line-faces)))
 
 ;;; Buffer display
 
 (setq display-line-numbers-type t)
+
+;; Keep adjacent windows visually distinct when inactive mode lines are hidden.
+(setq window-divider-default-places t
+      window-divider-default-right-width 1
+      window-divider-default-bottom-width 1)
+(window-divider-mode 1)
 
 (use-package visual-fill-column
   :commands visual-fill-column-mode)

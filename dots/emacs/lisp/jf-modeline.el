@@ -38,6 +38,14 @@
   '((t :inherit mode-line-inactive :weight bold))
   "Face for inactive mode line text that needs attention.")
 
+(defun jf/apply-mode-line-faces ()
+  "Remove boxes from mode-line faces."
+  (dolist (face '(mode-line mode-line-active mode-line-inactive))
+    (when (facep face)
+      (set-face-attribute face nil :box nil))))
+
+(jf/apply-mode-line-faces)
+
 (defun jf/mode-line-active-p ()
   "Return non-nil when formatting the selected window's mode line."
   (if (fboundp 'mode-line-window-selected-p)
@@ -172,6 +180,23 @@
                 mode-line-format-right-align
                 (:eval (jf/mode-line-right))
                 " "))
+
+(defun jf/update-window-mode-lines (frame)
+  "Show a mode line only in FRAME's selected editing window."
+  (when (frame-live-p frame)
+    (let* ((selected (frame-selected-window frame))
+           (active (if (window-minibuffer-p selected)
+                       (or (minibuffer-selected-window) selected)
+                     selected)))
+      (dolist (window (window-list frame 'no-minibuffer))
+        ;; An unbound symbol is a valid empty mode-line construct.  Unlike nil,
+        ;; it overrides the buffer's mode-line-format for this window.
+        (set-window-parameter window 'mode-line-format
+                              (unless (eq window active) 'none))))))
+
+(add-hook 'window-state-change-functions #'jf/update-window-mode-lines)
+(dolist (frame (frame-list))
+  (jf/update-window-mode-lines frame))
 
 ;; Keep drag-to-resize, but make completed mode-line clicks inert.
 (dolist (event '("<mode-line> <mouse-1>"
