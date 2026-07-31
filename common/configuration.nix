@@ -133,10 +133,13 @@
               menu = "leftmeta";
             };
             "capslock:C" = {
+              a = "home";
+              b = "left";
+              d = "delete";
+              e = "end";
+              f = "right";
               n = "down";
               p = "up";
-              b = "left";
-              f = "right";
             };
           };
         };
