@@ -24,6 +24,22 @@
 (defvar jf/shutdown-inhibitor-process nil
   "Process holding a shutdown inhibitor while Emacs has unsaved buffers.")
 
+(defun jf/start-inhibitor (name what who why)
+  "Start a systemd inhibitor process tied to this Emacs process.
+
+NAME identifies the Emacs process.  WHAT, WHO and WHY are passed to
+systemd-inhibit.  The inhibited command waits for EOF on a pipe owned by
+Emacs, so the lock is also released if Emacs exits unexpectedly."
+  (when-let ((systemd-inhibit (executable-find "systemd-inhibit")))
+    (let ((process-connection-type nil))
+      (start-process
+       name nil systemd-inhibit
+       (concat "--what=" what)
+       "--mode=block"
+       (concat "--who=" who)
+       (concat "--why=" why)
+       "sh" "-c" "read -r _"))))
+
 (defun jf/save-worthy-buffer-p (&optional buffer)
   "Return non-nil when modified BUFFER should block shutdown."
   (let ((buffer (or buffer (current-buffer))))
@@ -43,16 +59,13 @@
   "Hold a shutdown inhibitor while any user-visible buffer is modified."
   (if (jf/modified-user-buffers)
       (unless (process-live-p jf/shutdown-inhibitor-process)
-        (when-let ((systemd-inhibit (executable-find "systemd-inhibit")))
-          (setq jf/shutdown-inhibitor-process
-                (start-process
-                 "emacs-shutdown-inhibitor" nil
-                 systemd-inhibit
-                 "--what=shutdown:handle-power-key"
-                 "--mode=block"
-                 "--who=Emacs"
-                 "--why=Warning: Unsaved buffers detected in Emacs!"
-                 "sleep" "infinity"))
+        (when-let ((process
+                    (jf/start-inhibitor
+                     "emacs-shutdown-inhibitor"
+                     "shutdown:handle-power-key"
+                     "Emacs"
+                     "Warning: Unsaved buffers detected in Emacs!")))
+          (setq jf/shutdown-inhibitor-process process)
           (set-process-query-on-exit-flag
            jf/shutdown-inhibitor-process nil)))
     (jf/release-shutdown-inhibitor)))
@@ -67,6 +80,7 @@
 (add-hook 'after-save-hook #'jf/update-shutdown-inhibitor)
 (add-hook 'after-revert-hook #'jf/update-shutdown-inhibitor)
 (add-hook 'kill-buffer-hook #'jf/update-shutdown-inhibitor)
+(add-hook 'kill-emacs-hook #'jf/release-shutdown-inhibitor)
 (run-at-time nil 5 #'jf/update-shutdown-inhibitor)
 
 ;;; Persistent files

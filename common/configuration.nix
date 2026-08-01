@@ -12,6 +12,7 @@
     enable = true;
     configurationLimit = 5;
   };
+  boot.loader.timeout = 0;
   boot.loader.efi.canTouchEfiVariables = true;
 
   time.timeZone = "Europe/Madrid";
@@ -129,17 +130,8 @@
           ids = [ "*" ];
           settings = {
             main = {
-              capslock = "layer(capslock)";
+              capslock = "leftcontrol";
               menu = "leftmeta";
-            };
-            "capslock:C" = {
-              a = "home";
-              b = "left";
-              d = "delete";
-              e = "end";
-              f = "right";
-              n = "down";
-              p = "up";
             };
           };
         };

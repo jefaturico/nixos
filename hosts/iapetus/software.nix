@@ -24,6 +24,7 @@ in
     enable = true;
     configurationLimit = 5;
   };
+  boot.loader.timeout = 0;
   boot.loader.efi.canTouchEfiVariables = true;
 
   time.timeZone = "Europe/Madrid";
