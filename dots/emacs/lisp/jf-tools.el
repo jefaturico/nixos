@@ -45,9 +45,9 @@
          (not (or (eq jf/vterm-role 'codex)
                   (string-prefix-p "*codex:" (buffer-name buffer)))))))
 
-(defun jf/vterm--context-terminal ()
-  "Return the most recent regular vterm in the current context."
-  (seq-find #'jf/vterm--ordinary-terminal-p (tabspaces--buffer-list)))
+(defun jf/vterm--recent-terminal ()
+  "Return the most recently used regular vterm."
+  (seq-find #'jf/vterm--ordinary-terminal-p (buffer-list)))
 
 (defun jf/vterm--display-below (buffer)
   "Display BUFFER in a newly split window below the selected one."
@@ -66,10 +66,10 @@
         (setq-local jf/vterm-role 'terminal))
       buffer)))
 
-(defun jf/vterm-context ()
-  "Show this context's regular vterm below, creating one when absent."
+(defun jf/vterm ()
+  "Show the most recent regular vterm below, creating one when absent."
   (interactive)
-  (if-let ((buffer (jf/vterm--context-terminal)))
+  (if-let ((buffer (jf/vterm--recent-terminal)))
       (jf/vterm--display-below buffer)
     (jf/vterm-new)))
 

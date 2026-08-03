@@ -172,23 +172,6 @@ or less, or when the battery falls to 10% while the lid remains closed."
      "Lid action"
      (if monitor-only "suspend" "turn off monitor"))))
 
-;;; Contexts
-
-(defvar jf-eureka-context-history nil
-  "Minibuffer history for named Eureka contexts.")
-
-(defun jf-eureka-switch-or-create-context ()
-  "Switch to a named context, or create it if it does not exist."
-  (interactive)
-  (let* ((current (tabspaces--current-tab-name))
-         (context
-          (completing-read
-           (format "Context (%s): " current)
-           (tabspaces--list-tabspaces)
-           nil nil nil 'jf-eureka-context-history current)))
-    (unless (string-empty-p context)
-      (tabspaces-switch-or-create-workspace context))))
-
 ;;; Removable media
 
 (defun jf-eureka-usb-open ()

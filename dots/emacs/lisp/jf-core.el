@@ -158,24 +158,6 @@ Emacs, so the lock is also released if Emacs exits unexpectedly."
 
 ;;; Built-in services and performance
 
-(use-package tab-bar
-  :ensure nil
-  :config
-  (setq tab-bar-show nil
-        tab-bar-new-tab-choice "*scratch*"
-        tab-bar-select-restore-windows nil)
-  (tab-bar-mode 1)
-  (tab-bar-rename-tab "main"))
-
-(use-package tabspaces
-  :demand t
-  :custom
-  (tabspaces-default-tab "main")
-  (tabspaces-include-buffers '("*scratch*"))
-  (tabspaces-session nil)
-  :config
-  (tabspaces-mode 1))
-
 (use-package recentf
   :init
   (setq recentf-auto-cleanup 'never)

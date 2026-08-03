@@ -112,6 +112,7 @@
         org-log-into-drawer t
         org-tags-column 0
         org-startup-folded 'content
+        org-cycle-separator-lines 1
         org-element-cache-persistent t
         org-fontify-whole-heading-line t
         org-fontify-done-headline nil

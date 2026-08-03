@@ -21,7 +21,6 @@ extraPackages
   org-roam
   org-roam-ui
   org-drill
-  tabspaces
   (treesit-grammars.with-grammars (grammars: [
     grammars.tree-sitter-python
     grammars.tree-sitter-typst

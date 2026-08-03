@@ -10,7 +10,7 @@
 
 (setopt eureka-intercept-prefixes
         '("C-x" "C-u" "C-h" "M-x" "s-x" "s-v" "C-s-v"
-          "s-SPC" "C-s-SPC" "s-<return>" "s-<tab>"
+          "s-SPC" "s-<tab>"
           "s-q" "s-o"
           "s-n" "C-s-n" "C-s-r"
           "s-/" "s--" "C-s-f"
@@ -48,10 +48,10 @@
 (require 'jf-eureka-notifications)
 (require 'jf-eureka-desktop)
 
-;;; Context and session bindings
+;;; Session bindings
 
 (global-set-key (kbd "s-x") #'jf-eureka-launch-program)
-(global-set-key (kbd "s-v") #'jf/vterm-context)
+(global-set-key (kbd "s-v") #'jf/vterm)
 (global-set-key (kbd "C-s-v") #'jf/vterm-new)
 (global-set-key (kbd "s-c") #'jf/codex)
 
@@ -82,10 +82,8 @@ Other Emacs buffers remain alive and available for later selection."
       (jf-eureka--close-window-preserving-buffer window buffer))))
 
 (global-set-key (kbd "s-q") #'jf-eureka-close-dwim)
-(global-set-key (kbd "s-SPC") #'jf/consult-buffer-contexts)
-(global-set-key (kbd "C-s-SPC") #'jf/consult-buffer-global)
-(global-set-key (kbd "s-<return>") #'jf-eureka-switch-or-create-context)
-(global-set-key (kbd "s-<tab>") #'tab-bar-switch-to-recent-tab)
+(global-set-key (kbd "s-SPC") #'consult-buffer)
+(global-set-key (kbd "s-<tab>") #'mode-line-other-buffer)
 (global-unset-key (kbd "s-b"))
 (global-set-key (kbd "s-n") #'jf-notifications)
 (global-set-key (kbd "C-s-n") #'jf/network-manager)

@@ -27,7 +27,11 @@ let
     name = "stremio-no-csd";
     runtimeInputs = [ pkgs.flatpak ];
     text = ''
-      exec flatpak run com.stremio.Stremio --no-window-decorations "$@"
+      # WebKitGTK's DMA-BUF renderer trips over NVIDIA explicit sync during
+      # startup.  Disable that driver path while retaining native Wayland and
+      # DMA-BUF acceleration.
+      exec flatpak run --env=__NV_DISABLE_EXPLICIT_SYNC=1 \
+        com.stremio.Stremio --no-window-decorations "$@"
     '';
   };
 in
@@ -120,6 +124,9 @@ in
 
     mimeApps = {
       enable = true;
+      associations.added = {
+        "x-scheme-handler/stremio" = [ "com.stremio.Stremio.desktop" ];
+      };
       defaultApplications = {
         "application/pdf" = [ "org.pwmt.zathura.desktop" ];
         "image/png" = [ "imv.desktop" ];
@@ -132,6 +139,7 @@ in
         "x-scheme-handler/http" = "jf-eww.desktop";
         "x-scheme-handler/https" = "jf-eww.desktop";
         "x-scheme-handler/about" = "jf-eww.desktop";
+        "x-scheme-handler/stremio" = [ "com.stremio.Stremio.desktop" ];
         "x-scheme-handler/unknown" = "jf-eww.desktop";
       };
     };

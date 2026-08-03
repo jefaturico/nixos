@@ -37,40 +37,7 @@
   (consult-customize
    consult-recent-file
    consult-buffer
-   :preview-key "M-.")
-
-  ;; A dedicated source lets the Eureka bindings choose explicitly between
-  ;; context-local and global buffer lists.
-  (defvar jf/consult-source-context-buffer nil
-    "Consult source containing buffers in the current Tabspaces context.")
-  (setq jf/consult-source-context-buffer
-        (list :name "Context buffers"
-              :narrow ?w
-              :history 'buffer-name-history
-              :category 'buffer
-              :state #'consult--buffer-state
-              :default t
-              :items (lambda ()
-                       (consult--buffer-query
-                        :predicate #'tabspaces--local-buffer-p
-                        :sort 'visibility
-                        :as #'buffer-name)))))
-
-(defun jf/consult-buffer-contexts ()
-  "Select a buffer belonging to the current context."
-  (interactive)
-  (setf (plist-get jf/consult-source-context-buffer :name)
-        (format "Buffers (%s)" (tabspaces--current-tab-name)))
-  (consult-buffer (list jf/consult-source-context-buffer)))
-
-(defun jf/consult-buffer-global ()
-  "Select a live buffer from every context."
-  (interactive)
-  (let ((source (copy-tree consult-source-buffer)))
-    (plist-put source :name "All buffers")
-    (plist-put source :hidden nil)
-    (plist-put source :default t)
-    (consult-buffer (list source))))
+   :preview-key "M-."))
 
 (use-package which-key
   :defer 2
