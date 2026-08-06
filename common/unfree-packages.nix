@@ -8,6 +8,7 @@ let
     "nvidia-x11"
     "nvidia-kernel-modules"
     "nvidia-settings"
+    "stremio-linux-shell"
     "vscode"
     "vscode-fhs"
     "corefonts"

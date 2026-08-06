@@ -23,23 +23,36 @@ let
     '';
   };
 
-  stremioNoCsd = pkgs.writeShellApplication {
-    name = "stremio-no-csd";
-    runtimeInputs = [ pkgs.flatpak ];
-    text = ''
-      # WebKitGTK's DMA-BUF renderer trips over NVIDIA explicit sync during
-      # startup.  Disable that driver path while retaining native Wayland and
-      # DMA-BUF acceleration.
-      exec flatpak run --env=__NV_DISABLE_EXPLICIT_SYNC=1 \
-        com.stremio.Stremio --no-window-decorations "$@"
+  stremioXwayland = pkgs.symlinkJoin {
+    name = "stremio-xwayland";
+    paths = [ pkgs.stremio-linux-shell ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      unlink "$out/bin/stremio"
+      makeWrapper ${pkgs.stremio-linux-shell}/bin/stremio "$out/bin/stremio" \
+        --set QT_QPA_PLATFORM xcb \
+        --set WEBKIT_DISABLE_DMABUF_RENDERER 1 \
+        --set WEBKIT_DISABLE_COMPOSITING_MODE 1 \
+        --set __NV_DISABLE_EXPLICIT_SYNC 1
+
+      # The desktop file uses D-Bus activation, which otherwise bypasses the
+      # wrapped executable and launches the upstream package directly.
+      unlink "$out/share/dbus-1/services/com.stremio.Stremio.service"
+      substitute \
+        ${pkgs.stremio-linux-shell}/share/dbus-1/services/com.stremio.Stremio.service \
+        "$out/share/dbus-1/services/com.stremio.Stremio.service" \
+        --replace-fail \
+        ${pkgs.stremio-linux-shell}/bin/stremio \
+        "$out/bin/stremio"
     '';
   };
+
 in
 {
   home = {
     packages = [
       ewwBrowser
-      stremioNoCsd
+      stremioXwayland
     ];
 
     pointerCursor = {
@@ -86,25 +99,6 @@ in
       Categories=Network;WebBrowser;
       MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
       StartupNotify=false
-    '';
-
-    # Stremio supports undecorated windows natively.  Override the exported
-    # Flatpak desktop entry so every graphical launch uses that mode.  D-Bus
-    # activation must be disabled or it bypasses the command-line option.
-    dataFile."applications/com.stremio.Stremio.desktop".text = ''
-      [Desktop Entry]
-      Name=Stremio
-      Comment=Freedom to Stream
-      Icon=com.stremio.Stremio
-      Categories=Utility;AudioVideo;Video;Player;
-      Keywords=Stremio;Media;Play;
-      Type=Application
-      Exec=${stremioNoCsd}/bin/stremio-no-csd %U
-      TryExec=${stremioNoCsd}/bin/stremio-no-csd
-      MimeType=x-scheme-handler/stremio;
-      Terminal=false
-      StartupNotify=true
-      DBusActivatable=false
     '';
 
     userDirs = {

@@ -74,6 +74,11 @@
 
 ;;; Power and session actions
 
+(defun jf-eureka-lock ()
+  "Lock the current Wayland session."
+  (interactive)
+  (jf-eureka-run "eureka-lock"))
+
 (defun jf-eureka--run-power-action (action)
   "Run systemctl power ACTION after releasing Emacs' inhibitor.
 
@@ -131,6 +136,7 @@ unsaved work belonging to another Emacs instance."
 (defvar jf-eureka-power-menu-actions
   '(("NetworkManager" . jf/network-manager)
     ("NixOS rebuild" . jf/nixos-rebuild)
+    ("Lock" . jf-eureka-lock)
     ("Suspend" . jf-eureka-suspend)
     ("Exit session" . jf-eureka-exit-session)
     ("Reboot" . jf-eureka-reboot)

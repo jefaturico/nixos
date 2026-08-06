@@ -8,6 +8,17 @@
 (provide 'eureka)
 (require 'jf-eureka-session)
 
+(ert-deftest jf-eureka-lock-runs-locker ()
+  (let (command)
+    (cl-letf (((symbol-function 'jf-eureka-run)
+               (lambda (&rest args) (setq command args))))
+      (jf-eureka-lock))
+    (should (equal command '("eureka-lock")))))
+
+(ert-deftest jf-eureka-power-menu-includes-lock ()
+  (should (eq (alist-get "Lock" jf-eureka-power-menu-actions nil nil #'equal)
+              #'jf-eureka-lock)))
+
 (ert-deftest jf-eureka-power-action-does-not-bypass-inhibitors ()
   (let ((jf/shutdown-inhibitor-process nil)
         command)

@@ -6,6 +6,7 @@
 
 let
   jrwmPackage = pkgs.callPackage ../../common/packages/jrwm.nix { };
+  maxRefreshOutputs = import ../../common/packages/max-refresh-outputs.nix { inherit pkgs; };
 
   hotasCurve = pkgs.writeShellApplication {
     name = "elite-hotas-curve";
@@ -167,6 +168,7 @@ let
 
       runtime_dir="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
+      ${maxRefreshOutputs}/bin/max-refresh-outputs >/dev/null 2>&1 &
       ${jrwmPackage}/bin/jrwm &
 
       export DISPLAY=":12"

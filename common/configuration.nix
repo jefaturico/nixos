@@ -89,7 +89,6 @@
       };
       packages = [
         "com.bitwarden.desktop"
-        "com.stremio.Stremio"
       ];
       remotes = [
         {

@@ -7,6 +7,7 @@
 let
   eurekaPackage = import ./packages/eureka.nix { inherit pkgs; };
   jrwmPackage = pkgs.callPackage ./packages/jrwm.nix { };
+  maxRefreshOutputs = import ./packages/max-refresh-outputs.nix { inherit pkgs; };
 
   # The nixpkgs snapshot predates gptel's ChatGPT Plus/Pro OAuth backend.
   # Pin the upstream revision so subscription authentication works without an
@@ -53,6 +54,31 @@ let
     pkgs.lib.mapAttrsToList (name: value: ''export ${name}="${value}"'') eurekaSessionVariables
   );
 
+  eurekaLock = pkgs.writeShellApplication {
+    name = "eureka-lock";
+    runtimeInputs = [ pkgs.waylock ];
+    text = ''
+      exec waylock \
+        -ignore-empty-password \
+        -init-color 0x000000 \
+        -input-color 0x181818 \
+        -input-alt-color 0x242424 \
+        -fail-color 0xa33b3b \
+        "$@"
+    '';
+  };
+
+  eurekaIdle = pkgs.writeShellApplication {
+    name = "eureka-idle";
+    runtimeInputs = [ pkgs.swayidle ];
+    text = ''
+      exec swayidle -w -C /dev/null \
+        timeout 600 '${eurekaLock}/bin/eureka-lock -fork-on-lock' \
+        before-sleep '${eurekaLock}/bin/eureka-lock -fork-on-lock' \
+        lock '${eurekaLock}/bin/eureka-lock -fork-on-lock'
+    '';
+  };
+
   eurekaInit = pkgs.writeShellApplication {
     name = "eureka-init";
     runtimeInputs = with pkgs; [
@@ -86,6 +112,9 @@ let
       }
 
       startup_mark "eureka-init entry"
+
+      ${maxRefreshOutputs}/bin/max-refresh-outputs >/dev/null 2>&1 &
+      ${eurekaIdle}/bin/eureka-idle &
 
       ${eurekaSessionExports}
       unset NIXOS_OZONE_WL
@@ -192,6 +221,7 @@ let
       pkgs.fuzzel
     ];
     text = ''
+      ${maxRefreshOutputs}/bin/max-refresh-outputs >/dev/null 2>&1 &
       exec ${jrwmPackage}/bin/jrwm
     '';
   };
@@ -392,6 +422,8 @@ let
   };
 in
 {
+  security.pam.services.waylock = { };
+
   services.displayManager = {
     defaultSession = "eureka";
     sessionPackages = [
@@ -407,9 +439,11 @@ in
     brightnessctl
     jrwmPackage
     eurekaEmacs
+    eurekaLock
     eurekaStartupReport
     fuzzel
     eurekaRecover
+    maxRefreshOutputs
     river
     wl-clipboard
   ];
