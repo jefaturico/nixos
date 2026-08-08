@@ -1,4 +1,7 @@
-{ pkgs }:
+{
+  pkgs,
+  outputScales ? { },
+}:
 
 pkgs.writeShellApplication {
   name = "max-refresh-outputs";
@@ -15,6 +18,7 @@ pkgs.writeShellApplication {
     # the best advertised mode ourselves: pixel count first, refresh last.
     # Deliberately leave adaptive sync untouched; refresh rate and VRR are
     # independent output properties.
+    output_scales='${builtins.toJSON outputScales}'
     failures=0
     while [ "$failures" -lt 5 ]; do
       if outputs=$(wlr-randr --json 2>/dev/null); then
@@ -23,19 +27,26 @@ pkgs.writeShellApplication {
 
         while IFS= read -r output; do
           name=$(jq -r '.name' <<<"$output")
-          mode=$(jq -r '.mode' <<<"$output")
-          args+=(--output "$name" --mode "$mode")
+          mode=$(jq -r '.mode // empty' <<<"$output")
+          scale=$(jq -r '.scale // empty' <<<"$output")
+          args+=(--output "$name")
+          [ -n "$mode" ] && args+=(--mode "$mode")
+          [ -n "$scale" ] && args+=(--scale "$scale")
         done < <(
-          jq -c '
+          jq -c --argjson scales "$output_scales" '
             .[]
             | select(.enabled == true)
             | (.modes | max_by([(.width * .height), .width, .height, .refresh])) as $best
-            | select($best.current != true)
+            | ($scales[.name] // null) as $scale
+            | select($best.current != true or ($scale != null and .scale != $scale))
             | {
                 name,
-                mode: ($best.width | tostring)
-                  + "x" + ($best.height | tostring)
-                  + "@" + ($best.refresh | tostring) + "Hz"
+                mode: if $best.current == true then null else
+                  ($best.width | tostring)
+                    + "x" + ($best.height | tostring)
+                    + "@" + ($best.refresh | tostring) + "Hz"
+                end,
+                scale: if ($scale != null and .scale != $scale) then $scale else null end
               }
           ' <<<"$outputs"
         )

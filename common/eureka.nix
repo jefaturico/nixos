@@ -7,7 +7,10 @@
 let
   eurekaPackage = import ./packages/eureka.nix { inherit pkgs; };
   jrwmPackage = pkgs.callPackage ./packages/jrwm.nix { };
-  maxRefreshOutputs = import ./packages/max-refresh-outputs.nix { inherit pkgs; };
+  maxRefreshOutputs = import ./packages/max-refresh-outputs.nix {
+    inherit pkgs;
+    outputScales = config.eureka.outputScales;
+  };
 
   # The nixpkgs snapshot predates gptel's ChatGPT Plus/Pro OAuth backend.
   # Pin the upstream revision so subscription authentication works without an
@@ -422,6 +425,23 @@ let
   };
 in
 {
+  imports = [
+    ({ lib, ... }:
+      {
+        options.eureka.outputScales = lib.mkOption {
+          type = lib.types.attrsOf lib.types.number;
+          default = { };
+          example = {
+            "eDP-1" = 2;
+          };
+          description = ''
+            Wayland output scales to apply by connector name when an Eureka or
+            recovery River session starts and whenever an output is hot-plugged.
+          '';
+        };
+      })
+  ];
+
   security.pam.services.waylock = { };
 
   services.displayManager = {
