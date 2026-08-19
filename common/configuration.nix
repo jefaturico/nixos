@@ -1,11 +1,8 @@
 { config, pkgs, ... }:
 {
   imports = [
-    ./tty.nix
     ./secrets.nix
     ./syncthing.nix
-    ./eureka.nix
-    ./unfree-packages.nix
   ];
 
   boot.loader.systemd-boot = {
@@ -37,9 +34,6 @@
     enable = true;
     powerOnBoot = true;
     settings = {
-      General = {
-        FastConnectable = true;
-      };
       Policy = {
         AutoEnable = true;
       };
@@ -48,7 +42,11 @@
 
   # security.pam.services.sshd.startSession = true;
 
+  security.pam.services.ly.fprintAuth = true;
+
   services = {
+    fprintd.enable = true;
+
     displayManager = {
       ly = {
         enable = true;
@@ -56,7 +54,7 @@
           background = "0x00000000";
           foreground = "0x00AAAAAA";
           full_color = true;
-          animation = "none";
+          animation = "matrix";
           animation_frame_delay = 10;
           colormix_col1 = "0x40FFFFFF";
           colormix_col2 = "0x40AAAAAA";
@@ -129,7 +127,7 @@
           ids = [ "*" ];
           settings = {
             main = {
-              capslock = "leftcontrol";
+              capslock = "overload(control, esc)";
               menu = "leftmeta";
             };
           };
@@ -150,6 +148,8 @@
 
   xdg.portal = {
     enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.common.default = "gtk";
   };
 
   users.users.jefaturico = {
@@ -167,9 +167,27 @@
   };
 
   environment.systemPackages = with pkgs; [
+    curl
+    git
+    htop
+    rsync
     sops
     ssh-to-age
+    helix
+    wget
   ];
+
+  programs.bash.interactiveShellInit = ''
+    nix() {
+      command nix --log-format bar-with-logs --print-build-logs "$@"
+    }
+
+    nixos-rebuild() {
+      command nixos-rebuild --log-format bar-with-logs --print-build-logs "$@"
+    }
+  '';
+
+  nixpkgs.config.allowUnfree = true;
 
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
@@ -197,5 +215,5 @@
     "vm.swappiness" = 100;
   };
 
-  system.stateVersion = "25.11";
+  system.stateVersion = "26.05";
 }

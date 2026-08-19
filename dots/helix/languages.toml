@@ -1,0 +1,59 @@
+# Language-specific policy. Helix already ships language definitions and
+# Tree-sitter grammars; these entries merge with them and only override choices
+# that are specific to this system.
+
+[[language]]
+name = "nix"
+language-servers = ["nil"]
+formatter = { command = "nixfmt" }
+auto-format = true
+text-width = 100
+indent = { tab-width = 2, unit = "  " }
+
+[language-server.nil.config.nil.nix.flake]
+autoArchive = true
+
+[[language]]
+name = "lua"
+language-servers = ["lua-language-server"]
+formatter = { command = "stylua", args = ["-"] }
+auto-format = true
+text-width = 100
+indent = { tab-width = 2, unit = "  " }
+
+[language-server.lua-language-server.config.Lua.completion]
+callSnippet = "Replace"
+
+[language-server.lua-language-server.config.Lua.diagnostics]
+disable = ["missing-fields"]
+
+[[language]]
+name = "bash"
+formatter = { command = "shfmt", args = ["-i", "2"] }
+auto-format = true
+text-width = 100
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "python"
+formatter = { command = "ruff", args = ["format", "-"] }
+auto-format = true
+text-width = 100
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "markdown"
+language-servers = ["markdown-oxide"]
+# Prose should wrap visually, but Markdown is not rewritten automatically.
+auto-format = false
+text-width = 100
+soft-wrap = { enable = true, wrap-at-text-width = false }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "typst"
+language-servers = ["tinymist"]
+auto-format = false
+text-width = 100
+soft-wrap = { enable = true, wrap-at-text-width = false }
+indent = { tab-width = 2, unit = "  " }

@@ -1,5 +1,5 @@
 {
-  description = "NixOS Flake for Titan, Tethys, Prometheus, and Iapetus";
+  description = "NixOS Flake for Titan, Tethys, and Iapetus";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05";
@@ -40,7 +40,7 @@
           system = "x86_64-linux";
           specialArgs = { inherit inputs; };
           modules = [
-            (./hosts + "/${host}/software.nix")
+            (./hosts + "/${host}/default.nix")
             home-manager.nixosModules.home-manager
             inputs.nix-flatpak.nixosModules.nix-flatpak
             inputs.sops-nix.nixosModules.sops
@@ -53,7 +53,7 @@
         nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            (./hosts + "/${host}/software.nix")
+            (./hosts + "/${host}/default.nix")
           ];
         };
     in
@@ -61,13 +61,8 @@
       nixosConfigurations = {
         titan = mkDesktopHost "titan";
         tethys = mkDesktopHost "tethys";
-        prometheus = mkDesktopHost "prometheus";
         iapetus = mkServerHost "iapetus";
 
-        # Temporary aliases for rebuilding machines that still have their old hostname.
-        galileo = mkDesktopHost "titan";
-        ekman = mkDesktopHost "tethys";
-        odin = mkServerHost "iapetus";
       };
     };
 }

@@ -15,13 +15,6 @@ let
       "titan"
     else
       null;
-  oldPeerHost =
-    if hostName == "titan" then
-      "ekman"
-    else if hostName == "tethys" then
-      "galileo"
-    else
-      null;
   tailnetHost = {
     User = "jefaturico";
     IdentityFile = "~/.ssh/id_tailnet";
@@ -30,12 +23,10 @@ let
 in
 {
   imports = [
+    ./niri/home.nix
     ./scripts.nix
-    ./emacs.nix
     ./programs.nix
-    ./services.nix
-    ./session.nix
-    ./wallust.nix
+    ./theme.nix
   ];
 
   home = {
@@ -114,9 +105,14 @@ in
           #!${pkgs.bash}/bin/bash
           set -euo pipefail
 
-          overrides_file="''${XDG_CACHE_HOME:-$HOME/.cache}/wallust/footclient-overrides.bash"
+          overrides_file="''${XDG_CACHE_HOME:-$HOME/.cache}/matugen/dynamic/foot-overrides.bash"
           footclient_color_args=()
-          [[ -r "$overrides_file" ]] && source "$overrides_file"
+          if [[ -r "$overrides_file" ]]; then
+            # This file is generated from a trusted declarative Matugen
+            # template and contains only a Bash array of Foot overrides.
+            # shellcheck disable=SC1090
+            source "$overrides_file"
+          fi
 
           set +e
           ${pkgs.foot}/bin/footclient "''${footclient_color_args[@]}" "$@"
@@ -124,8 +120,12 @@ in
           set -e
 
           if [[ "$status" -eq 220 ]]; then
-            ${pkgs.systemd}/bin/systemctl --user start foot-server.service 2>/dev/null || true
-            exec ${pkgs.foot}/bin/footclient "''${footclient_color_args[@]}" "$@"
+            # Do not make opening a terminal depend on the server becoming
+            # ready.  Repair it for subsequent clients while this invocation
+            # immediately falls back to a regular foot process.
+            ${pkgs.systemd}/bin/systemctl --user restart --no-block foot-server.service \
+              >/dev/null 2>&1 || true
+            exec ${pkgs.foot}/bin/foot "''${footclient_color_args[@]}" "$@"
           fi
 
           exit "$status"
@@ -150,7 +150,6 @@ in
         Compression = false;
         ServerAliveInterval = 0;
         ServerAliveCountMax = 3;
-        HashKnownHosts = false;
         UserKnownHostsFile = "~/.ssh/known_hosts";
         ControlMaster = "no";
         ControlPath = "~/.ssh/master-%r@%n:%p";
@@ -159,18 +158,7 @@ in
     }
     // lib.optionalAttrs (peerHost != null) {
       ${peerHost} = tailnetHost;
-      ${oldPeerHost} = tailnetHost;
       iapetus = tailnetHost;
-      odin = tailnetHost;
-      prometheus = tailnetHost;
-    }
-    // lib.optionalAttrs (hostName == "prometheus") {
-      titan = tailnetHost;
-      tethys = tailnetHost;
-      galileo = tailnetHost;
-      ekman = tailnetHost;
-      iapetus = tailnetHost;
-      odin = tailnetHost;
     };
   };
 }

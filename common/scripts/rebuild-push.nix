@@ -10,7 +10,7 @@
 
   repo="''${HOME}/nixos"
   sudo="/run/wrappers/bin/sudo"
-  git_owner_hosts="iapetus odin"
+  git_owner_hosts="iapetus"
 
   if [ -z "''${HOSTNAME:-}" ]; then
       printf 'HOSTNAME is not set.\n' >&2
@@ -43,14 +43,11 @@
       exit 1
   fi
 
-  ${pkgs.git}/bin/git add .
-  printf 'Staged current repo changes for flake evaluation.\n'
-
   "$sudo" ${pkgs.nixos-rebuild}/bin/nixos-rebuild \
       --log-format bar-with-logs \
       --print-build-logs \
       switch \
-      --flake "$repo/#$HOSTNAME"
+      --flake "path:$repo#$HOSTNAME"
 
   printf 'Commit and push changes? [y/N] '
   IFS= read -r publish
@@ -63,6 +60,27 @@
           exit 0
           ;;
   esac
+
+  # Stage each changed or untracked file only after explicit confirmation.
+  # This intentionally includes Nix files, lockfiles, patches, and encrypted
+  # secrets while preventing incidental local files from being committed.
+  candidates_file=$(${pkgs.coreutils}/bin/mktemp)
+  trap '${pkgs.coreutils}/bin/rm -f "$candidates_file"' EXIT
+  {
+    ${pkgs.git}/bin/git diff --name-only HEAD --diff-filter=ACDMRTUXB
+    ${pkgs.git}/bin/git ls-files --others --exclude-standard
+  } | ${pkgs.coreutils}/bin/sort -u > "$candidates_file"
+
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    printf 'Stage %s? [y/N] ' "$file"
+    IFS= read -r stage_file
+    case "$stage_file" in
+      y|Y|yes|YES)
+        ${pkgs.git}/bin/git add -A -- "$file"
+        ;;
+    esac
+  done < "$candidates_file"
 
   if ${pkgs.git}/bin/git diff --cached --quiet; then
       printf 'No changes to commit.\n'

@@ -3,7 +3,6 @@ let
   syncthingDevices = {
     titan.id = "OQUT2EC-CERWR4S-PJCPFUU-BUMZJZL-EVH66K6-I2YKDX3-6A7RS3I-Z3LLFAW";
     tethys.id = "4JEOFU4-36XJS24-4F2D73J-NH37P2M-ZFYY5GD-HSVQQHF-VBL22BP-56HPMQA";
-    prometheus.id = "4FRYUNK-DRTUVOV-OQ2RHP2-VY7GETS-XNCLXIS-M5AADSR-B6GNHWI-FBQXKAP";
     iapetus.id = "K5ROMZZ-E7WR4MM-EYYOLC5-UNOSCJ2-IIMYRGH-LOQOBZZ-DAV3EK6-CVDZ6AG";
     rhea.id = "HX2Y3DU-MX2MRNK-WLIJKQL-C4GQNVZ-LG5HRPA-YHRF2TH-23OQ4LA-PU3XBAM";
   };
@@ -12,21 +11,14 @@ let
   spokeHosts = [
     "titan"
     "tethys"
-    "prometheus"
   ];
 
   directPeers = {
     titan = [
       "tethys"
-      "prometheus"
     ];
     tethys = [
       "titan"
-      "prometheus"
-    ];
-    prometheus = [
-      "titan"
-      "tethys"
     ];
   };
 

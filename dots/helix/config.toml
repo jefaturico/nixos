@@ -1,0 +1,243 @@
+# Helix configuration
+#
+# This file deliberately documents and sets nearly every user-facing editor
+# option that affects day-to-day editing. Values that Helix should detect from
+# the environment (the clipboard provider and command shell), values that have
+# no meaningful universal setting (workspace LSP roots), and unset limits are
+# intentionally omitted. Keeping those automatic makes this portable between
+# the Wayland desktops and the Iapetus console/SSH environment.
+
+theme = "base16_transparent"
+
+[editor]
+# Keep context visible when approaching the top or bottom of the viewport.
+scrolloff = 8
+# Mouse selection, scrolling, and split interaction are useful in Foot.
+mouse = true
+# Preserve conventional Unix middle-click paste behavior.
+middle-click-paste = true
+# Use Helix's normal unnamed register for keyboard yank and paste operations.
+default-yank-register = '"'
+# Scroll three lines for each wheel event; fast without being disorienting.
+scroll-lines = 3
+# Relative numbers speed up count-based motions; insert mode remains absolute.
+line-number = "relative"
+# Highlight the active line to make the primary cursor easy to find.
+cursorline = false
+# Column highlighting adds visual noise and is rarely useful for prose or code.
+cursorcolumn = false
+# Continue line comments automatically when pressing Enter within a comment.
+continue-comments = true
+# The detailed gutter layout is configured in `[editor.gutters]` below.
+# Request completion automatically from LSP and open-buffer word sources.
+auto-completion = true
+# Complete filesystem paths detected around the cursor.
+path-completion = true
+# Format on save only for languages explicitly opted in via languages.toml.
+auto-format = true
+# Run idle work quickly enough for responsive diagnostics and highlighting.
+idle-timeout = 250
+# Avoid completion menus flashing up before a short pause in typing.
+completion-timeout = 150
+# Preview the selected completion before accepting it.
+preview-completion-insert = true
+# Start completion after two characters to avoid noisy one-letter suggestions.
+completion-trigger-len = 2
+# Preserve suffixes when completing instead of always replacing whole words.
+completion-replace = false
+# Show contextual documentation and command information popups.
+auto-info = true
+# Foot advertises true-color correctly, so no forced capability override.
+true-color = false
+# Foot advertises undercurl correctly, so no forced capability override.
+undercurl = false
+# Use language-specific conventions instead of a universal column ruler.
+rulers = []
+# Show the buffer line only when multiple buffers are open.
+bufferline = "multiple"
+# Color the statusline mode indicator for quick modal feedback.
+color-modes = true
+# Default width for prose reflow; languages may override this below.
+text-width = 100
+# Use the platform-native line ending for newly created files (LF on NixOS).
+default-line-ending = "native"
+# Ensure text files end in a newline when written.
+insert-final-newline = true
+# Write through a temporary file to reduce the chance of partial-file loss.
+atomic-save = true
+# Do not silently remove intentional blank lines at the end of a file.
+trim-final-newlines = false
+# Remove trailing whitespace on save; version control stays cleaner.
+trim-trailing-whitespace = true
+# Border every popup and completion menu for clear visual separation.
+popup-border = "all"
+# Combine syntax-aware indentation with indentation from surrounding lines.
+indent-heuristic = "hybrid"
+# Home-row-heavy alphabet used by jump-label commands.
+jump-label-alphabet = "asdfghjklqwertyuiopzxcvbnm"
+# Show non-cursor-line diagnostics at line ends starting at warning severity.
+end-of-line-diagnostics = "warning"
+# Respect project .editorconfig files when present.
+editor-config = true
+
+[editor.statusline]
+# Keep identity and state together on the left.
+left = ["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]
+# Show the current Git branch without crowding either edge.
+center = []
+# Put actionable state and location information on the right.
+right = ["diagnostics", "workspace-diagnostics", "register", "position-percentage", "file-type", "file-encoding"]
+# A compact, readable separator between status items.
+separator = "│"
+# Spell mode names out; clarity matters more than two saved columns.
+mode.normal = "N"
+mode.insert = "I"
+mode.select = "V"
+# Include informational diagnostics as well as warnings and errors.
+diagnostics = ["error", "warning", "info"]
+# Keep workspace totals focused on problems that usually require action.
+workspace-diagnostics = ["error", "warning"]
+
+[editor.lsp]
+# Enable language servers configured by Helix and languages.toml.
+enable = true
+# Surface messages intentionally sent by a language server.
+display-messages = true
+# Avoid verbose progress chatter; the statusline spinner still shows activity.
+display-progress-messages = false
+# Show parameter information automatically while entering calls.
+auto-signature-help = true
+# Display server-provided inferred types and parameter names inline.
+display-inlay-hints = true
+# Prevent exceptionally verbose inlay hints from taking over a line.
+inlay-hints-length-limit = 80
+# Render a swatch beside color values supported by the language server.
+display-color-swatches = true
+# Include documentation beneath signature-help popups.
+display-signature-help-docs = true
+# Accept snippet-shaped LSP completions.
+snippets = true
+# Include declarations when listing references to a symbol.
+goto-reference-include-declaration = true
+
+[editor.cursor-shape]
+# A block signals command-oriented normal mode.
+normal = "block"
+# A bar signals text insertion without obscuring the character underneath.
+insert = "bar"
+# An underline distinguishes selection extension from normal mode.
+select = "hidden"
+
+[editor.file-picker]
+# Hide dotfiles by default; use the picker option toggle when needed.
+hidden = true
+# Follow symlinked project paths.
+follow-symlinks = true
+# Avoid duplicate results reached through both real and symlinked paths.
+deduplicate-links = true
+# Honor ignore rules inherited from parent directories.
+parents = true
+# Honor generic .ignore files.
+ignore = true
+# Honor repository .gitignore files.
+git-ignore = true
+# Honor the user's global Git excludes file.
+git-global = true
+# Honor repository-private .git/info/exclude rules.
+git-exclude = true
+
+[editor.auto-pairs]
+# Insert the conservative programming pairs used by Helix by default.
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
+[editor.auto-save]
+# Do not save merely because terminal focus changed.
+focus-lost = false
+
+[editor.auto-save.after-delay]
+# Explicit saves and format-on-save are more predictable than timer saves.
+enable = false
+# Retained for easy opt-in if delayed autosave is enabled later.
+timeout = 3000
+
+[editor.search]
+# Search case-insensitively unless the query contains uppercase characters.
+smart-case = true
+# Continue searching from the opposite end after reaching a file boundary.
+wrap-around = true
+
+[editor.whitespace.render]
+# Show tabs and problematic non-breaking spaces, but not every normal space.
+space = "none"
+tab = "all"
+nbsp = "all"
+nnbsp = "all"
+newline = "none"
+
+[editor.whitespace.characters]
+# Clear but unobtrusive whitespace glyphs.
+space = "·"
+nbsp = "⍽"
+nnbsp = "␣"
+tab = "→"
+newline = "⏎"
+tabpad = "·"
+
+[editor.indent-guides]
+# Make nested structure visible in code and configuration files.
+render = true
+# A light broken guide is less visually dominant than a solid rule.
+character = "|"
+# Skip the outermost indentation level to reduce clutter.
+skip-levels = 1
+
+[editor.gutters]
+# Repeat the chosen gutter layout here so component settings can coexist.
+layout = ["diagnostics", "spacer", "line-numbers", "spacer", "diff"]
+
+[editor.gutters.line-numbers]
+# Allow compact gutters while still expanding for large files.
+min-width = 2
+
+[editor.soft-wrap]
+# Wrap long prose and code visually without modifying the file.
+enable = true
+# Prefer a slightly early word boundary over awkward mid-word wrapping.
+max-wrap = 25
+# Avoid carrying extreme indentation across most of a wrapped display line.
+max-indent-retain = 20
+# Mark continuation lines explicitly.
+wrap-indicator = "↪ "
+# Use the viewport width; `text-width` remains the explicit reflow target.
+wrap-at-text-width = false
+
+[editor.smart-tab]
+# Navigate syntax nodes with Tab when text exists to the cursor's left.
+enable = true
+# Keep Tab available for completion-menu navigation while a menu is visible.
+supersede-menu = false
+
+[editor.inline-diagnostics]
+# Show detailed diagnostics only on the cursor line, starting at warning.
+cursor-line = "warning"
+# Other lines use the less intrusive end-of-line warning configured above.
+other-lines = "disable"
+# One guide character cleanly connects source position to diagnostic text.
+prefix-len = 1
+# Prefer word boundaries when wrapping long diagnostic messages.
+max-wrap = 20
+# Cap pathological server output on any one line.
+max-diagnostics = 3
+
+# Keep Helix's native keymap while learning it. Recreating Vim mappings would
+# fight the selection-then-action editing model. Add only proven ergonomic
+# changes here after using the defaults for a while.
+[keys.normal]
+
+[keys.insert]
+
+[keys.select]

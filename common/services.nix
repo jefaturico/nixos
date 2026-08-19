@@ -2,6 +2,21 @@
   pkgs,
   ...
 }:
+let
+  footServer = pkgs.writeShellApplication {
+    name = "foot-server";
+    runtimeInputs = [ pkgs.dconf ];
+    text = ''
+      color_scheme=$(dconf read /org/gnome/desktop/interface/color-scheme 2>/dev/null || true)
+      if [ "$color_scheme" = "'prefer-light'" ]; then
+        initial_theme=light
+      else
+        initial_theme=dark
+      fi
+      exec ${pkgs.foot}/bin/foot --server --override="initial-color-theme=$initial_theme"
+    '';
+  };
+in
 {
   services = {
 
@@ -36,9 +51,11 @@
     };
     Service = {
       Type = "simple";
-      ExecStart = "${pkgs.foot}/bin/foot --server";
+      ExecStart = "${footServer}/bin/foot-server";
       Restart = "on-failure";
+      RestartSec = 1;
     };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
 }

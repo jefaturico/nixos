@@ -1,9 +1,16 @@
 {
+  config,
   pkgs,
   ...
 }:
 
 let
+
+  zathuraPackage = pkgs.zathura.override {
+    plugins = [
+      pkgs.zathuraPkgs.zathura_pdf_mupdf
+    ];
+  };
 
   zathuraOpenOkular = pkgs.writeShellApplication {
     name = "zathura-open-okular";
@@ -30,22 +37,148 @@ let
     '';
   };
 
+  findDocument = pkgs.writeShellApplication {
+    name = "find-document";
+    runtimeInputs = with pkgs; [
+      coreutils
+      fd
+      fuzzel
+      libreoffice
+      util-linux
+      zathuraPackage
+    ];
+    text = ''
+      set -euo pipefail
+      umask 077
+
+      cache_dir="''${XDG_CACHE_HOME:-$HOME/.cache}/find-document"
+      index="$cache_dir/index"
+      lock="$cache_dir/index.lock"
+      max_age=300
+
+      refresh_index() {
+        local new_index
+
+        mkdir -p "$cache_dir"
+        exec 9>"$lock"
+        flock 9
+        new_index=$(mktemp "$cache_dir/index.XXXXXX")
+        trap 'rm -f "$new_index"' RETURN
+
+        # Hidden directories are omitted deliberately: this excludes internal
+        # trees such as .cache, .config, .local, and .git while retaining every
+        # arbitrarily named user-facing directory below $HOME.
+        fd --type f --type l --color never --print0 --no-ignore \
+          --extension pdf \
+          --extension epub \
+          --extension odt --extension ods --extension odp --extension odg \
+          --extension odf --extension odb \
+          --extension fodt --extension fods --extension fodp --extension fodg \
+          --extension ott --extension ots --extension otp --extension otg \
+          --extension sxw --extension sxc --extension sxi --extension sxd \
+          --extension doc --extension docx \
+          --extension xls --extension xlsx \
+          --extension ppt --extension pptx \
+          --extension rtf \
+          . "$HOME" >"$new_index"
+
+        mv -f "$new_index" "$index"
+        trap - RETURN
+      }
+
+      case "''${1:-}" in
+        --refresh)
+          refresh_index
+          exit
+          ;;
+        --help|-h)
+          printf '%s\n' \
+            'Usage: find-document [--refresh]' \
+            "Fuzzy-find documents below $HOME and open them." \
+            'The index refreshes in the background after five minutes.'
+          exit
+          ;;
+        "") ;;
+        *)
+          printf 'find-document: unknown option: %s\n' "$1" >&2
+          exit 2
+          ;;
+      esac
+
+      if [[ ! -f "$index" ]]; then
+        refresh_index
+      elif (( $(date +%s) - $(stat -c %Y "$index") > max_age )); then
+        "$0" --refresh >/dev/null 2>&1 &
+      fi
+
+      if ! selected_index=$("$HOME/.local/bin/fuzzel" \
+        --dmenu0 \
+        --index \
+        --only-match \
+        --no-run-if-empty \
+        --prompt='Find document: ' \
+        --lines=15 \
+        --minimal-lines \
+        --match-mode=fzf \
+        --counter \
+        <"$index"); then
+        exit 0
+      fi
+
+      if [[ ! "$selected_index" =~ ^[0-9]+$ ]]; then
+        printf 'find-document: fuzzel returned an invalid index: %s\n' "$selected_index" >&2
+        exit 1
+      fi
+
+      mapfile -d "" -t documents <"$index"
+      selected="''${documents[$selected_index]:-}"
+      [[ -n "$selected" ]] || exit 0
+
+      if [[ ! -f "$selected" ]]; then
+        printf 'find-document: file no longer exists: %s\n' "$selected" >&2
+        refresh_index
+        exit 1
+      fi
+
+      case "''${selected,,}" in
+        *.pdf|*.epub)
+          setsid --fork zathura "$selected" >/dev/null 2>&1
+          ;;
+        *)
+          setsid --fork libreoffice "$selected" >/dev/null 2>&1
+          ;;
+      esac
+    '';
+  };
+
 in
 {
+
+  imports = [
+    ./services.nix
+    ./session.nix
+  ];
 
   programs = {
     bash = {
       enable = true;
       enableCompletion = false;
+      shellAliases.o = "xdg-open";
       sessionVariables = {
-        EDITOR = "emacsclient --tty --alternate-editor=emacs";
-        VISUAL = "emacsclient --create-frame --wait --alternate-editor=emacs";
-        BROWSER = "eww-browser";
-        DEFAULT_BROWSER = "eww-browser";
+        EDITOR = "hx";
+        VISUAL = "hx";
+        BROWSER = "qutebrowser";
+        DEFAULT_BROWSER = "qutebrowser";
         LEDGER_FILE = "$HOME/documents/personal/finance/main.journal";
       };
       initExtra = ''
         export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
+
+        # A Linux virtual console has no desktop settings API of its own, so
+        # initialize it from the persisted dconf light/dark preference.
+        if [[ $TERM == linux ]]; then
+          tty-theme
+        fi
 
         usb() {
           local media_root target
@@ -113,18 +246,31 @@ in
 
         eval "$(${pkgs.zoxide}/bin/zoxide init bash --cmd cd)"
 
-        # Let vterm track the shell's working directory and prompt boundaries
-        # through its native OSC 51 protocol.
-        if [[ "$INSIDE_EMACS" == vterm ]]; then
-          _vterm_prompt_end() {
-            # Keep the Emacs buffer name useful as the shell changes directory.
-            # Programs that publish their own terminal title temporarily take
-            # precedence until the next shell prompt.
-            local _vterm_title="''${PWD/#$HOME/~}"
-            printf '\e]0;%s\e\\' "$_vterm_title"
-            printf '\e]51;A%s@%s:%s\e\\' "''${USER}" "''${HOSTNAME}" "$PWD"
+        # Keep graphical terminal titles useful to window selectors: show the
+        # foreground command while it runs and the working directory at the
+        # prompt. Applications can override this with a richer title of their
+        # own.
+        if [[ $TERM != linux && $TERM != dumb ]]; then
+          _terminal_set_title() {
+            printf '\e]0;%s\e\\' "$1"
           }
-          PS1+='\[$(_vterm_prompt_end)\]'
+
+          _terminal_preexec() {
+            local command="''${1#"''${1%%[![:space:]]*}"}"
+            local program="''${command%%[[:space:]]*}"
+            program="''${program##*/}"
+            [[ -n $program ]] && _terminal_set_title "$program"
+          }
+
+          _terminal_prompt_end() {
+            local command_status=$?
+            _terminal_set_title "''${PWD/#$HOME/~}"
+
+            return "$command_status"
+          }
+
+          trap '_terminal_preexec "$BASH_COMMAND"' DEBUG
+          PROMPT_COMMAND+=(_terminal_prompt_end)
         fi
       '';
     };
@@ -138,10 +284,18 @@ in
           initial-window-size-chars = "120x40";
           resize-by-cells = "no";
           workers = 8;
-          include = "~/.cache/wallust/colors-foot.ini";
         };
+        # Matugen supplies both color slots to each client. These settings only
+        # retain the mode-specific transparency policy before a palette exists.
         "colors-dark" = {
-          alpha = 1.0;
+          alpha = 0.7;
+          alpha-mode = "matching";
+          blur = true;
+        };
+        "colors-light" = {
+          alpha = 0.7;
+          alpha-mode = "matching";
+          blur = true;
         };
         tweak = {
           font-monospace-warn = "no";
@@ -159,13 +313,41 @@ in
       };
     };
 
+    qutebrowser = {
+      enable = true;
+      # Keep interactive site permissions and per-site exceptions while the
+      # declarative settings below remain authoritative on every activation.
+      loadAutoconfig = true;
+      searchEngines = {
+        DEFAULT = "https://duckduckgo.com/?q={}";
+        g = "https://www.google.com/search?q={}";
+        np = "https://search.nixos.org/packages?query={}";
+        nw = "https://wiki.nixos.org/w/index.php?search={}";
+      };
+      settings = {
+        auto_save.session = true;
+        confirm_quit = [ "downloads" ];
+        content = {
+          autoplay = false;
+          blocking.method = "adblock";
+        };
+        downloads.location.directory = "~/downloads";
+        editor.command = [
+          "footclient"
+          "hx"
+          "{file}"
+        ];
+        session.lazy_restore = true;
+        url = {
+          default_page = "about:blank";
+          start_pages = [ "about:blank" ];
+        };
+      };
+    };
+
     zathura = {
       enable = true;
-      package = pkgs.zathura.override {
-        plugins = [
-          pkgs.zathuraPkgs.zathura_pdf_mupdf
-        ];
-      };
+      package = zathuraPackage;
       options = {
         adjust-open = "width";
         continuous-hist-save = true;
@@ -174,7 +356,7 @@ in
         page-cache-size = 2048;
         recolor = false;
         render-loading = false;
-        sandbox = "none";
+        sandbox = "normal";
         scroll-step = 80;
         selection-clipboard = "clipboard";
         statusbar-basename = true;
@@ -191,33 +373,14 @@ in
 
     fzf.enable = true;
 
-    vscode = {
-      enable = true;
-      package =
-        (pkgs.symlinkJoin {
-          name = "vscode";
-          paths = [ pkgs.vscode-fhs ];
-          buildInputs = [ pkgs.makeWrapper ];
-          postBuild = ''
-            wrapProgram $out/bin/code \
-              --unset NIXOS_OZONE_WL \
-              --set ELECTRON_OZONE_PLATFORM_HINT x11 \
-              --add-flags "--ozone-platform=x11"
-          '';
-        })
-        // {
-          pname = pkgs.vscode-fhs.pname or "vscode";
-          version = pkgs.vscode-fhs.version or "latest";
-          meta = (pkgs.vscode-fhs.meta or { }) // {
-            mainProgram = "code";
-          };
-        };
-    };
-
   };
 
   xdg = {
     configFile = {
+      "helix" = {
+        source = config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/nixos/dots/helix";
+      };
+
       "okularrc" = {
         force = true;
         text = ''
@@ -272,47 +435,50 @@ in
 
   };
 
-  home.packages =
-    with pkgs;
-    [
-      bat
-      calibre
-      fd
-      ffmpeg
-      gimp
-      imagemagick
-      imv
-      zathuraOpenOkular
-      libreoffice
-      mpv
-      brave
-      librewolf
-      pdfarranger
-      kdePackages.okular
-      pandoc
-      playerctl
-      gsettings-desktop-schemas
-      glib
-      pwvucontrol
-      hugo
-      hledger
-      markdown-oxide
-      moonlight-qt
-      nil
-      nixfmt
-      ripgrep
-      antigravity
-      unzip
-      ruff
-      ripdrag
-      shfmt
-      uget
-      subsurface
-      waypipe
-      qbittorrent
-      python3
-      zoxide
-      obs-studio
-      qgis
-    ];
+  home.packages = with pkgs; [
+    antigravity
+    bat
+    brave
+    calibre
+    fd
+    ffmpeg
+    findDocument
+    gcc
+    gimp
+    glib
+    gsettings-desktop-schemas
+    hledger
+    hugo
+    imagemagick
+    imv
+    kdePackages.okular
+    libreoffice
+    lua-language-server
+    markdown-oxide
+    mpv
+    helix
+    nil
+    nixfmt
+    obs-studio
+    pandoc
+    pdfarranger
+    pwvucontrol
+    python3
+    qbittorrent
+    qgis
+    ripdrag
+    ripgrep
+    ruff
+    shfmt
+    stylua
+    subsurface
+    tinymist
+    tree-sitter
+    vim
+    uget
+    unzip
+    waypipe
+    zathuraOpenOkular
+    zoxide
+  ];
 }

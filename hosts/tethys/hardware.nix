@@ -11,7 +11,13 @@
     (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
-  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "thunderbolt" "usb_storage" "sd_mod" ];
+  boot.initrd.availableKernelModules = [
+    "nvme"
+    "xhci_pci"
+    "thunderbolt"
+    "usb_storage"
+    "sd_mod"
+  ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
@@ -35,6 +41,10 @@
   swapDevices = [
     { device = "/dev/disk/by-uuid/65a6fa7f-72fd-419f-9cf0-b5df22933976"; }
   ];
+
+  # Resume from the disk-backed swap partition.  zram remains the preferred
+  # runtime swap, but it cannot retain a hibernation image across power-off.
+  boot.resumeDevice = "/dev/disk/by-uuid/65a6fa7f-72fd-419f-9cf0-b5df22933976";
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;

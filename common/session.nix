@@ -1,36 +1,13 @@
 { pkgs, ... }:
 let
-  ewwBrowser = pkgs.writeShellApplication {
-    name = "eww-browser";
-    runtimeInputs = [
-      pkgs.emacs-pgtk
-      pkgs.python3
-    ];
-    text = ''
-      url="''${1:-}"
-      if [ -z "$url" ]; then
-        echo "usage: eww-browser URL" >&2
-        exit 2
-      fi
-
-      # JSON strings use escaping accepted by the Emacs Lisp reader, avoiding
-      # code injection or broken quoting for URLs passed in by other programs.
-      url_literal="$(${pkgs.python3}/bin/python3 -c \
-        'import json, sys; print(json.dumps(sys.argv[1]))' "$url")"
-      exec ${pkgs.emacs-pgtk}/bin/emacsclient \
-        --alternate-editor=${pkgs.emacs-pgtk}/bin/emacs \
-        --eval "(eww-browse-url $url_literal)"
-    '';
-  };
-
-  stremioXwayland = pkgs.symlinkJoin {
-    name = "stremio-xwayland";
+  stremioWayland = pkgs.symlinkJoin {
+    name = "stremio-wayland";
     paths = [ pkgs.stremio-linux-shell ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       unlink "$out/bin/stremio"
       makeWrapper ${pkgs.stremio-linux-shell}/bin/stremio "$out/bin/stremio" \
-        --set QT_QPA_PLATFORM xcb \
+        --set GDK_BACKEND wayland \
         --set WEBKIT_DISABLE_DMABUF_RENDERER 1 \
         --set WEBKIT_DISABLE_COMPOSITING_MODE 1 \
         --set __NV_DISABLE_EXPLICIT_SYNC 1
@@ -51,8 +28,7 @@ in
 {
   home = {
     packages = [
-      ewwBrowser
-      stremioXwayland
+      stremioWayland
     ];
 
     pointerCursor = {
@@ -65,6 +41,7 @@ in
     sessionVariables = {
       GTK_CSD = "0";
       QT_QPA_PLATFORM = "wayland";
+      QT_QPA_PLATFORMTHEME = "gtk3";
       QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
       PATH = "$HOME/.local/bin:$PATH";
       XDG_DATA_DIRS = "$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS";
@@ -72,33 +49,19 @@ in
   };
 
   xdg = {
-    dataFile."applications/jf-emacsclient.desktop".text = ''
+    dataFile."applications/jf-helix.desktop".text = ''
       [Desktop Entry]
-      Name=Emacs Client
+      Name=Helix
       GenericName=Text Editor
-      Comment=Edit files in the running Emacs session
-      Exec=emacsclient --create-frame --alternate-editor=emacs %F
-      Icon=emacs
+      Comment=Edit files in Helix inside Foot
+      Exec=footclient hx %F
+      TryExec=footclient
+      Icon=helix
       Type=Application
       Terminal=false
       Categories=Utility;TextEditor;
       MimeType=text/plain;text/markdown;application/x-shellscript;
       StartupNotify=true
-    '';
-
-    dataFile."applications/jf-eww.desktop".text = ''
-      [Desktop Entry]
-      Name=EWW
-      GenericName=Web Browser
-      Comment=Browse the web in Emacs
-      Exec=${ewwBrowser}/bin/eww-browser %U
-      TryExec=${ewwBrowser}/bin/eww-browser
-      Icon=emacs
-      Type=Application
-      Terminal=false
-      Categories=Network;WebBrowser;
-      MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
-      StartupNotify=false
     '';
 
     userDirs = {
@@ -126,15 +89,15 @@ in
         "image/png" = [ "imv.desktop" ];
         "image/jpeg" = [ "imv.desktop" ];
         "image/gif" = [ "imv.desktop" ];
-        "text/plain" = [ "jf-emacsclient.desktop" ];
-        "text/markdown" = [ "jf-emacsclient.desktop" ];
-        "application/x-shellscript" = [ "jf-emacsclient.desktop" ];
-        "text/html" = "jf-eww.desktop";
-        "x-scheme-handler/http" = "jf-eww.desktop";
-        "x-scheme-handler/https" = "jf-eww.desktop";
-        "x-scheme-handler/about" = "jf-eww.desktop";
+        "text/plain" = [ "jf-helix.desktop" ];
+        "text/markdown" = [ "jf-helix.desktop" ];
+        "application/x-shellscript" = [ "jf-helix.desktop" ];
+        "text/html" = "brave";
+        "x-scheme-handler/http" = "brave";
+        "x-scheme-handler/https" = "brave";
+        "x-scheme-handler/about" = "brave";
         "x-scheme-handler/stremio" = [ "com.stremio.Stremio.desktop" ];
-        "x-scheme-handler/unknown" = "jf-eww.desktop";
+        "x-scheme-handler/unknown" = "brave";
       };
     };
   };

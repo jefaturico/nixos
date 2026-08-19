@@ -14,24 +14,9 @@
   [ -n "$BAT_PATH" ] || exit 0
 
   TEST_MODE="''${BATTERY_CHECK_TEST_MODE:-0}"
-  SUSPEND_DELAY="''${BATTERY_CHECK_SUSPEND_DELAY:-60}"
-
-  AC_PATH=""
-  for path in /sys/class/power_supply/AC* /sys/class/power_supply/ADP* /sys/class/power_supply/ACAD; do
-      [ -r "$path/online" ] || continue
-      AC_PATH="$path"
-      break
-  done
-
-  LAST_AC=""
-  LOW_NOTIFIED=0
-  CRIT_NOTIFIED=0
-  BATTERY_NOTIFICATION_ID=""
-  BATTERY_CRITICAL_ACK="$XDG_RUNTIME_DIR/battery-critical-ack"
-  BATTERY_CRITICAL_PENDING="$XDG_RUNTIME_DIR/battery-critical-pending"
-
-  STATUS_TAG="string:x-canonical-private-synchronous:status"
-  BATTERY_CRITICAL_TAG="string:x-jf-battery-critical:guard"
+  TEST_ONCE="''${BATTERY_CHECK_TEST_ONCE:-0}"
+  NOTIFIED_LEVEL=0
+  SLEEP_ACTION_TAKEN=0
 
   read_capacity() {
       if [ -n "''${BATTERY_CHECK_TEST_CAPACITY:-}" ]; then
@@ -44,19 +29,43 @@
   read_ac_state() {
       if [ -n "''${BATTERY_CHECK_TEST_AC_ONLINE:-}" ]; then
           AC_ONLINE="$BATTERY_CHECK_TEST_AC_ONLINE"
-      elif [ -n "$AC_PATH" ]; then
-          read -r AC_ONLINE < "$AC_PATH/online"
       else
           read -r STATUS < "$BAT_PATH/status"
-          [ "$STATUS" = "Charging" ] && AC_ONLINE=1 || AC_ONLINE=0
+          case "$STATUS" in
+              Charging|Full|"Not charging") AC_ONLINE=1 ;;
+              Discharging) AC_ONLINE=0 ;;
+              *)
+                  AC_ONLINE=0
+
+                  # If the battery driver is unsure, consider any online
+                  # non-battery power supply to be external power.
+                  for online_file in /sys/class/power_supply/*/online; do
+                      [ -r "$online_file" ] || continue
+                      supply_path="''${online_file%/online}"
+                      [ "$supply_path" = "$BAT_PATH" ] && continue
+                      read -r ONLINE < "$online_file"
+                      if [ "$ONLINE" = "1" ]; then
+                          AC_ONLINE=1
+                          break
+                      fi
+                  done
+                  ;;
+          esac
       fi
   }
 
-  suspend_system() {
+  sleep_system() {
       if [ "$TEST_MODE" = "1" ]; then
-          echo "battery-check test: would suspend now"
+          echo "battery-check test: would hibernate now"
       else
-          ${pkgs.systemd}/bin/systemctl --check-inhibitors=no suspend
+          if ! ${pkgs.systemd}/bin/systemctl hibernate; then
+              ${pkgs.libnotify}/bin/notify-send \
+                  --app-name=battery-check \
+                  --hint=string:x-canonical-private-synchronous:battery-warning \
+                  --urgency critical \
+                  "Hibernation deferred" \
+                  "A logind inhibitor may be active. Save work and connect power."
+          fi
       fi
   }
 
@@ -65,92 +74,57 @@
       summary="$2"
       body="$3"
 
-      if [ -n "$BATTERY_NOTIFICATION_ID" ]; then
-          BATTERY_NOTIFICATION_ID="$(${pkgs.libnotify}/bin/notify-send \
-              --print-id --replace-id "$BATTERY_NOTIFICATION_ID" \
-              --urgency "$urgency" "$summary" "$body")"
+      if [ "$TEST_MODE" = "1" ]; then
+          echo "battery-check test: $urgency: $summary: $body"
       else
-          BATTERY_NOTIFICATION_ID="$(${pkgs.libnotify}/bin/notify-send \
-              --print-id --urgency "$urgency" \
-              "$summary" "$body")"
-      fi
-  }
-
-  clear_battery_notification() {
-      if [ -n "$BATTERY_NOTIFICATION_ID" ]; then
           ${pkgs.libnotify}/bin/notify-send \
-              --replace-id "$BATTERY_NOTIFICATION_ID" --expire-time 1 " " \
-              >/dev/null
-          BATTERY_NOTIFICATION_ID=""
+              --app-name=battery-check \
+              --hint=string:x-canonical-private-synchronous:battery-warning \
+              --urgency "$urgency" \
+              "$summary" "$body"
       fi
   }
 
-  guard_critical_battery() {
-      rm -f "$BATTERY_CRITICAL_ACK"
-      : > "$BATTERY_CRITICAL_PENDING"
-
-      if [ -n "$BATTERY_NOTIFICATION_ID" ]; then
-          BATTERY_NOTIFICATION_ID="$(${pkgs.libnotify}/bin/notify-send \
-              --print-id --replace-id "$BATTERY_NOTIFICATION_ID" \
-              --urgency critical \
-              --hint "$BATTERY_CRITICAL_TAG" \
-              "Battery Critical" \
-              "Level: ''${CAPACITY}%. Confirm in Emacs within ''${SUSPEND_DELAY} seconds to keep running.")"
-      else
-          BATTERY_NOTIFICATION_ID="$(${pkgs.libnotify}/bin/notify-send \
-              --print-id --urgency critical \
-              --hint "$BATTERY_CRITICAL_TAG" \
-              "Battery Critical" \
-              "Level: ''${CAPACITY}%. Confirm in Emacs within ''${SUSPEND_DELAY} seconds to keep running.")"
-      fi
-
-      ${pkgs.coreutils}/bin/sleep "$SUSPEND_DELAY"
-      rm -f "$BATTERY_CRITICAL_PENDING"
-
+  check_battery() {
       read_capacity
       read_ac_state
 
-      if [ "$AC_ONLINE" = "0" ] \
-          && [ "$CAPACITY" -le 10 ] \
-          && [ ! -e "$BATTERY_CRITICAL_ACK" ]; then
-          suspend_system
-      elif [ "$TEST_MODE" = "1" ] && [ -e "$BATTERY_CRITICAL_ACK" ]; then
-          echo "battery-check test: warning acknowledged; staying awake"
+      if [ "$AC_ONLINE" = "1" ]; then
+          NOTIFIED_LEVEL=0
+          SLEEP_ACTION_TAKEN=0
+          return
+      fi
+
+      if [ "$CAPACITY" -le 5 ]; then
+          if [ "$SLEEP_ACTION_TAKEN" -eq 0 ]; then
+              SLEEP_ACTION_TAKEN=1
+              NOTIFIED_LEVEL=4
+              sleep_system
+          fi
+      elif [ "$CAPACITY" -le 10 ] && [ "$NOTIFIED_LEVEL" -lt 3 ]; then
+          send_battery_notification critical "Battery critical" \
+              "Battery is at ''${CAPACITY}%. Connect the charger; hibernation starts at 5%."
+          NOTIFIED_LEVEL=3
+      elif [ "$CAPACITY" -le 15 ] && [ "$NOTIFIED_LEVEL" -lt 2 ]; then
+          send_battery_notification normal "Battery low" \
+              "Battery is at ''${CAPACITY}%."
+          NOTIFIED_LEVEL=2
+      elif [ "$CAPACITY" -le 20 ] && [ "$NOTIFIED_LEVEL" -lt 1 ]; then
+          send_battery_notification normal "Battery low" \
+              "Battery is at ''${CAPACITY}%."
+          NOTIFIED_LEVEL=1
+      elif [ "$CAPACITY" -gt 20 ]; then
+          NOTIFIED_LEVEL=0
+          SLEEP_ACTION_TAKEN=0
       fi
   }
 
   while :; do
-      read_capacity
-      read_ac_state
+      check_battery
+      [ "$TEST_ONCE" = "1" ] && exit 0
 
-      if [ "$AC_ONLINE" != "$LAST_AC" ]; then
-          if [ "$AC_ONLINE" = "1" ]; then
-              [ -n "$LAST_AC" ] && ${pkgs.libnotify}/bin/notify-send -h "$STATUS_TAG" "Charging" "Battery is now charging"
-              clear_battery_notification
-              LOW_NOTIFIED=0
-              CRIT_NOTIFIED=0
-          fi
-          LAST_AC="$AC_ONLINE"
-      fi
-
-      if [ "$AC_ONLINE" = "0" ]; then
-          if [ "$CAPACITY" -le 10 ] && [ "$CRIT_NOTIFIED" -eq 0 ]; then
-              CRIT_NOTIFIED=1
-              guard_critical_battery
-          elif [ "$CAPACITY" -le 15 ] && [ "$LOW_NOTIFIED" -lt 2 ]; then
-              send_battery_notification normal "Battery Low" \
-                  "Level: ''${CAPACITY}%"
-              LOW_NOTIFIED=2
-          elif [ "$CAPACITY" -le 20 ] && [ "$LOW_NOTIFIED" -lt 1 ]; then
-              send_battery_notification normal "Battery Low" \
-                  "Level: ''${CAPACITY}%"
-              LOW_NOTIFIED=1
-          elif [ "$CAPACITY" -gt 20 ]; then
-              LOW_NOTIFIED=0
-              CRIT_NOTIFIED=0
-          fi
-      fi
-
+      # Tethys does not reliably emit a power-supply uevent when its reported
+      # capacity changes. Poll sysfs so threshold crossings cannot be missed.
       ${pkgs.coreutils}/bin/sleep 30
   done
 ''

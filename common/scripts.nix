@@ -8,22 +8,7 @@
 let
   mkScript = name: pkgs.writeScriptBin name (import (./scripts + "/${name}.nix") { inherit pkgs; });
   batteryCheck = mkScript "battery-check";
-  isMoonlightClient = builtins.elem osConfig.networking.hostName [
-    "tethys"
-    "prometheus"
-  ];
-  streamTitanDesktop = pkgs.writeScriptBin "stream-titan-desktop" (
-    import ./scripts/stream-titan-desktop.nix {
-      inherit pkgs;
-      codec = if osConfig.networking.hostName == "prometheus" then "h264" else null;
-      qtPlatform = if osConfig.networking.hostName == "prometheus" then "xcb" else null;
-      resolution = if osConfig.networking.hostName == "prometheus" then "1280x800" else null;
-    }
-  );
-  isLaptop = builtins.elem osConfig.networking.hostName [
-    "tethys"
-    "prometheus"
-  ];
+  isLaptop = osConfig.networking.hostName == "tethys";
   lidMonitorOnly = pkgs.writeShellApplication {
     name = "lid-monitor-only";
     runtimeInputs = with pkgs; [
@@ -77,8 +62,10 @@ let
         local percentage
         if percentage=$(battery_percent) && [ "$percentage" -le 10 ]; then
           echo "lid-monitor-only: battery at $percentage%; suspending"
-          systemctl --check-inhibitors=no suspend
-          return 0
+          if systemctl suspend; then
+            return 0
+          fi
+          echo "lid-monitor-only: suspend deferred by a logind inhibitor" >&2
         fi
         return 1
       }
@@ -158,25 +145,7 @@ in
   ]
   ++ lib.optionals isLaptop [
     batteryCheck
-  ]
-  ++ lib.optionals isMoonlightClient [
-    streamTitanDesktop
   ];
-
-  xdg.dataFile."applications/stream-titan-desktop.desktop" = lib.mkIf isMoonlightClient {
-    text = ''
-      [Desktop Entry]
-      Type=Application
-      Name=Stream Titan's Desktop
-      GenericName=Remote Desktop Stream
-      Comment=Connect to Titan's desktop through Moonlight
-      Exec=stream-titan-desktop
-      Icon=moonlight
-      Terminal=false
-      Categories=Network;RemoteAccess;
-      Keywords=titan;moonlight;stream;desktop;remote;
-    '';
-  };
 
   systemd.user.services.battery-check = lib.mkIf isLaptop {
     Unit.Description = "Battery status monitor";
@@ -196,7 +165,7 @@ in
     };
     Service = {
       Type = "simple";
-      ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=Eureka --why=Runtime-lid-action-is-monitor-off ${lidMonitorOnly}/bin/lid-monitor-only";
+      ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=graphical-session --why=Runtime-lid-action-is-monitor-off ${lidMonitorOnly}/bin/lid-monitor-only";
       ExecStop = "${lidMonitorOnly}/bin/lid-monitor-only restore";
       Restart = "on-failure";
       RestartSec = 2;
