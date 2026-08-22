@@ -16,16 +16,7 @@
     };
 
     initExtra = ''
-      export FZF_DEFAULT_OPTS="--color=bg:-1,bg+:-1,gutter:-1"
-
       bind "set completion-ignore-case on"
-
-      if [[ -n "$WAYLAND_DISPLAY" || -n "$DISPLAY" ]]; then
-        _prompt_char="λ"
-      else
-        _prompt_char="\$"
-      fi
-      PS1='\[\e[34m\]\w\[\e[0m\] \[\e[32m\]'"$_prompt_char"'\[\e[0m\] '
 
       shopt -s autocd     # 'cd' is optional for directories
       shopt -s cdspell    # fix minor typos in 'cd'

@@ -9,13 +9,6 @@
     homeDirectory = "/home/jefaturico";
     stateVersion = "26.05";
 
-    pointerCursor = {
-      gtk.enable = true;
-      package = pkgs.adwaita-icon-theme;
-      name = "Adwaita";
-      size = 24;
-    };
-
     # GTK applications installed through Home Manager look up GSettings
     # schemas relative to these; without them some abort on start.
     packages = with pkgs; [
@@ -67,32 +60,6 @@
         "application/x-shellscript" = [ "jf-neovim.desktop" ];
       };
     };
-  };
-
-  gtk = {
-    enable = true;
-    theme = {
-      name = "Adwaita-dark";
-      package = pkgs.gnome-themes-extra;
-    };
-    gtk3.extraConfig = {
-      gtk-application-prefer-dark-theme = true;
-      gtk-dialogs-use-header = false;
-    };
-    gtk4.extraConfig = {
-      gtk-application-prefer-dark-theme = true;
-      gtk-dialogs-use-header = false;
-    };
-  };
-
-  dconf.settings."org/gnome/desktop/interface" = {
-    color-scheme = "prefer-dark";
-    gtk-theme = "Adwaita-dark";
-  };
-
-  qt = {
-    enable = true;
-    platformTheme.name = "gtk3";
   };
 
   # Gammastep warms the display after sunset; udiskie mounts removable media

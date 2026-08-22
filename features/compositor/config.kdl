@@ -25,23 +25,8 @@ input {
     warp-mouse-to-focus
 }
 
-cursor {
-    hide-when-typing
-    hide-after-inactive-ms 5000
-}
-
 layout {
-    background-color "#181616"
-
-    gaps 16
-
     center-focused-column "never"
-
-    preset-column-widths {
-        proportion 0.33333
-        proportion 0.5
-        proportion 0.66667
-    }
 
     default-column-width { proportion 0.5; }
 
@@ -55,8 +40,6 @@ layout {
 }
 
 overview {
-    backdrop-color "#000000"
-
     workspace-shadow {
         off
     }
@@ -69,11 +52,6 @@ hotkey-overlay {
 prefer-no-csd
 
 screenshot-path "~/pictures/screenshots/%Y-%m-%d %H-%M-%S.png"
-
-window-rule {
-    geometry-corner-radius 15
-    clip-to-geometry true
-}
 
 binds {
     Mod+Return hotkey-overlay-title="Open a Terminal: foot" { spawn "footclient"; }

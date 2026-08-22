@@ -25,11 +25,6 @@
     wget
   ];
 
-  environment.variables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
-  };
-
   nixpkgs.config.allowUnfree = true;
 
   nix = {
