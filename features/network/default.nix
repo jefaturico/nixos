@@ -1,7 +1,10 @@
 { ... }:
 
-# How this machine is reached, and how it reaches its peers.
+# Local link management behind a closed firewall. Nothing listens: there is
+# no SSH server and no tailnet, so no port is ever opened inbound.
 {
-  imports = [ ./system.nix ];
-  home-manager.users.jefaturico.imports = [ ./home.nix ];
+  networking = {
+    networkmanager.enable = true;
+    firewall.enable = true;
+  };
 }

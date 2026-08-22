@@ -1,13 +1,13 @@
 { pkgs, ... }:
 
-# Machine-independent foundation shared by every host: boot entry policy,
-# locale, the Nix daemon, garbage collection, memory/swap behaviour, and the
-# minimal command-line package set required to repair a machine over SSH.
+# Machine-independent foundation: boot entry policy, locale, the Nix daemon,
+# garbage collection, memory/swap behaviour, and the handful of commands
+# needed to repair the machine from a console.
 {
   boot.loader = {
     systemd-boot = {
       enable = true;
-      configurationLimit = 10;
+      configurationLimit = 5;
     };
     timeout = 0;
     efi.canTouchEfiVariables = true;
@@ -24,9 +24,7 @@
   environment.systemPackages = with pkgs; [
     curl
     git
-    htop
     neovim
-    rsync
     wget
   ];
 
@@ -65,7 +63,7 @@
     gc = {
       automatic = true;
       dates = "weekly";
-      options = "--delete-generations +10";
+      options = "--delete-generations +5";
     };
   };
 

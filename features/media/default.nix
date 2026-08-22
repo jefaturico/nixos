@@ -1,6 +1,6 @@
 { ... }:
 
-# Playing, viewing, and producing audio and video.
+# Playing video and viewing images.
 {
   home-manager.users.jefaturico.imports = [ ./home.nix ];
 }

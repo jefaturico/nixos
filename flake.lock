@@ -43,27 +43,6 @@
         "type": "gitlab"
       }
     },
-    "flake-parts": {
-      "inputs": {
-        "nixpkgs-lib": [
-          "tinty",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1768135262,
-        "narHash": "sha256-PVvu7OqHBGWN16zSi6tEmPwwHQ4rLPU9Plvs8/1TUBY=",
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "rev": "80daad04eddbbf5a4d883996a73f3f542fa437ac",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -151,22 +130,6 @@
         "type": "indirect"
       }
     },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1744536153,
-        "narHash": "sha256-awS2zRgF4uTwrOKwwiJcByDzDOdo3Q1rPZbiHQg/N38=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "18dd725c29603f582cf1900e0d25f9f1063dbf11",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "antigravity-nix": "antigravity-nix",
@@ -174,50 +137,7 @@
         "home-manager": "home-manager",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-unstable": "nixpkgs-unstable",
-        "sops-nix": "sops-nix",
-        "tinted-schemes": "tinted-schemes",
-        "tinted-terminal": "tinted-terminal",
-        "tinted-vim": "tinted-vim",
-        "tinty": "tinty"
-      }
-    },
-    "rust-overlay": {
-      "inputs": {
-        "nixpkgs": "nixpkgs_2"
-      },
-      "locked": {
-        "lastModified": 1770001842,
-        "narHash": "sha256-ZAyTeILfdWwDp1nuF0RK3McBduMi49qnJvrS+3Ezpac=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "5018343419ea808f8a413241381976b7e60951f2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "sops-nix": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1786629091,
-        "narHash": "sha256-gkig4nPi1CWc4Z50GBsjE4ygSE7hMpl/TwID2an2Cck=",
-        "owner": "Mic92",
-        "repo": "sops-nix",
-        "rev": "a8627b21b9107c5711c96b84f32a9a4b3d45295f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Mic92",
-        "repo": "sops-nix",
-        "type": "github"
+        "nixpkgs-unstable": "nixpkgs-unstable"
       }
     },
     "systems": {
@@ -232,77 +152,6 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
-        "type": "github"
-      }
-    },
-    "tinted-schemes": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1786274241,
-        "narHash": "sha256-LMHxSQJIv6QJJkO9W7sAkJujlwusFf9/Ct0SYJ6GyHQ=",
-        "owner": "tinted-theming",
-        "repo": "schemes",
-        "rev": "fdca32a0d14ec80ad83a78a9ccb85592ca6cb9e1",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tinted-theming",
-        "ref": "spec-0.11",
-        "repo": "schemes",
-        "type": "github"
-      }
-    },
-    "tinted-terminal": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1786840953,
-        "narHash": "sha256-R5U9KnrG5cARf90nw5e33Z4A4svwLTRv9qbvFAiAaAY=",
-        "owner": "tinted-theming",
-        "repo": "tinted-terminal",
-        "rev": "993a33342b053b1830e4ccb82448455991dcfd54",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tinted-theming",
-        "repo": "tinted-terminal",
-        "type": "github"
-      }
-    },
-    "tinted-vim": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1786326058,
-        "narHash": "sha256-ZEQ8D9NKoL+JKpTp9MAm3+js1wCmjNLgicmwUXqIusM=",
-        "owner": "tinted-theming",
-        "repo": "tinted-vim",
-        "rev": "66829e04041ceba72a9006d1c6c9d0c818e2b3dd",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tinted-theming",
-        "repo": "tinted-vim",
-        "type": "github"
-      }
-    },
-    "tinty": {
-      "inputs": {
-        "flake-parts": "flake-parts",
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": "rust-overlay"
-      },
-      "locked": {
-        "lastModified": 1786325994,
-        "narHash": "sha256-VeN5Ajg/dZa6JunQb4dbYZwKIsMxbCGbh7vD7rITXKo=",
-        "owner": "tinted-theming",
-        "repo": "tinty",
-        "rev": "694ae02a943c7f3f0d89e62888982d7a2cc4fb43",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tinted-theming",
-        "repo": "tinty",
         "type": "github"
       }
     }

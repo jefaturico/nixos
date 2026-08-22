@@ -1,11 +1,15 @@
 { lib, pkgs, ... }:
 
+# Niri: the compositor session, the small helpers its keybindings spawn, and
+# the two user services that belong to the graphical session but have no
+# Home Manager module of their own.
 let
   niriWindowMenu = pkgs.writeShellApplication {
     name = "niri-window-menu";
-    runtimeInputs = [
-      pkgs.jq
-      pkgs.niri
+    runtimeInputs = with pkgs; [
+      fuzzel
+      jq
+      niri
     ];
     text = ''
       set -euo pipefail
@@ -14,16 +18,7 @@ let
         [.[]
           | .title = (if .title == null or .title == "" then "(untitled)" else .title end)
           | .app_id = (if .app_id == null or .app_id == "" then "(unknown)" else .app_id end)
-          | .label = (
-              if .app_id == "librewolf" or .app_id == "firefox" then
-                "browser — \"\(.title | sub(" — LibreWolf$"; "") | sub(" — Mozilla Firefox$"; ""))\""
-              elif .app_id == "footclient" or .app_id == "foot" then
-                "terminal — \"\(.title)\""
-              else
-                "\(.app_id) — \"\(.title)\""
-              end
-            )
-          | [.id, .label]
+          | [.id, "\(.app_id) — \"\(.title)\""]
           | @tsv]
         | .[]
       ')
@@ -38,8 +33,7 @@ let
       done
 
       if ! selected_index=$(printf '%s\n' "''${labels[@]}" \
-        | "$HOME/.local/bin/fuzzel" --dmenu --index --prompt="Window: " \
-          --lines=20 --minimal-lines); then
+        | fuzzel --dmenu --index --prompt="Window: " --lines=20 --minimal-lines); then
         exit 0
       fi
       if [[ ! "$selected_index" =~ ^[0-9]+$ ]] \
@@ -52,38 +46,20 @@ let
     '';
   };
 
-  desktopLock = pkgs.writeShellApplication {
-    name = "desktop-lock";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.hyprlock
-      pkgs.procps
-    ];
-    text = ''
-      set -euo pipefail
-      if pgrep -x hyprlock >/dev/null; then
-        exit 0
-      fi
-      hyprlock --immediate-render &
-      # Give hyprlock a short window to initialize and map its surface
-      # before letting sleep inhibitors release.
-      sleep 0.2
-    '';
-  };
-
   desktopPowerMenu = pkgs.writeShellApplication {
     name = "desktop-power-menu";
-    runtimeInputs = [
-      pkgs.niri
-      pkgs.systemd
+    runtimeInputs = with pkgs; [
+      fuzzel
+      niri
+      systemd
+      waylock
     ];
     text = ''
       set -euo pipefail
       choice=$(printf '%s\n' Lock Suspend Hibernate 'Exit session' Reboot 'Power off' \
-        | "$HOME/.local/bin/fuzzel" --dmenu --prompt='Power: ' \
-          --lines=6 --minimal-lines) || exit 0
+        | fuzzel --dmenu --prompt='Power: ' --lines=6 --minimal-lines) || exit 0
       case "$choice" in
-        Lock) exec ${desktopLock}/bin/desktop-lock ;;
+        Lock) exec waylock -fork-on-lock ;;
         Suspend) exec systemctl suspend ;;
         Hibernate) exec systemctl hibernate ;;
         'Exit session') exec niri msg action quit --skip-confirmation ;;
@@ -96,19 +72,12 @@ let
   desktopNetwork = pkgs.writeShellApplication {
     name = "desktop-network";
     runtimeInputs = with pkgs; [
-      coreutils
+      foot
       networkmanager
     ];
     text = ''
       set -euo pipefail
-      exec "$HOME/.local/bin/footclient" \
-        -E \
-        --app-id=desktop-network \
-        --title="Network Connections" \
-        env \
-          NEWT_COLORS="root=lightgray,default:border=blue,default:window=lightgray,default:shadow=gray,default:title=blue,default:button=lightgray,default:actbutton=black,blue:compactbutton=lightgray,default:checkbox=lightgray,default:actcheckbox=black,blue:entry=lightgray,gray:actentry=black,cyan:label=lightgray,default:listbox=lightgray,default:actlistbox=blue,default:actsellistbox=black,blue:sellistbox=lightgray,gray:textbox=lightgray,default:acttextbox=lightgray,default:helpline=gray,default:roottext=gray,default" \
-          NMT_NEWT_COLORS="plainLabel=lightgray,default:badLabel=red,default:disabledButton=gray,default:textboxWithBackground=lightgray,gray" \
-          nmtui
+      exec footclient --app-id=desktop-network --title="Network Connections" nmtui
     '';
   };
 
@@ -180,6 +149,8 @@ let
     '';
   };
 
+  # There is no status bar, so this notification is the only clock and
+  # battery readout available without opening a terminal.
   systemInfo = pkgs.writeShellApplication {
     name = "systeminfo";
     runtimeInputs = with pkgs; [
@@ -204,14 +175,12 @@ let
         "$message"
     '';
   };
-
 in
-
 {
   programs.niri = {
     enable = true;
-    # Keep visible file selection consistent with the other GTK portal dialogs
-    # without pulling Nautilus into the session closure.
+    # Keep visible file selection consistent with the other GTK portal
+    # dialogs without pulling Nautilus into the session closure.
     useNautilus = false;
   };
 
@@ -224,7 +193,6 @@ in
   # Niri starts xwayland-satellite on demand when it is available in PATH.
   environment.systemPackages = [
     desktopBrightness
-    desktopLock
     desktopNetwork
     desktopPowerMenu
     desktopVolume
@@ -234,19 +202,6 @@ in
   ];
 
   systemd.user.services = {
-    niri-idle = {
-      description = "Idle handling for niri";
-      unitConfig.ConditionEnvironment = "XDG_CURRENT_DESKTOP=niri";
-      after = [ "niri.service" ];
-      partOf = [ "graphical-session.target" ];
-      wantedBy = [ "graphical-session.target" ];
-      serviceConfig = {
-        ExecStart = "${pkgs.swayidle}/bin/swayidle -w -C /dev/null timeout 600 '${pkgs.systemd}/bin/systemctl suspend' before-sleep '${desktopLock}/bin/desktop-lock' lock '${desktopLock}/bin/desktop-lock'";
-        Restart = "on-failure";
-        RestartSec = 2;
-      };
-    };
-
     niri-media-idle-inhibit = {
       description = "Inhibit niri idling during sustained media playback";
       unitConfig.ConditionEnvironment = "XDG_CURRENT_DESKTOP=niri";
@@ -255,26 +210,6 @@ in
       wantedBy = [ "graphical-session.target" ];
       serviceConfig = {
         ExecStart = "${pkgs.wayland-pipewire-idle-inhibit}/bin/wayland-pipewire-idle-inhibit --media-minimum-duration 10 --wayland";
-        Restart = "on-failure";
-        RestartSec = 2;
-      };
-    };
-
-    fnott = {
-      description = "Fnott notification daemon";
-      unitConfig = {
-        ConditionEnvironment = "XDG_CURRENT_DESKTOP=niri";
-        # Theme changes intentionally restart Fnott so it reads the newly
-        # generated configuration. Keep those restarts below a narrow,
-        # service-local burst limit instead of leaving it start-limited.
-        StartLimitIntervalSec = 30;
-        StartLimitBurst = 20;
-      };
-      after = [ "niri.service" ];
-      partOf = [ "graphical-session.target" ];
-      wantedBy = [ "graphical-session.target" ];
-      serviceConfig = {
-        ExecStart = "%h/.local/bin/fnott-themed";
         Restart = "on-failure";
         RestartSec = 2;
       };

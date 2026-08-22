@@ -1,6 +1,6 @@
 { ... }:
 
-# Battery and lid behaviour. Import only on hosts that have both.
+# Battery warnings. Import only on a host that has a battery.
 {
   home-manager.users.jefaturico.imports = [ ./home.nix ];
 }

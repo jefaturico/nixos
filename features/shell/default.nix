@@ -1,6 +1,6 @@
 { ... }:
 
-# The interactive shell: prompt, history, navigation, completion.
+# The interactive shell.
 {
   home-manager.users.jefaturico.imports = [ ./home.nix ];
 }

@@ -1,9 +1,8 @@
 { pkgs, ... }:
 
-# How the graphical session presents itself to applications: environment
-# handed to every child process, widget-toolkit theming and decoration
-# policy, standard directories, default handlers, and the two small user
-# services that make the session comfortable.
+# How the graphical session presents itself to applications: the environment
+# handed to every child process, widget-toolkit theming, standard
+# directories, default handlers, and the two small session services.
 {
   home = {
     username = "jefaturico";
@@ -22,8 +21,14 @@
       QT_QPA_PLATFORM = "wayland";
       QT_QPA_PLATFORMTHEME = "gtk3";
       QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
-      PATH = "$HOME/.local/bin:$PATH";
     };
+
+    # GTK applications installed through Home Manager look up GSettings
+    # schemas relative to these; without them some abort on start.
+    packages = with pkgs; [
+      glib
+      gsettings-desktop-schemas
+    ];
   };
 
   xdg = {
@@ -42,19 +47,21 @@
       StartupNotify=true
     '';
 
+    # Lowercase paths, and `createDirectories = false` so a directory exists
+    # only once something actually puts a file in it.
     userDirs = {
       enable = true;
-      createDirectories = true;
+      createDirectories = false;
       setSessionVariables = true;
-      desktop = "$HOME/misc";
-      documents = "$HOME/misc";
+      desktop = "$HOME/desktop";
+      documents = "$HOME/documents";
       download = "$HOME/downloads";
-      projects = "$HOME/misc";
-      music = "$HOME/misc";
-      pictures = "$HOME/misc";
-      publicShare = "$HOME/misc";
-      templates = "$HOME/misc";
-      videos = "$HOME/misc";
+      music = "$HOME/music";
+      pictures = "$HOME/pictures";
+      projects = "$HOME/projects";
+      publicShare = "$HOME/public";
+      templates = "$HOME/templates";
+      videos = "$HOME/videos";
     };
 
     # Individual handlers are declared by the module that owns the
@@ -83,37 +90,20 @@
       gtk-application-prefer-dark-theme = true;
       gtk-dialogs-use-header = false;
     };
-    # GTK has no setting that universally disables CSD.  Hide the title-only
-    # headerbars globally; keep ordinary application headerbars/toolbars intact.
-    # The negative margin is intentional: unlike min-height/padding overrides,
-    # it also collapses GTK's built-in default-decoration headerbar.
-    gtk3.extraCss = /* css */ ''
-      headerbar.default-decoration,
-      .titlebar.default-decoration {
-        margin-bottom: 50px;
-        margin-top: -100px;
-      }
+  };
 
-      window.csd decoration {
-        box-shadow: none;
-        border: none;
-      }
-    '';
-    gtk4.extraCss = /* css */ ''
-      headerbar.default-decoration,
-      .titlebar.default-decoration {
-        margin-bottom: 50px;
-        margin-top: -100px;
-      }
+  dconf.settings."org/gnome/desktop/interface" = {
+    color-scheme = "prefer-dark";
+    gtk-theme = "Adwaita-dark";
+  };
 
-      window.csd {
-        box-shadow: none;
-      }
-    '';
+  qt = {
+    enable = true;
+    platformTheme.name = "gtk3";
   };
 
   # Gammastep warms the display after sunset; udiskie mounts removable media
-  # for the `usb` shell helper and the file dialogs. Both are session-scoped.
+  # for the file dialogs. Both are session-scoped.
   services = {
     gammastep = {
       enable = true;
@@ -137,11 +127,4 @@
       tray = "never";
     };
   };
-
-  # GTK applications installed through Home Manager look up GSettings schemas
-  # relative to these; without them some of them abort on start.
-  home.packages = with pkgs; [
-    glib
-    gsettings-desktop-schemas
-  ];
 }

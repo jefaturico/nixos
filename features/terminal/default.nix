@@ -1,6 +1,6 @@
 { ... }:
 
-# Foot, run as a shared server so new terminals open instantly.
+# Foot, running as a shared server.
 {
   home-manager.users.jefaturico.imports = [ ./home.nix ];
 }

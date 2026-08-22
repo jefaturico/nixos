@@ -1,170 +1,46 @@
 { pkgs, ... }:
 
-# Battery and lid behaviour. Import this feature only on a host that has
-# both; there is no runtime gate, so a machine without a battery simply does
-# not carry these units.
+# Battery warnings. Lid and power-key behaviour belong to logind and are set
+# in the host module.
 let
-  batteryCheck = pkgs.writeScriptBin "battery-check" (import ./battery-check.nix { inherit pkgs; });
-
-  lidMonitorOnly = pkgs.writeShellApplication {
-    name = "lid-monitor-only";
+  batteryWarning = pkgs.writeShellApplication {
+    name = "battery-warning";
     runtimeInputs = with pkgs; [
-      brightnessctl
       coreutils
-      gawk
-      glib
-      systemd
+      libnotify
     ];
     text = ''
       set -euo pipefail
-
-      last_lid_state=""
-      battery_guard_pid=""
-      state_file="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/lid-backlight-brightness"
-
-      restore_backlight() {
-        if [ -r "$state_file" ]; then
-          brightnessctl set "$(<"$state_file")"
-          rm -f "$state_file"
-        fi
-      }
-
-      if [ "''${1:-}" = "restore" ]; then
-        restore_backlight
-        exit 0
-      fi
-
-      lid_is_closed() {
-        local state
-        state=$(busctl --system get-property \
-          org.freedesktop.login1 \
-          /org/freedesktop/login1 \
-          org.freedesktop.login1.Manager \
-          LidClosed | awk '{ print $2 }')
-        [ "$state" = "true" ]
-      }
-
-      battery_percent() {
-        local capacity_file percentage
-        for capacity_file in /sys/class/power_supply/BAT*/capacity; do
-          [ -r "$capacity_file" ] || continue
-          read -r percentage <"$capacity_file"
-          printf '%s\n' "$percentage"
-          return 0
-        done
-        return 1
-      }
-
-      suspend_if_battery_low() {
-        local percentage
-        if percentage=$(battery_percent) && [ "$percentage" -le 10 ]; then
-          echo "lid-monitor-only: battery at $percentage%; suspending"
-          if systemctl suspend; then
-            return 0
-          fi
-          echo "lid-monitor-only: suspend deferred by a logind inhibitor" >&2
-        fi
-        return 1
-      }
-
-      start_battery_guard() {
-        (
-          while lid_is_closed; do
-            if suspend_if_battery_low; then
-              # systemctl returns after resume.  Re-check quickly so an
-              # unexpected wake with the lid still closed suspends again.
-              sleep 5
-            else
-              sleep 60
-            fi
-          done
-        ) &
-        battery_guard_pid=$!
-      }
-
-      stop_battery_guard() {
-        if [ -n "$battery_guard_pid" ]; then
-          kill "$battery_guard_pid" 2>/dev/null || true
-          wait "$battery_guard_pid" 2>/dev/null || true
-          battery_guard_pid=""
-        fi
-      }
-
-      cleanup() {
-        stop_battery_guard
-        restore_backlight
-      }
-      trap cleanup EXIT
-
-      apply_lid_state() {
-        local brightness state
-        if lid_is_closed; then
-          state="closed"
-        else
-          state="open"
-        fi
-
-        [ "$state" = "$last_lid_state" ] && return
-
-        if [ "$state" = "closed" ]; then
-          brightness=$(brightnessctl get)
-          if [ "$brightness" -gt 0 ]; then
-            printf '%s\n' "$brightness" >"$state_file"
-          fi
-          brightnessctl set 0
-          suspend_if_battery_low || true
-          if lid_is_closed; then
-            start_battery_guard
-          fi
-        else
-          stop_battery_guard
-          restore_backlight
-        fi
-        last_lid_state="$state"
-      }
-
-      apply_lid_state
-      while IFS= read -r event; do
-        case "$event" in
-          *PropertiesChanged*) apply_lid_state ;;
-        esac
-      done < <(
-        gdbus monitor --system \
-          --dest org.freedesktop.login1 \
-          --object-path /org/freedesktop/login1
-      )
+      threshold=15
+      for battery in /sys/class/power_supply/BAT*; do
+        [ -r "$battery/capacity" ] && [ -r "$battery/status" ] || continue
+        [ "$(<"$battery/status")" = "Discharging" ] || continue
+        capacity=$(<"$battery/capacity")
+        [ "$capacity" -le "$threshold" ] || continue
+        notify-send \
+          --app-name=battery \
+          --urgency=critical \
+          --hint=string:x-canonical-private-synchronous:battery \
+          "Battery at $capacity%" "Plug in the charger."
+      done
     '';
   };
 in
 {
-  home.packages = [ batteryCheck ];
-
-  systemd.user.services.battery-check = {
-    Unit.Description = "Battery status monitor";
+  systemd.user.services.battery-warning = {
+    Unit.Description = "Warn when the battery runs low";
     Service = {
-      Type = "simple";
-      ExecStart = "${batteryCheck}/bin/battery-check";
-      Restart = "always";
-      RestartSec = 5;
+      Type = "oneshot";
+      ExecStart = "${batteryWarning}/bin/battery-warning";
     };
-    Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  # Deliberately declared without `Install.WantedBy`: logind owns the lid
-  # action, and this unit replaces it with monitor-off. Start it by hand
-  # (`systemctl --user start lid-monitor-only`) when that is what is wanted.
-  # Do not add an `Install` section as a drive-by fix.
-  systemd.user.services.lid-monitor-only = {
-    Unit = {
-      Description = "Keep running and turn off the backlight while the lid is closed";
-      PartOf = [ "graphical-session.target" ];
+  systemd.user.timers.battery-warning = {
+    Unit.Description = "Warn when the battery runs low";
+    Timer = {
+      OnBootSec = "2m";
+      OnUnitActiveSec = "2m";
     };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=graphical-session --why=Runtime-lid-action-is-monitor-off ${lidMonitorOnly}/bin/lid-monitor-only";
-      ExecStop = "${lidMonitorOnly}/bin/lid-monitor-only restore";
-      Restart = "on-failure";
-      RestartSec = 2;
-    };
+    Install.WantedBy = [ "timers.target" ];
   };
 }

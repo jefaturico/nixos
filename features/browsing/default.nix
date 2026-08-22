@@ -1,6 +1,6 @@
 { ... }:
 
-# LibreWolf as the daily browser, Brave for Chromium-only sites.
+# The browser: LibreWolf, with Brave installed unconfigured as a fallback.
 {
   home-manager.users.jefaturico.imports = [ ./home.nix ];
 }
