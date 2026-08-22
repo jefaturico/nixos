@@ -33,18 +33,6 @@
     VISUAL = "nvim";
   };
 
-  # Long builds are the norm on this flake; keep the progress bar and full
-  # build logs without retyping the flags.
-  programs.bash.interactiveShellInit = ''
-    nix() {
-      command nix --log-format bar-with-logs --print-build-logs "$@"
-    }
-
-    nixos-rebuild() {
-      command nixos-rebuild --log-format bar-with-logs --print-build-logs "$@"
-    }
-  '';
-
   nixpkgs.config.allowUnfree = true;
 
   nix = {

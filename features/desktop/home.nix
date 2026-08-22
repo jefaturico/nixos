@@ -16,13 +16,6 @@
       size = 24;
     };
 
-    sessionVariables = {
-      GTK_CSD = "0";
-      QT_QPA_PLATFORM = "wayland";
-      QT_QPA_PLATFORMTHEME = "gtk3";
-      QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
-    };
-
     # GTK applications installed through Home Manager look up GSettings
     # schemas relative to these; without them some abort on start.
     packages = with pkgs; [

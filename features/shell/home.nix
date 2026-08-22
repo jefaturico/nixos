@@ -12,12 +12,7 @@
 
     shellAliases = {
       o = "xdg-open";
-      rebuild = "sudo nixos-rebuild switch --flake path:$HOME/nixos#tethys";
-    };
-
-    sessionVariables = {
-      EDITOR = "nvim";
-      VISUAL = "nvim";
+      rebuild = "sudo nixos-rebuild switch --flake path:$HOME/nixos#tethys --log-format bar-with-logs --print-build-logs";
     };
 
     initExtra = ''
