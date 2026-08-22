@@ -6,7 +6,12 @@
 # screen locker: it draws a solid colour and nothing else, and authenticates
 # through PAM.
 {
-  services.displayManager.ly.enable = true;
+  services.displayManager.ly = {
+    enable = true;
+    # ly's compiled-in default drops this in $HOME's root; upstream's own
+    # example config puts it under XDG state instead.
+    settings.session_log = ".local/state/ly-session.log";
+  };
 
   environment.systemPackages = [ pkgs.waylock ];
 
