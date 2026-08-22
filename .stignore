@@ -1,7 +1,0 @@
-.agents
-.agents/**
-.codex
-.codex/**
-*.sync-conflict-*
-result
-result-*

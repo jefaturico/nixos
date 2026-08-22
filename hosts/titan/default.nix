@@ -2,7 +2,25 @@
 {
   imports = [
     ./hardware.nix
-    ../../common/configuration.nix
+    ../../features/base
+    ../../features/users
+    ../../features/network
+    ../../features/secrets
+    ../../features/login
+    ../../features/input
+    ../../features/desktop
+    ../../features/compositor
+    ../../features/theme
+    ../../features/terminal
+    ../../features/shell
+    ../../features/editor
+    ../../features/browsing
+    ../../features/documents
+    ../../features/media
+    ../../features/development
+    ../../features/packages
+    ../../features/ergonomics
+    ../../features/gaming
   ];
 
   networking.hostName = "titan";
@@ -33,8 +51,6 @@
   hardware = {
     graphics.enable = true;
   };
-
-  security.polkit.enable = true;
 
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.nvidia = {

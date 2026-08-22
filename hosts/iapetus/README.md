@@ -1,13 +1,17 @@
 # Iapetus host specification
 
-Iapetus is a Lenovo laptop repurposed as the lightweight always-available
-server and Syncthing hub. It intentionally uses a smaller NixOS module stack
-than the graphical hosts.
+Iapetus is a Lenovo laptop repurposed as a lightweight always-available
+headless host. It intentionally uses a smaller NixOS module stack than the
+graphical hosts.
+
+It currently has **no service role**. It was the Syncthing hub until
+synchronization was retired, and no replacement backup strategy has been
+chosen. Until one is, it provides only SSH reachability over the tailnet.
 
 The live inventory was observed on 2026-08-14 through an existing trusted SSH
 path. Model names and running software are a snapshot; `default.nix` and
 `hardware.nix` remain authoritative. Do not add serial numbers, filesystem
-UUIDs, MAC addresses, public keys, Syncthing IDs, or other unique identifiers
+UUIDs, MAC addresses, public keys, or other unique identifiers
 to this document.
 
 ## Hardware inventory
@@ -37,29 +41,28 @@ server work.
 | NixOS generation | 26.05 (`26.05.20260611.a037402`, Yarara) |
 | Kernel | Linux 6.18.35, x86_64 |
 | Runtime swap | Approximately 9.7 GiB zram plus 4 GiB disk swap |
-| Primary role | Headless SSH/Tailscale/Syncthing server |
+| Primary role | Headless SSH/Tailscale host, no service role |
 
 These values describe the running generation and may lag the repository until
 the host is rebuilt. The flake lock and Iapetus closure select the next build.
 
 ## Declared policy
 
-Iapetus uses `mkServerHost`, importing only its hardware module and
-`common/syncthing.nix`. It deliberately does not inherit Home Manager,
-Flatpak, SOPS integration, Bluetooth, the graphical application set, or the
-desktop session services.
+Iapetus uses `mkServerHost` and imports three features: `base`, `users`, and
+`features/network/system.nix`. It takes only the system half of `network`
+because it has no Home Manager to receive the SSH client configuration. It
+deliberately does not inherit Home Manager, SOPS integration, Bluetooth, the
+graphical application set, or the desktop session services.
 
 `hosts/iapetus/default.nix` provides:
 
-- systemd-boot with five retained configurations and the shared Madrid/US
-  locale conventions.
+- systemd-boot with ten retained configurations and the shared Madrid/US
+  locale conventions, all from `features/base`.
 - NetworkManager, a firewall that trusts Tailscale, and Tailscale client mode.
 - OpenSSH with password and keyboard-interactive authentication disabled, root
   login disabled, and no general public firewall opening.
-- Syncthing as the hub for Titan and Tethys and as a participant in the folders
-  declared by `common/syncthing.nix`.
-- `thermald`, weekly store garbage collection, filesystem trim, and automatic
-  Nix store optimization.
+- `thermald`, plus the weekly garbage collection, filesystem trim, and weekly
+  store optimization that `features/base` gives every host.
 - TLP policy: boost disabled and energy preference `power` on battery; boost
   enabled and `balance_performance` on AC; PCIe ASPM uses powersave on battery.
 - logind lid actions set to ignore so closing the repurposed laptop does not
@@ -80,7 +83,6 @@ there rather than duplicating them in documentation.
 | --- | --- | --- |
 | Boot disk, filesystem, swap, initrd, or CPU facts | `hardware.nix` | Actual block devices and a retained boot generation |
 | SSH, Tailscale, thermal, TLP, garbage collection, or server packages | `default.nix` | Remote reachability and battery/AC behavior |
-| Syncthing topology, folders, or exclusions | `common/syncthing.nix` | Titan/Tethys peers and phone participation |
 | Host constructor or desktop/server boundary | `flake.nix` | All three host evaluations and closure size |
 
 ## Validation checklist
@@ -96,8 +98,7 @@ After activation by the operator, test without closing the only trusted remote
 session until a second connection succeeds:
 
 - Reconnect through Tailscale with public password/root login still rejected.
-- Confirm SSH and Syncthing are active and the expected peers/folders converge
-  without sync-conflict files.
+- Confirm SSH is active and reachable over the tailnet.
 - Confirm the firewall trusts only the intended tailnet path and the server is
   not unintentionally exposed on another interface.
 - Check AC/battery TLP state, thermals, zram/disk-swap priority, and that closing
@@ -108,7 +109,7 @@ session until a second connection succeeds:
 Useful diagnostics:
 
 ```sh
-systemctl status sshd tailscaled syncthing thermald tlp
+systemctl status sshd tailscaled thermald tlp
 tailscale status
 ss -lntup
 swapon --show

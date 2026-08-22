@@ -1,139 +1,63 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
+
+# Iapetus is a repurposed Lenovo laptop kept as the always-available headless
+# host, reachable over the tailnet. It shares the base, user, and network
+# modules with the graphical hosts and imports none of the desktop stack.
+#
+# It has no service role at the moment: it was the Syncthing hub until that
+# was retired, and no replacement backup strategy has been chosen yet.
 let
   rebuildPush = pkgs.writeScriptBin "rebuild-push" (
-    import ../../common/scripts/rebuild-push.nix { inherit pkgs; }
+    import ../../features/development/rebuild-push.nix { inherit pkgs; }
   );
 in
 {
   imports = [
     ./hardware.nix
-    ../../common/syncthing.nix
+    ../../features/base
+    ../../features/users
+    # System half only: this host has no Home Manager, so the SSH *client*
+    # configuration in features/network/home.nix does not apply here.
+    ../../features/network/system.nix
   ];
 
-  networking = {
-    hostName = "iapetus";
-    networkmanager.enable = true;
-    firewall = {
-      enable = true;
-      trustedInterfaces = [ "tailscale0" ];
-    };
-  };
+  networking.hostName = "iapetus";
 
-  boot.loader.systemd-boot = {
-    enable = true;
-    configurationLimit = 5;
-  };
-  boot.loader.timeout = 0;
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  time.timeZone = "Europe/Madrid";
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  console = {
-    font = "Lat2-Terminus16";
-    keyMap = "us";
-  };
-
-  users.users.jefaturico = {
-    isNormalUser = true;
-    extraGroups = [
-      "wheel"
-      "networkmanager"
-    ];
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfx6y39zNZYSLw18oOwuX8N+aStamNANfZJtCrBEK3I tailnet"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKCYYIkAOD+VUHxB7shEKIxt5goUYv9kABwIKUU4hxgP jefaturico@tethys"
-    ];
-  };
-
-  services = {
-    openssh = {
-      enable = true;
-      openFirewall = false;
-      settings = {
-        PasswordAuthentication = false;
-        KbdInteractiveAuthentication = false;
-        PermitRootLogin = "no";
-      };
-    };
-
-    tailscale = {
-      enable = true;
-      openFirewall = true;
-      useRoutingFeatures = "client";
-      extraSetFlags = [ "--hostname=${config.networking.hostName}" ];
-    };
-
-    thermald.enable = true;
-    fstrim.enable = true;
-
-    logind.settings.Login = {
-      HandleLidSwitch = "ignore";
-      HandleLidSwitchDocked = "ignore";
-      HandleLidSwitchExternalPower = "ignore";
-    };
-
-    tlp = {
-      enable = true;
-      settings = {
-        CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
-        CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance";
-        CPU_BOOST_ON_BAT = 0;
-        CPU_BOOST_ON_AC = 1;
-        PCIE_ASPM_ON_BAT = "powersave";
-      };
-    };
-  };
-
-  environment.variables = {
-    EDITOR = "hx";
-    VISUAL = "hx";
-  };
-
-  environment.systemPackages = with pkgs; [
-    rebuildPush
-    helix
-    git
-    curl
-    wget
-    htop
-    rsync
+  # Reached over SSH from Tethys with that host's own key, in addition to the
+  # shared tailnet identity.
+  users.users.jefaturico.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKCYYIkAOD+VUHxB7shEKIxt5goUYv9kABwIKUU4hxgP jefaturico@tethys"
   ];
 
-  programs.bash.interactiveShellInit = ''
-    nix() {
-      command nix --log-format bar-with-logs --print-build-logs "$@"
-    }
-
-    nixos-rebuild() {
-      command nixos-rebuild --log-format bar-with-logs --print-build-logs "$@"
-    }
-  '';
-
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    auto-optimise-store = true;
+  # The lid stays shut on a shelf; nothing about closing it should stop the
+  # server.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchDocked = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
   };
 
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-generations +10";
-  };
+  services.thermald.enable = true;
 
-  zramSwap = {
+  # A headless host has no interactive latency to protect, so bias the CPU
+  # toward power on battery and let it boost only on mains.
+  services.tlp = {
     enable = true;
-    memoryPercent = 50;
-    priority = 100;
+    settings = {
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
+      CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance";
+      CPU_BOOST_ON_BAT = 0;
+      CPU_BOOST_ON_AC = 1;
+      PCIE_ASPM_ON_BAT = "powersave";
+    };
   };
 
-  boot.kernel.sysctl = {
-    "vm.swappiness" = 100;
-    "vm.page-cluster" = 0;
-  };
+  # This host owns the Git remote, so it carries the publish half of the
+  # rebuild helper. The desktops get it through Home Manager.
+  environment.systemPackages = [ rebuildPush ];
 
-  system.stateVersion = "26.05";
+  # Half the RAM is enough compressed swap for a headless host, and leaves
+  # the rest available as page cache.
+  zramSwap.memoryPercent = 50;
+  zramSwap.priority = 100;
 }

@@ -13,9 +13,10 @@ reference when adapting the configuration elsewhere.
 ## Design goals
 
 The configuration prioritizes performance, battery efficiency, simplicity,
-and minimalism. Host policy makes tradeoffs explicit: Tethys, for example,
-uses different display refresh rates on AC and battery instead of imposing one
-global compromise.
+and minimalism. Host policy makes tradeoffs explicit: Tethys sizes zram to the
+whole of RAM and disables swap readahead because its workload is interactive,
+while Iapetus halves zram and lets TLP clamp CPU boost because nothing on it
+waits for a human.
 
 Where a maintained Nixpkgs option, upstream feature, community package, or
 community patch fits the pinned system, it is preferred over bespoke code.
@@ -27,9 +28,9 @@ additional framework or service.
 
 | Host | Role | Configuration highlights |
 | --- | --- | --- |
-| [`titan`](hosts/titan/README.md) | NVIDIA desktop | Shared desktop applications and services, proprietary legacy NVIDIA driver, and coredump limits for large browser renderer crashes |
-| [`tethys`](hosts/tethys/README.md) | Framework AMD laptop | Niri desktop, Framework hardware module, manual brightness controls, lid/battery handling, Steam, and Lutris |
-| [`iapetus`](hosts/iapetus/README.md) | Lightweight server | SSH/Tailscale/Syncthing, storage and memory maintenance, and command-line tools without Home Manager, Flatpak, or the graphical desktop stack |
+| [`titan`](hosts/titan/README.md) | NVIDIA gaming desktop | The same niri session and application set as Tethys; differs only in hardware — proprietary legacy NVIDIA driver and coredump limits for large browser renderer crashes |
+| [`tethys`](hosts/tethys/README.md) | Framework AMD laptop | The shared niri desktop plus the Framework hardware module, manual brightness controls, lid/battery handling, and the display-corner mask |
+| [`iapetus`](hosts/iapetus/README.md) | Headless host | SSH and Tailscale reachability, storage and memory maintenance, and command-line tools without Home Manager or the graphical desktop stack. Currently carries no service role |
 
 All hosts are currently `x86_64-linux` and expose flake outputs named after
 their hostnames:
@@ -41,10 +42,39 @@ nix eval --raw .#nixosConfigurations.titan.config.networking.hostName
 
 ## Architecture
 
-`flake.nix` has two constructors. `mkDesktopHost` adds the shared desktop host
-module, Home Manager, Flatpak, and SOPS integration; `mkServerHost` evaluates a
-smaller host module directly. Titan and Tethys use the desktop constructor,
-while Iapetus owns its smaller service set explicitly.
+`flake.nix` has two constructors. `mkDesktopHost` adds Home Manager and the
+SOPS module; `mkServerHost` evaluates the host module alone. Titan and Tethys
+use the desktop constructor, Iapetus the server one.
+
+Titan and Tethys are deliberately identical above the hardware line: they
+import the same feature list, so the session, applications, keybindings, and
+theme are the same on either machine. Their host modules contain only GPU,
+firmware, power, and chassis facts. Tethys adds one feature Titan cannot use,
+`laptop`, because Titan has no battery or lid.
+
+Configuration is organized by *feature*, not by layer. Each directory under
+`features/` is one thing the machine does, and holds everything that thing
+needs — system configuration, user configuration, helper scripts, patches, and
+dotfiles alike. `features/compositor/` contains the niri NixOS module, the
+Home Manager link, the checked-in `config.kdl`, and its README. Removing a
+feature is removing a directory.
+
+Every feature exposes the same interface: `default.nix` is a NixOS module.
+Where a feature also has a user half, that file is one line wiring `./home.nix`
+into Home Manager. So a host reads as a list of capabilities:
+
+```nix
+imports = [
+  ./hardware.nix
+  ../../features/base
+  ../../features/desktop
+  ../../features/compositor
+  ../../features/gaming
+];
+```
+
+There is no enable flag to maintain: importing the feature *is* enabling it,
+and a feature a host does not import costs it nothing.
 
 ### Architectural decisions
 
@@ -52,75 +82,112 @@ while Iapetus owns its smaller service set explicitly.
 | --- | --- |
 | Stable NixOS and matching Home Manager | Keeps system and user module APIs aligned; the lock file pins each generation |
 | Unstable input only for Codex | Updates one fast-moving tool without moving the operating system off stable |
-| Separate desktop and server constructors | Keeps Home Manager, Flatpak, SOPS integration, and graphical assumptions out of Iapetus |
+| Separate desktop and server constructors | Keeps Home Manager, SOPS integration, and graphical assumptions out of Iapetus |
 | Home Manager embedded in desktop builds | User services and most configuration activate and roll back with the system generation |
 | systemd user session target | Gives helpers explicit ownership, restart policy, logging, and logout cleanup |
 | X11 compatibility for selected Electron/Xwayland applications | Preserves current application stability; change only after testing affected applications under native Wayland |
 
-The Helix directory under `dots/` is deliberately linked out of the Nix store,
-so edits are visible immediately without a rebuild.
+Neovim is configured declaratively through Home Manager and follows the active
+desktop theme.
 
 ### Repository map
 
 | Path | Responsibility |
 | --- | --- |
 | `flake.nix` / `flake.lock` | Inputs, host constructors, and pinned dependency graph |
-| `hosts/<host>/default.nix` | Host role and machine-specific policy |
+| `hosts/<host>/default.nix` | The feature list for that machine, plus host-only hardware policy |
 | `hosts/<host>/hardware.nix` | Generated or hardware-specific boot, filesystem, and platform settings |
-| `common/configuration.nix` | Shared desktop NixOS services, users, boot policy, packages, and imports |
-| `common/home.nix` | Home Manager entry point, user identity, SSH policy, and user module imports |
-| `common/programs.nix` | Interactive applications, program settings, and desktop utilities |
-| `common/services.nix` | Home Manager services such as Foot, Gammastep, and udiskie |
-| `common/session.nix` | GTK/Qt session integration, MIME defaults, portals, and desktop environment variables |
-| `common/theme.nix` / `common/matugen/` | Static light theme, wallpaper-derived dark theme, wallpaper state, and live propagation |
-| `common/niri/` | Tethys niri session, desktop helpers, portal policy, and session services |
-| `common/scripts.nix` / `common/scripts/` | Rebuild, battery, and laptop lid helpers |
-| `common/secrets.nix` / `secrets/` | SOPS declarations and encrypted secret data |
-| `common/syncthing.nix` | Devices, topology, folders, and synchronization exclusions |
-| `dots/helix/` | Active out-of-store Helix configuration |
-| `dots/niri/` | Active out-of-store niri configuration; edits apply through live reload without a rebuild |
+| `secrets/` | Encrypted secret data |
 | `.github/workflows/nix.yml` | Flake evaluation and builds for all three hosts |
+
+Every feature below is a directory under `features/`.
+
+| Feature | Layers | Responsibility |
+| --- | --- | --- |
+| `base` | system | Boot entries, locale, the Nix daemon, garbage collection, memory/swap policy |
+| `users` | system | The single account; other features append groups and keys |
+| `network` | system + home | NetworkManager, firewall, SSH server, Tailscale, and the SSH client identities |
+| `secrets` | system | SOPS declarations and the tooling to edit them |
+| `login` | system + home | Ly, fingerprint PAM, and the hyprlock screen |
+| `input` | system | Keyboard layout, keyd remapping, libinput quirks |
+| `desktop` | system + home | Portals, peripherals, fonts, session environment, GTK/Qt policy, XDG directories |
+| `compositor` | system + home | Niri, its session services and helpers, and the live `config.kdl` |
+| `theme` | home | Tinty palette propagation, wallpaper association, Fuzzel/Fnott wrappers, LibreWolf chrome, fnott patches |
+| `terminal` | home | Foot and its shared server |
+| `shell` | home | Bash, prompt, history, navigation |
+| `editor` | home | Neovim |
+| `browsing` | home | LibreWolf and Brave |
+| `documents` | home | Zathura, Okular, LibreOffice, `find-document`, notes, ledger |
+| `media` | home | Playback, viewing, capture, and the MPRIS key handler |
+| `development` | home | Git, language servers, formatters, coding agents, `rebuild-push` |
+| `ergonomics` | system | The movement and posture reminder daemon |
+| `gaming` | system | Steam |
+| `laptop` | home | Battery notifications and the lid monitor. Tethys only |
+| `packages` | home | Applications installed with nothing to configure |
+
+Adding a configured application means adding one feature directory and one
+line to each host that wants it. Adding an application with nothing to
+configure means adding one line to `features/packages/home.nix`.
 
 ## System design notes
 
 ### Desktop and session lifecycle
 
-Tethys runs niri through its packaged systemd session. Niri owns
+Both desktops run niri through its packaged systemd session. Niri owns
 `graphical-session.target`; shared
 helpers such as the Foot server, wallpaper, theme initialization,
 the display-corner mask, and other session services attach directly to that
 standard target.
 
-One declared exception matters operationally: Tethys's `lid-monitor-only` unit has
-`PartOf=graphical-session.target` but no `WantedBy`, so current configuration
-does not start it automatically. Do not mistake declaration for enablement or
+One declared exception matters operationally: Tethys's `lid-monitor-only` unit
+has `PartOf=graphical-session.target` but no `WantedBy`, so nothing starts it
+automatically. That is deliberate — logind owns the lid action — and the unit
+is a manually started alternative. Do not mistake declaration for enablement or
 silently repair that lifecycle while working on an unrelated feature.
 
 Using user units gives each helper an independent restart policy and journal.
 It also keeps optional session processes out of a single opaque startup shell
 script.
 
-Tethys enables the ordinary NixOS Steam client without adding a separate Steam
-login session, replacement desktop entry, or nested compositor.
+Both desktops enable the ordinary NixOS Steam client without adding a separate
+Steam login session, replacement desktop entry, or nested compositor.
 
 ### Theme and mutable state
 
-Matugen derives cohesive light and dark terminal, launcher, and notification
-colors directly from the selected wallpaper. `system-theme`
-persists which generated variant is active through dconf and reapplies it at
-session startup. `wallpaper-switcher` stores the selected wallpaper under the
-user's state directory and maintains the mutable `~/.wbg` launcher.
+Tinty reads the pinned upstream Tinted Theming catalog and applies one Base16
+scheme to Foot, Fuzzel, Fnott, and Neovim. `theme-switcher` associates the
+chosen scheme identifier with the current wallpaper. Its temporary Foot/fzf
+picker previews each highlighted scheme live against the wallpaper; accepting
+applies it everywhere, while cancelling restores the original. The wallpaper
+picker orders every genuinely dark catalog theme by a perceptual comparison of
+its accents, background, and foreground with the sampled wallpaper. The
+wallpaper switcher reapplies saved associations; a wallpaper without one uses
+the first theme in that same suitability ranking. Mutable state contains only
+those associations, the current generated files, and the `~/.wbg` launcher—no
+palette definitions.
+Neovim uses the same palette with transparent editor backgrounds, leaving
+terminal text opaque while Foot supplies the tinted translucent surface.
+Theme changes update existing Foot windows through OSC palette sequences, and
+each new Foot client receives the current generated palette from its launcher.
 
 ### Web browsing
 
-Qutebrowser is the default browser and owns the desktop HTTP, HTTPS, and HTML
-handlers. Its declarative baseline restores the previous session lazily,
-blocks ads with the packaged ABP engine, disables autoplay, uses DuckDuckGo by
-default, and opens external text editing in Helix through Foot. Interactive
-per-site permissions and exceptions remain writable. Brave stays installed as
-the compatibility fallback for DRM, browser extensions, conferencing, and
-sites that do not work correctly through QtWebEngine; LibreWolf is not part of
-the installed desktop set.
+LibreWolf is the default browser and owns the desktop HTTP, HTTPS, and HTML
+handlers. Its browser chrome uses the active Tinty palette with the same 70%
+translucent base surface and regular Niri blur as the rest of the desktop;
+tabs, URL-bar states, menus, panels, buttons, and focus accents are derived from
+that palette while webpage canvases remain opaque. Its Firefox Nova semantic
+color-token coverage is adapted from the MIT-licensed
+[FoxOne theme](https://github.com/Firnschnee/FoxOne), without importing FoxOne's
+layout changes. LibreWolf supplies uBlock Origin; Bitwarden and
+Vimium C are installed from pinned declarative add-on packages and enforced by
+browser policy for newly created profiles, while their settings, logins, and
+runtime state remain writable. Fresh profiles skip onboarding, recommendations,
+default-browser checks, and post-update pages and use DuckDuckGo by default.
+Every Home Manager activation reasserts the managed profile links and regenerates
+the active Tinty chrome, so rebuilding also recovers a deleted browser profile.
+Brave remains the secondary compatibility browser for DRM, conferencing, and
+Chromium-only sites.
 
 ### Secrets and remote access
 
@@ -132,9 +199,8 @@ git clone https://github.com/jefaturico/nixos.git ~/nixos
 ```
 
 Public availability is a deployment convenience, not a privacy boundary.
-Committed hostnames, user names, public SSH keys, Syncthing device IDs, age
-recipients, hardware models, and filesystem UUIDs must be assumed permanently
-public. Private keys and plaintext secrets must never be committed. Review new
+Committed hostnames, user names, public SSH keys, age recipients, hardware
+models, and filesystem UUIDs must be assumed permanently public. Private keys and plaintext secrets must never be committed. Review new
 identifiers with that threat model before adding them.
 
 SOPS encrypts `secrets/secrets.yaml` for the configured age recipients.
@@ -152,17 +218,6 @@ The desktop hosts use an SSH identity named for the current host when accessing
 GitHub and a separate tailnet identity for peer hosts. SSH password login and
 root login are disabled. The firewall trusts the Tailscale interface; SSH does
 not otherwise open a public firewall port.
-
-### Synchronization
-
-Syncthing treats Iapetus as the hub for Titan and Tethys, while the two desktop
-hosts can also synchronize directly. A phone peer participates only in the
-selected folders that opt into it. The NixOS folder excludes agent state,
-local Codex state, build results, and sync-conflict files.
-
-The topology provides an always-available convergence point without forcing
-nearby desktop peers to relay through it. Device IDs and other operational
-identifiers remain in the Nix module rather than being duplicated here.
 
 ## Working on an existing host
 
@@ -190,8 +245,8 @@ sudo nixos-rebuild test --flake "path:$PWD#$(hostname)"
 ```
 
 Use the system for long enough to exercise the affected services. Home Manager
-services and NixOS modules are activated by the rebuild. Changes in the
-out-of-store Helix tree do not require a rebuild.
+services and NixOS modules are activated by the rebuild. The checked-in niri
+configuration remains an out-of-store link and reloads without a rebuild.
 
 Persist a tested generation:
 
@@ -227,7 +282,9 @@ sudo nixos-rebuild switch --rollback
 ```
 
 List and remove generations carefully with the normal NixOS tools; automatic
-garbage collection keeps the latest ten generations. Do not change
+garbage collection keeps the latest ten generations, and the boot menu shows
+the same ten. Store deduplication runs as a weekly `nix-optimise` job rather
+than inline on every build. Do not change
 `system.stateVersion` or `home.stateVersion` during an ordinary channel update.
 Those values describe compatibility state, not the desired package version.
 
@@ -247,7 +304,7 @@ This repository does not promise a generic installer. To adapt it for another
 machine, generate and review a new `hardware.nix`, add a host module, choose the
 desktop or server constructor in `flake.nix`, replace user and SSH identity
 assumptions, provision a valid SOPS age key, and review every display,
-filesystem, power, GPU, and Syncthing setting before the first switch.
+filesystem, power, and GPU setting before the first switch.
 
 Never copy another host's hardware module or private identity files blindly.
 Use `nixos-rebuild test` from an existing bootable generation before making a

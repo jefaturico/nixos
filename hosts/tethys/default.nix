@@ -44,8 +44,26 @@ in
 {
   imports = [
     ./hardware.nix
-    ../../common/configuration.nix
-    ../../common/niri
+    ../../features/base
+    ../../features/users
+    ../../features/network
+    ../../features/secrets
+    ../../features/login
+    ../../features/input
+    ../../features/desktop
+    ../../features/compositor
+    ../../features/theme
+    ../../features/terminal
+    ../../features/shell
+    ../../features/editor
+    ../../features/browsing
+    ../../features/documents
+    ../../features/media
+    ../../features/development
+    ../../features/packages
+    ../../features/ergonomics
+    ../../features/gaming
+    ../../features/laptop
     inputs.nixos-hardware.nixosModules.framework-amd-ai-300-series
   ];
 
@@ -59,10 +77,6 @@ in
 
   # Let the kernel select its larger built-in console font for the HiDPI panel.
   console.font = lib.mkForce null;
-
-  programs.steam.enable = true;
-
-  environment.systemPackages = [ pkgs.lutris ];
 
   # The panel has a larger physical radius at its upper corners. Mask the two
   # lower corners so the visible display area has one consistent 15 px radius.
@@ -104,5 +118,21 @@ in
     priority = 100;
   };
 
-  boot.kernel.sysctl."vm.page-cluster" = 0;
+  # memfd_secret disables kernel hibernation (secretmem_active). Disable it at
+  # boot so hibernation to the disk-backed swap remains functional.
+  # pm_async=off forces synchronous device power transitions, preventing
+  # MediaTek Wi-Fi (mt7925e) IOMMU page faults and hangs during poweroff.
+  boot.kernelParams = [
+    "secretmem.enable=0"
+    "pm_async=off"
+  ];
+
+  systemd.tmpfiles.rules = [
+    "w /sys/power/pm_async - - - - 0"
+  ];
+
+  # Platform (ACPI S4) hibernation aborts on this hardware due to a firmware
+  # wakeup event during sleep state transition. Use shutdown mode so the kernel
+  # writes the snapshot to disk and powers off cleanly.
+  systemd.sleep.settings.Sleep.HibernateMode = "shutdown";
 }

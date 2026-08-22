@@ -1,8 +1,10 @@
 # Titan host specification
 
-Titan is the NVIDIA desktop host. This file records its hardware inventory,
-host-only policy, and acceptance tests so changes can be evaluated against the
-actual machine rather than a generic desktop.
+Titan is the NVIDIA gaming desktop. It runs the same session, applications,
+keybindings, and theme as Tethys; the two differ only in hardware. This file
+records its hardware inventory, host-only policy, and acceptance tests so
+changes can be evaluated against the actual machine rather than a generic
+desktop.
 
 The live inventory was observed on 2026-08-14. Model names and running software
 are a snapshot; `default.nix` and `hardware.nix` remain the configuration source
@@ -36,7 +38,7 @@ with `nofail`, so its absence must not prevent boot.
 | Kernel | Linux 6.18.39, x86_64 |
 | NVIDIA driver | Proprietary 580.173.02 through the configured legacy-580 package |
 | Runtime swap | Approximately 15.6 GiB zram plus 4 GiB disk swap |
-| Graphical session | No compositor session currently declared |
+| Graphical session | Niri through its packaged systemd session under Ly, shared with Tethys |
 
 These values describe the running generation, not version pins. `flake.lock`
 and the evaluated host closure select the next build.
@@ -64,10 +66,22 @@ microcode policy. UUIDs stay in that file and must not be copied here.
 
 ## Runtime behavior inherited from shared modules
 
-Titan is constructed with `mkDesktopHost`, so it receives Home Manager,
-Ly, PipeWire, Bluetooth, Flatpak, portals, fingerprint PAM, keyd, Tailscale,
-SSH, SOPS, Syncthing, the Foot server, wallpaper/theming, Gammastep, udiskie,
-and the shared desktop application set.
+Titan is constructed with `mkDesktopHost` and imports the full desktop feature
+list — `base`, `users`, `network`, `secrets`, `login`, `input`, `desktop`,
+`compositor`, `theme`, `terminal`, `shell`, `editor`, `browsing`, `documents`,
+`media`, `development`, `packages`, `ergonomics`, and `gaming` — the same list
+Tethys uses.
+
+The one feature Titan does not import is `laptop`, because it has no battery
+or lid. Tethys's `display-corner-mask` is likewise a chassis-specific
+service and stays in that host module.
+
+Niri on the proprietary NVIDIA driver has **not been exercised on this
+hardware yet**. The host already sets `modesetting.enable`, `GBM_BACKEND`,
+`__GLX_VENDOR_LIBRARY_NAME`, and `NVD_BACKEND`, which is the configuration niri
+expects, but the first switch is an acceptance test: confirm the session
+starts, that Xwayland clients render through `xwayland-satellite`, and that
+Steam and Proton titles pick up the discrete GPU.
 
 ## Change map
 
@@ -75,7 +89,7 @@ and the shared desktop application set.
 | --- | --- | --- |
 | Disk, filesystem, swap, initrd, or CPU facts | `hardware.nix` | Actual block devices and boot behavior |
 | NVIDIA driver, module, VA-API, or coredump policy | `default.nix` | Current kernel/Nixpkgs and graphical-session behavior |
-| Shared desktop service or application | Relevant `common/` module | Tethys impact and both desktop builds |
+| Shared desktop service or application | The owning `features/` directory | Tethys impact and both desktop builds |
 
 ## Validation checklist
 
@@ -88,7 +102,7 @@ nix build path:.#nixosConfigurations.titan.config.system.build.toplevel --no-lin
 
 After the new generation is activated by the operator, test the affected area:
 
-- After a compositor is configured, start it with the NVIDIA display attached
+- Start the niri session with the NVIDIA display attached
   through DisplayPort and test native Wayland and Xwayland clients.
 - Confirm `nvidia-smi` reports the intended driver/GPU and that the session does
   not fall back to software rendering.

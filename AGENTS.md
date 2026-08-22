@@ -11,8 +11,8 @@ agent behavior and routing here.
   resume, or Framework-specific work, also read `hosts/tethys/README.md`.
 - For Titan hardware, NVIDIA, storage, display, or desktop-specific work, also
   read `hosts/titan/README.md`.
-- For Iapetus server, SSH/Tailscale, Syncthing, storage, thermal, or power work,
-  also read `hosts/iapetus/README.md`.
+- For Iapetus server, SSH/Tailscale, storage, thermal, or power work, also read
+  `hosts/iapetus/README.md`.
 - Inspect `git status --short` before editing. The worktree commonly contains
   user changes; preserve them and never clean, reset, restore, or reformat
   unrelated paths.
@@ -45,8 +45,8 @@ Optimize decisions for these goals, in order of relevance to the task:
   broad frameworks, and dependencies for behavior that can remain declarative
   or use an existing session/service boundary.
 - When performance and battery efficiency conflict, prefer an explicit
-  host/power-state policy such as Tethys's AC/battery refresh split rather than
-  one compromise applied everywhere.
+  host-level policy — Tethys's full-RAM zram against Iapetus's halved zram and
+  TLP boost clamp — rather than one compromise applied everywhere.
 - Do not claim that a change improves performance, latency, memory use, power
   consumption, or battery life without a relevant measurement. When direct
   measurement is impractical, label the benefit as expected and state the
@@ -74,52 +74,93 @@ Optimize decisions for these goals, in order of relevance to the task:
 
 ## Repository ownership
 
-- `flake.nix`: inputs, host outputs, and desktop/server constructors.
-- `hosts/<host>/default.nix`: host role and host-only policy.
+Configuration is organized by feature, not by layer. Each directory under
+`features/` is one thing a machine does and owns *everything* that thing needs:
+NixOS configuration, Home Manager configuration, helper scripts, patches, and
+dotfiles. Do not create a shared `scripts/`, `patches/`, or `dots/` directory
+again — a helper belongs beside the feature that installs it.
+
+Every feature exposes the same interface:
+
+- `default.nix` is always a NixOS module and is what hosts import.
+- `system.nix` holds the NixOS half when a feature has both halves.
+- `home.nix` holds the Home Manager half. `default.nix` wires it with
+  `home-manager.users.jefaturico.imports = [ ./home.nix ];`.
+- Data files that are not modules (`config.kdl`, `librewolf-chrome.nix`,
+  `battery-check.nix`, `patches/`) sit in the same directory.
+
+Importing a feature is what enables it. There are no `enable` options to
+maintain, and a feature a host does not import costs that host nothing. When
+behaviour should be conditional, change the host's import list rather than
+adding a hostname test inside the feature.
+
+- `flake.nix`: inputs, host outputs, and desktop/server constructors. It sets
+  up Home Manager but declares no user modules; features attach their own.
+- `hosts/<host>/default.nix`: the feature list plus host-only hardware policy.
 - `hosts/<host>/hardware.nix`: boot-critical hardware, filesystem, swap, and
   resume facts. Do not regenerate or copy these files between hosts.
-- `common/configuration.nix`: shared desktop NixOS policy and imports.
-- `common/home.nix`: desktop Home Manager root.
-- `common/programs.nix`: programs and imports of `services.nix` and
-  `session.nix`.
-- `common/services.nix`: Home Manager user services.
-- `common/session.nix`: session environment, MIME, GTK/Qt, and desktop
-  integration.
-- `common/theme.nix` and `common/matugen/`: wallpaper and light/dark theme
-  production and propagation.
-- `common/niri/`: Tethys's sole compositor session, bindings, desktop helpers,
-  portal policy, and graphical-session services.
-- `common/scripts.nix` and `common/scripts/`: rebuild, battery, and lid helpers.
-- `common/secrets.nix` and `secrets/`: SOPS declarations and encrypted data.
-- `common/syncthing.nix`: topology, folders, and ignore patterns.
-- `dots/helix/`: active out-of-store editor configuration; edits apply without
-  a NixOS rebuild.
+
+`README.md` carries the table of what each feature covers. Read it before
+deciding where a change belongs; if a change does not fit an existing feature,
+adding a new directory is usually right.
+
+Two features need care:
+
+- `base`, `users`, and `network` are also imported by the headless host.
+  Iapetus has no Home Manager, so it imports `features/network/system.nix`
+  directly rather than the directory. Anything added to `features/network/
+  home.nix` therefore never reaches Iapetus.
+- Fnott spans two features on purpose. `compositor` owns its systemd user
+  service, because that is a graphical-session concern alongside the idle,
+  polkit, and media-inhibit units. `theme` owns the package override, the
+  three patches, the themed wrapper, and the generated config, because all of
+  those are palette-driven. Do not consolidate them.
+- `features/theme/librewolf-chrome.nix` is not a module. It is the literal
+  body of a shell heredoc written by `apply-desktop-theme`, so its `${...}`
+  references are expanded by shell at apply time and it must stay at column
+  zero.
 
 ## Safety and invariants
 
 - Never print, decrypt into the worktree, or copy into documentation plaintext
-  secrets, private keys, filesystem UUIDs, MAC addresses, age recipients,
-  public-key bodies, or Syncthing device IDs. Normally there is no reason to
+  secrets, private keys, filesystem UUIDs, MAC addresses, age recipients, or
+  public-key bodies. Normally there is no reason to
   read `secrets/secrets.yaml`.
 - Do not change `system.stateVersion` or `home.stateVersion` during a normal
   channel/package update.
 - Iapetus deliberately uses the smaller server constructor and does not inherit
-  Home Manager, Flatpak, SOPS integration, or the desktop module stack.
+  Home Manager, SOPS integration, or the desktop module stack.
 - Tethys must retain disk-backed swap as the hibernation resume device even
   though zram has higher runtime priority.
-- `lid-monitor-only` is currently declared without `Install.WantedBy` and is
-  not started automatically. Do not silently enable it during unrelated work.
+- `lid-monitor-only` is deliberately declared without `Install.WantedBy`:
+  logind owns the lid action and this unit is the manually started
+  alternative. Do not add an `Install` section during unrelated work.
 - Tethys's `display-corner-mask` is independent of the selected compositor and
   must remain enabled for graphical sessions unless explicitly requested.
 - Niri owns Tethys's `graphical-session.target`; do not add a redundant
   compositor-specific graphical-session target.
+- `features/compositor/config.kdl` is an active out-of-store link; edits apply
+  through niri's live reload without a rebuild. It carries only declared
+  settings — upstream reference comments were removed deliberately, so consult
+  the niri wiki rather than reintroducing them.
+- Titan and Tethys must stay identical above the hardware line. Anything that
+  changes the session, applications, keybindings, or theme belongs in a shared
+  module, not in a host module. Host modules hold GPU, firmware, power, and
+  chassis facts only.
+- Iapetus currently has no service role. Do not infer one from its hardware.
 - Do not add dependencies, restructure module ownership, or broaden a change to
   “clean up” nearby code unless the task requires it.
 
 ## Editing conventions
 
 - Keep host-specific values in the host module and shared behavior in the
-  narrowest appropriate `common/` module.
+  narrowest appropriate feature.
+- Place a change by objective, not by layer. A new configured application gets
+  its own feature directory and one import line per host; an application with
+  nothing to configure gets one line in `features/packages/home.nix`.
+- Prefer appending to a shared list (`extraGroups`, `home.packages`,
+  `xdg.mimeApps.defaultApplications`) from the owning module over centralizing
+  it, so removing a module removes everything it brought.
 - Prefer Nix module options over hostname checks when behavior is genuinely
   reusable. Existing hostname checks may remain when the behavior is strictly
   machine-specific.
@@ -184,3 +225,6 @@ failures introduced by the current work.
   devices/files, cancellation, and stale PID/process validation.
 - For Tethys, check AC/battery transitions, VRR/mode strings, scale, external
   output hotplug, suspend/resume/hibernate, and wallpaper redraw coupling.
+- A refactor is only finished when the derivation closures before and after it
+  differ by exactly the intended amount. Compare with
+  `nix-store -q --requisites <drv> | grep '\.drv$'` on both revisions.

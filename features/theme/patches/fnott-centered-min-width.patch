@@ -1,0 +1,56 @@
+diff --git a/config.c b/config.c
+index 677ab6e..011b182 100644
+--- a/config.c
++++ b/config.c
+@@ -549,6 +549,17 @@ parse_section_main(const char *key, const char *value, struct config *conf,
+         conf->min_width = w;
+     }
+ 
++    else if (strcmp(key, "center-min-width") == 0) {
++        unsigned long w;
++        if (!str_to_ulong(value, 10, &w)) {
++            LOG_ERR("%s:%u: invalid center-min-width (expected an integer): %s",
++                    path, lineno, value);
++            return false;
++        }
++
++        conf->center_min_width = w;
++    }
++
+     else if (strcmp(key, "max-height") == 0) {
+         unsigned long h;
+         if (!str_to_ulong(value, 10, &h)) {
+@@ -1161,6 +1172,7 @@ config_load(struct config *conf, const char *path)
+         .stacking_order = STACK_BOTTOM_UP,
+         .anchor = ANCHOR_TOP_RIGHT,
+         .center_app_names = strdup(""),
++        .center_min_width = 0,
+         .margins = {
+             .vertical = 10,
+             .horizontal = 10,
+diff --git a/config.h b/config.h
+index 61f2add..58260e1 100644
+--- a/config.h
++++ b/config.h
+@@ -110,6 +110,7 @@ struct config {
+ 
+     enum anchor anchor;
+     char *center_app_names;
++    int center_min_width;
+ 
+     struct {
+         int vertical;
+diff --git a/notification.c b/notification.c
+index ab4f928..731db0a 100644
+--- a/notification.c
++++ b/notification.c
+@@ -1995,6 +1995,9 @@ notif_show(struct notif *notif, int y)
+     if (conf->max_height > 0)
+         height = min(height, conf->max_height);
+ 
++    if (notif->centered)
++        width = max(width, conf->center_min_width);
++
+     const int text_bottom = pbar_y >= 0
+         ? pbar_y - notif->fonts.body.regular->height
+         : height - pad_vertical;

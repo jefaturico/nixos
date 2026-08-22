@@ -1,13 +1,13 @@
 # Tethys host specification
 
-Tethys is the Framework Laptop 13 desktop host. This file records its hardware
+Tethys is the Framework Laptop 13 desktop host. It shares its entire session and application set with Titan; this file records only what is specific to this chassis. This file records its hardware
 inventory and policy map and explains why `default.nix` and `hardware.nix`
 differ from the shared desktop configuration.
 
 The hardware inventory was observed on 2026-08-14. Treat quantities and model
 names as a snapshot; treat the Nix settings under “Declared policy” as the
 source of truth. Do not add serial numbers, filesystem UUIDs, MAC addresses,
-Syncthing IDs, public keys, or other unique identifiers to this document.
+public keys, or other unique identifiers to this document.
 
 ## Hardware inventory
 
@@ -51,21 +51,26 @@ flake inputs and lock file, rather than this table, select the next build.
 - Enables Wi-Fi power saving, uses systemd-resolved as the link-aware DNS
   manager shared by NetworkManager and Tailscale, and lets the kernel choose a
   readable HiDPI virtual-console font.
-- Enables niri as the sole compositor session. Its output selection remains
-  automatic and currently uses the preferred display mode rather than an
-  AC-dependent refresh policy.
+- Imports the shared niri session. Output selection remains automatic and
+  currently uses the preferred display mode rather than an AC-dependent
+  refresh policy.
 - Runs a minimal input-transparent layer-shell mask over the two lower corners
   of `eDP-1`, making the visible display area use the same 15-logical-pixel
   radius at all four corners. The mask is session-scoped, does not reserve
   layout space, and is not applied to external outputs.
-- Enables the ordinary NixOS Steam client without a replacement
-  launcher, nested compositor, per-game wrapper, or separate login session.
-- Installs Lutris for managing standalone Windows installers and Wine prefixes;
-  games can still be added to Steam normally.
 - Maps power-button and lid actions through logind, and adds a keyd override
   for the Framework radio key that appears as a separate input device.
-- Configures zram equal to 100% of RAM at higher priority than disk swap and
-  sets `vm.page-cluster = 0` for responsive compressed swapping.
+- Configures zram equal to 100% of RAM at higher priority than disk swap.
+  `vm.page-cluster = 0` and `vm.swappiness = 100`, the settings that make
+  compressed swapping responsive, are shared policy in `features/base`.
+- Sets `boot.kernelParams = [ "secretmem.enable=0" "pm_async=off" ]` so
+  `memfd_secret` users do not block Linux kernel hibernation and synchronous
+  device powerdown prevents MediaTek Wi-Fi (`mt7925e`) IOMMU page faults and
+  deadlocks during poweroff.
+- Sets `systemd.sleep.settings.Sleep.HibernateMode = "shutdown"` because
+  platform (ACPI S4) transitions fail with premature firmware wakeup events on
+  this hardware, ensuring the kernel writes the snapshot to disk and powers off
+  cleanly.
 
 `hosts/tethys/hardware.nix` owns facts required to boot this installation:
 
@@ -82,17 +87,21 @@ belong only in `hardware.nix`.
 
 Tethys is constructed with `mkDesktopHost`, so it also receives:
 
-- Niri, Home Manager configuration, Ly display
-  manager, PipeWire, Bluetooth, Flatpak, portals, fingerprint PAM, keyd,
-  Tailscale, SSH, SOPS, and Syncthing.
-- Home Manager programs, the Foot server, wallpaper and Matugen theme pipeline,
+- Niri, Home Manager configuration, Ly display manager, PipeWire, Bluetooth,
+  portals, fingerprint PAM, keyd, Steam, Tailscale, SSH, and SOPS.
+- Home Manager programs, the Foot server, Tinty-managed desktop colors,
   Gammastep, udiskie, and user session services.
-- Tethys-only Home Manager services selected by hostname include battery
-  notifications. The battery monitor reads capacity
-  from sysfs every 30 seconds because this battery does not reliably emit a
-  power-supply uevent for percentage changes. A `lid-monitor-only` unit is also
-  declared, but the current unit has no `Install.WantedBy`; it is not started
-  automatically by the declarative session graph.
+- Targeted niri rules blur Fuzzel and Fnott over their 70% opaque themed
+  backgrounds; Neovim uses transparent highlights inside the already blurred
+  Foot terminal. Fnott uses the overlay layer so notifications remain visible
+  above fullscreen windows; critical notifications persist until dismissed.
+- Tethys is the only host that imports the `laptop` feature, which provides
+  battery notifications and the lid monitor. The battery monitor
+  reads capacity from sysfs every 30 seconds because this battery does not
+  reliably emit a power-supply uevent for percentage changes. A
+  `lid-monitor-only` unit is declared in the same module with no
+  `Install.WantedBy`; it is not started automatically by the declarative
+  session graph.
 
 When started explicitly, the lid monitor is designed to turn off the internal
 backlight while the lid is closed and keep a low-battery suspend guard running.
@@ -118,9 +127,9 @@ managed separately.
 | Desired change | Edit | Also inspect |
 | --- | --- | --- |
 | CPU, initrd, filesystem, swap, or resume facts | `hardware.nix` | Actual block devices and boot behavior |
-| Laptop power, display, Steam, or special key policy | `default.nix` | `common/niri/`, `common/scripts.nix` |
-| Shared desktop service or package | `common/` module that owns it | Titan impact and full host evaluations |
-| Wallpaper-derived colors or light/dark behavior | `common/theme.nix`, `common/matugen/` | Foot, Fuzzel, and Mako consumers |
+| Laptop power, display, Steam, or special key policy | `default.nix` | `features/compositor/`, `features/laptop/` |
+| Shared desktop service or package | The owning `features/` directory | Titan impact and full host evaluations |
+| Desktop colors | `features/theme/` | Foot, Fuzzel, Fnott, and Neovim consumers |
 
 ## Validation checklist
 
