@@ -1,4 +1,4 @@
-{ inputs, lib, ... }:
+{ inputs, ... }:
 
 # Tethys: a Framework laptop (AMD AI 300 series). This file carries the
 # feature list plus the firmware, power, and chassis facts that are true of
@@ -27,9 +27,6 @@
 
   networking.hostName = "tethys";
   networking.networkmanager.wifi.powersave = true;
-
-  # Let the kernel select its larger built-in console font for the HiDPI panel.
-  console.font = lib.mkForce null;
 
   # Keep both kernel interfaces for the same physical keyboard backlight off.
   # Matching change events also neutralizes accidental brightness-key presses.
