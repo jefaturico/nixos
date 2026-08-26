@@ -4,6 +4,8 @@
 # the two user services that belong to the graphical session but have no
 # Home Manager module of their own.
 let
+  desktopTheme = pkgs.callPackage ../theme/desktop-theme.nix { };
+
   niriWindowMenu = pkgs.writeShellApplication {
     name = "niri-window-menu";
     runtimeInputs = with pkgs; [
@@ -49,6 +51,8 @@ let
   desktopPowerMenu = pkgs.writeShellApplication {
     name = "desktop-power-menu";
     runtimeInputs = with pkgs; [
+      desktopNetwork
+      desktopTheme
       fuzzel
       niri
       systemd
@@ -56,10 +60,22 @@ let
     ];
     text = ''
       set -euo pipefail
-      choice=$(printf '%s\n' Lock Suspend Hibernate 'Exit session' Reboot 'Power off' \
-        | fuzzel --dmenu --prompt='Power: ' --lines=6 --minimal-lines) || exit 0
+
+      # The theme entry names the theme it switches *to*, so the label has to
+      # be computed rather than listed, and matched back the same way.
+      if [ "$(desktop-theme)" = dark ]; then
+        theme_entry='Switch to light theme'
+      else
+        theme_entry='Switch to dark theme'
+      fi
+
+      choice=$(printf '%s\n' Lock Network "$theme_entry" Suspend Hibernate \
+        'Exit session' Reboot 'Power off' \
+        | fuzzel --dmenu --prompt='Power: ' --lines=8 --minimal-lines) || exit 0
       case "$choice" in
         Lock) exec waylock -fork-on-lock ;;
+        Network) exec desktop-network ;;
+        "$theme_entry") exec desktop-theme toggle ;;
         Suspend) exec systemctl suspend ;;
         Hibernate) exec systemctl hibernate ;;
         'Exit session') exec niri msg action quit --skip-confirmation ;;
@@ -72,15 +88,40 @@ let
   desktopNetwork = pkgs.writeShellApplication {
     name = "desktop-network";
     runtimeInputs = with pkgs; [
-      foot
+      coreutils
+      kitty
       networkmanager
     ];
+    # `--class` replaces foot's `--app-id`, namespaced the same way. kitty
+    # takes the command to run as trailing positional arguments, so the two
+    # settings have to precede it.
+    #
+    # newt's own palette is built for a blue-on-grey terminal and turns to
+    # mud over Monokai, so nmtui gets an explicit one. It can only name the
+    # sixteen ANSI slots, which the theme switch repaints from the same
+    # palette the terminal uses -- so the scheme has to read in both filters.
+    # Only three roles are used for that reason: `default` keeps the
+    # terminal's own background behind ordinary text, `gray` (colour 8) is
+    # the one slot that stays mid-tone in either filter and so carries every
+    # selection, and `yellow` is the palette's accent, marking the focused
+    # widget and the window furniture.
     text = ''
       set -euo pipefail
-      exec footclient --app-id=desktop-network --title="Network Connections" nmtui
+      exec kitty \
+        --class=com.mitchellh.kitty.NetworkConnections \
+        --title="Network Connections" \
+        env \
+          NEWT_COLORS="root=white,default:border=yellow,default:window=white,default:shadow=default,default:title=yellow,default:button=white,gray:actbutton=yellow,gray:compactbutton=white,default:checkbox=white,default:actcheckbox=yellow,gray:entry=white,gray:actentry=yellow,gray:label=white,default:listbox=white,default:actlistbox=yellow,gray:sellistbox=white,gray:actsellistbox=yellow,gray:textbox=white,default:acttextbox=yellow,gray:helpline=gray,default:roottext=gray,default" \
+          NMT_NEWT_COLORS="plainLabel=white,default:badLabel=red,default:disabledButton=gray,default:textboxWithBackground=white,gray" \
+          nmtui
     '';
   };
 
+  # Each readout below carries its own `x-canonical-private-synchronous` tag,
+  # named after what it reports. mako replaces a notification only when the
+  # tag matches, so holding the volume key updates one popup instead of
+  # stacking a dozen, while a brightness or system-info notification appears
+  # alongside it rather than taking its place.
   desktopVolume = pkgs.writeShellApplication {
     name = "desktop-volume";
     runtimeInputs = with pkgs; [
@@ -149,6 +190,37 @@ let
     '';
   };
 
+  # playerctl acts on whichever player is currently active, so the notification
+  # reports what actually happened rather than echoing the key that was hit.
+  desktopMedia = pkgs.writeShellApplication {
+    name = "desktop-media";
+    runtimeInputs = with pkgs; [
+      libnotify
+      playerctl
+    ];
+    text = ''
+      set -euo pipefail
+      case "''${1:-}" in
+        play-pause | next | previous | stop) playerctl "$1" ;;
+        *) echo 'usage: desktop-media {play-pause|next|previous|stop}' >&2; exit 2 ;;
+      esac
+
+      # Give the player a moment to settle before asking what it is doing.
+      sleep 0.2
+      status=$(playerctl status 2>/dev/null || echo Stopped)
+      case "$status" in
+        Playing) summary=$(playerctl metadata --format 'Playing {{artist}} — {{title}}' 2>/dev/null || echo Playing) ;;
+        Paused) summary="Paused" ;;
+        *) summary="Stopped" ;;
+      esac
+      notify-send \
+        --app-name=media \
+        --hint=string:x-canonical-private-synchronous:media \
+        --expire-time=2000 \
+        "$summary"
+    '';
+  };
+
   # There is no status bar, so this notification is the only clock and
   # battery readout available without opening a terminal.
   systemInfo = pkgs.writeShellApplication {
@@ -193,6 +265,7 @@ in
   # Niri starts xwayland-satellite on demand when it is available in PATH.
   environment.systemPackages = [
     desktopBrightness
+    desktopMedia
     desktopNetwork
     desktopPowerMenu
     desktopVolume

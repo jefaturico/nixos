@@ -1,7 +1,14 @@
-{ pkgs, ... }:
+{
+  inputs,
+  pkgs,
+  ...
+}:
 
 # Playing video and viewing images, plus the handlers that route files to
 # them.
+let
+  unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+in
 {
   xdg.mimeApps.defaultApplications = {
     "image/png" = [ "imv.desktop" ];
@@ -12,8 +19,11 @@
     "video/x-matroska" = [ "mpv.desktop" ];
   };
 
-  home.packages = with pkgs; [
-    imv
-    mpv
+  # mpv streams URLs through yt-dlp. YouTube breaks extraction faster than the
+  # stable release refreshes, so track unstable to keep playback working.
+  home.packages = [
+    pkgs.imv
+    pkgs.mpv
+    unstable.yt-dlp
   ];
 }

@@ -4,9 +4,10 @@
   ...
 }:
 
-# Version control and the coding agents. There are no language servers or
-# formatters: Neovim carries no plugins, and the agents bring their own
-# tooling.
+# Version control and the coding agents. No language servers or formatters
+# live here: Neovim carries no plugins, the agents bring their own tooling,
+# and the one server there is reason to run -- tinymist -- belongs with the
+# documents it is for, in features/typesetting.
 let
   unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 in

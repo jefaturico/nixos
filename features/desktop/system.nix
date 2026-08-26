@@ -26,6 +26,13 @@
 
   programs.dconf.enable = true;
 
+  # Chromium and Electron still default to X11, which puts Brave, Stremio and
+  # anything else Electron-based on XWayland. There they read GTK settings
+  # over XSETTINGS — for which nothing is running — instead of subscribing to
+  # the appearance portal, so they never notice a light/dark switch. Native
+  # Wayland also gets them correct scaling and input.
+  environment.sessionVariables.NIXOS_OZONE_WL = "1";
+
   # nixpkgs' graphical-desktop module enables speech-dispatcher by default,
   # which drags in espeak-ng and ~650 MB of mbrola voice data. No screen
   # reader or text-to-speech is used on this machine.

@@ -1,6 +1,6 @@
 { ... }:
 
-# kitty, one window per process.
+# Calcurse: the calendar.
 {
   home-manager.users.jefaturico.imports = [ ./home.nix ];
 }

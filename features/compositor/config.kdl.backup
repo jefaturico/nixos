@@ -59,9 +59,9 @@ prefer-no-csd
 screenshot-path "~/pictures/screenshots/%Y-%m-%d %H-%M-%S.png"
 
 binds {
-    Mod+Return hotkey-overlay-title="Open a Terminal: foot" { spawn "footclient"; }
+    Mod+Return hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
     Mod+B hotkey-overlay-title="Open LibreWolf" { spawn "librewolf"; }
-    Mod+C hotkey-overlay-title="Open Codex" { spawn "footclient" "codex"; }
+    Mod+C hotkey-overlay-title="Open Codex" { spawn "ghostty" "-e" "codex"; }
     Mod+P hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
     Mod+BackSpace hotkey-overlay-title="Focus a Window" { spawn "niri-window-menu"; }
     Mod+I hotkey-overlay-title="Show System Information" { spawn "systeminfo"; }

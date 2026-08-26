@@ -40,10 +40,14 @@ maintain; to turn something off, delete its line from the host's import list.
 | `login` | ly greeter, waylock screen locker, fingerprint auth |
 | `desktop` | PipeWire, Bluetooth, portals, fonts, GTK/Qt theming, XDG dirs |
 | `compositor` | Niri, fuzzel, mako, swayidle, and the keybinding helper scripts |
-| `terminal` | Foot, running as a shared server |
+| `terminal` | kitty, themed from the shared palette |
 | `shell` | Bash, fzf, zoxide |
-| `editor` | Neovim, no plugins |
+| `editor` | Neovim, no plugins. The tty and headless editor, and `$EDITOR` |
+| `emacs` | Emacs behind Mod+E. Font, padding, wrapping, GC tuning |
 | `browsing` | LibreWolf with declarative extensions; Brave as a fallback |
+| `documents` | Sioyek, and the PDF picker behind Mod+D |
+| `typesetting` | Typst, tinymist, and the live preview in a browser window |
+| `memory` | Spaced repetition: Anki, fed by plain-text card files |
 | `media` | mpv and imv, plus their MIME associations |
 | `development` | Git identity and the three coding agents |
 | `packages` | Applications with nothing to configure |

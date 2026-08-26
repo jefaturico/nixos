@@ -1,8 +1,15 @@
-{ inputs, ... }:
+{
+  inputs,
+  pkgs,
+  ...
+}:
 
 # Tethys: a Framework laptop (AMD AI 300 series). This file carries the
 # feature list plus the firmware, power, and chassis facts that are true of
 # this machine and nowhere else.
+let
+  unstable = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+in
 {
   imports = [
     ./hardware.nix
@@ -12,11 +19,17 @@
     ../../features/input
     ../../features/login
     ../../features/desktop
+    ../../features/theme
     ../../features/compositor
     ../../features/terminal
     ../../features/shell
     ../../features/editor
+    ../../features/emacs
     ../../features/browsing
+    ../../features/documents
+    ../../features/typesetting
+    ../../features/calendar
+    ../../features/memory
     ../../features/media
     ../../features/development
     ../../features/packages
@@ -24,6 +37,16 @@
     ../../features/gaming
     inputs.nixos-hardware.nixosModules.framework-amd-ai-300-series
   ];
+
+  # Mesa 26.1.5 decodes AV1 incorrectly on this APU (radeonsi/krackan1),
+  # producing blocky colour artifacts wherever VA-API AV1 is used -- which is
+  # most YouTube playback. Verified against the stable release: hardware VP9
+  # decode is bit-exact while hardware AV1 drifts from the software decoder,
+  # and 26.2.1 restores a bit-exact match. Drop this once stable catches up.
+  hardware.graphics = {
+    package = unstable.mesa;
+    package32 = unstable.pkgsi686Linux.mesa;
+  };
 
   networking.hostName = "tethys";
   networking.networkmanager.wifi.powersave = true;

@@ -22,9 +22,9 @@
       [Desktop Entry]
       Name=Neovim
       GenericName=Text Editor
-      Comment=Edit files in Neovim inside Foot
-      Exec=footclient nvim %F
-      TryExec=footclient
+      Comment=Edit files in Neovim inside kitty
+      Exec=kitty nvim %F
+      TryExec=kitty
       Icon=nvim
       Type=Application
       Terminal=false
@@ -62,29 +62,11 @@
     };
   };
 
-  # Gammastep warms the display after sunset; udiskie mounts removable media
-  # for the file dialogs. Both are session-scoped.
-  services = {
-    gammastep = {
-      enable = true;
-      provider = "manual";
-      latitude = 40.4;
-      longitude = -3.7;
-      temperature = {
-        day = 6500;
-        night = 3500;
-      };
-      settings.general = {
-        adjustment-method = "wayland";
-        fade = 1;
-      };
-    };
-
-    udiskie = {
-      enable = true;
-      automount = true;
-      notify = true;
-      tray = "never";
-    };
+  # udiskie mounts removable media for the file dialogs. Session-scoped.
+  services.udiskie = {
+    enable = true;
+    automount = true;
+    notify = true;
+    tray = "never";
   };
 }

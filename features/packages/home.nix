@@ -17,6 +17,7 @@
     calibre
     gimp
     obs-studio
+    thunderbird
     pdfarranger
     qbittorrent
     qgis
