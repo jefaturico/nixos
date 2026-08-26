@@ -103,6 +103,7 @@
           epkgs.org-roam
           epkgs.org-srs
           epkgs.vertico
+          epkgs.which-key
           (epkgs.treesit-grammars.with-grammars (grammars: [ grammars.tree-sitter-nix ]))
         ];
 
@@ -127,6 +128,11 @@
 
           (require 'vertico)
           (vertico-mode 1)
+
+          ;;; Which-key -----------------------------------------------------------
+
+          (require 'which-key)
+          (which-key-mode 1)
 
           ;; `basic' stays as fallback: some completion tables (notably TRAMP)
           ;; only behave under it.
@@ -199,13 +205,6 @@
                     (lambda ()
                       (dolist (w (window-list))
                         (set-window-buffer w (window-buffer w)))))
-
-          ;; Top padding via the header line: no other setting pads above the
-          ;; text (`internal-border-width' pads the frame, `line-spacing' goes
-          ;; between lines). Given nothing to display and the buffer's own
-          ;; colour, it reads as space. Modes with real header-line content
-          ;; (tabulated-list-mode etc.) set it buffer-locally and still win.
-          (setq-default header-line-format " ")
 
           (set-face-attribute 'header-line nil
                               :inherit 'default
