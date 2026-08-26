@@ -7,20 +7,14 @@
 # what they do is edit a file, and the terminal is only the window they need
 # in order to do it under a compositor with no other way to start one.
 let
-  notesDir = "$HOME/documents/notes";
-  terminal = "${config.programs.kitty.package}/bin/kitty";
-  editor = "${config.programs.neovim.finalPackage}/bin/nvim";
-
   notesTasks = pkgs.writeShellApplication {
     name = "notes-tasks";
-    runtimeInputs = [ pkgs.coreutils ];
-    text = ''
-      set -euo pipefail
-      file="${notesDir}/tasks.md"
-      mkdir -p "$(dirname "$file")"
-      touch "$file"
-      exec ${terminal} ${editor} "$file"
-    '';
+    runtimeInputs = [
+      pkgs.coreutils
+      config.programs.kitty.package
+      config.programs.neovim.finalPackage
+    ];
+    text = builtins.readFile ../../scripts/notes-tasks.sh;
   };
 
   # Pressing the key should be the whole interaction: by the time the window
@@ -33,43 +27,13 @@ let
   # file on disk is never half-formed.
   notesInbox = pkgs.writeShellApplication {
     name = "notes-inbox";
-    runtimeInputs = with pkgs; [
-      coreutils
-      gawk
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gawk
+      config.programs.kitty.package
+      config.programs.neovim.finalPackage
     ];
-    text = ''
-      set -euo pipefail
-      file="${notesDir}/inbox.md"
-      mkdir -p "$(dirname "$file")"
-      touch "$file"
-
-      # What the previous run left behind is trimmed rather than counted on:
-      # its two blank lines if the entry was typed into, and the heading as
-      # well if it was not. Without this the spacing drifts a line per visit
-      # and every abandoned press leaves a dated heading over nothing.
-      body=$(awk '
-        { line[NR] = $0 }
-        END {
-          n = NR
-          while (n > 0 && line[n] ~ /^[[:space:]]*$/) n--
-          if (n > 0 && line[n] ~ /^#+ /) {
-            n--
-            while (n > 0 && line[n] ~ /^[[:space:]]*$/) n--
-          }
-          for (i = 1; i <= n; i++) print line[i]
-        }
-      ' "$file")
-
-      {
-        if [ -n "$body" ]; then
-          printf '%s\n\n' "$body"
-        fi
-        printf '## %s\n\n\n' "$(date '+%Y-%m-%d %H:%M')"
-      } >"$file.new"
-      mv "$file.new" "$file"
-
-      exec ${terminal} ${editor} -c 'normal! G' -c startinsert "$file"
-    '';
+    text = builtins.readFile ../../scripts/notes-inbox.sh;
   };
 in
 {

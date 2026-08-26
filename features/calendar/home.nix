@@ -16,15 +16,7 @@ let
       gnused
       libnotify
     ];
-    text = ''
-      set -euo pipefail
-      next=$(calcurse --next | tail -n +2 | sed 's/^[[:space:]]*//')
-      [ -n "$next" ] || exit 0
-      notify-send \
-        --app-name=calcurse \
-        --expire-time=20000 \
-        "Upcoming" "$next"
-    '';
+    text = builtins.readFile ../../scripts/calcurse-notify.sh;
   };
 
   # The daemon is stopped through its pid file rather than by systemd killing
@@ -35,12 +27,7 @@ let
   calcurseDaemonStop = pkgs.writeShellApplication {
     name = "calcurse-daemon-stop";
     runtimeInputs = with pkgs; [ coreutils ];
-    text = ''
-      set -euo pipefail
-      pid="''${XDG_DATA_HOME:-$HOME/.local/share}/calcurse/.daemon.pid"
-      [ -e "$pid" ] || exit 0
-      kill "$(cat "$pid")" 2>/dev/null || true
-    '';
+    text = builtins.readFile ../../scripts/calcurse-daemon-stop.sh;
   };
 
   # Written once and then left alone, because calcurse saves this file itself

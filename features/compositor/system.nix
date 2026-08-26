@@ -13,39 +13,7 @@ let
       jq
       niri
     ];
-    text = ''
-      set -euo pipefail
-
-      rows_output=$(niri msg --json windows | jq -r '
-        [.[]
-          | .title = (if .title == null or .title == "" then "(untitled)" else .title end)
-          | .app_id = (if .app_id == null or .app_id == "" then "(unknown)" else .app_id end)
-          | [.id, "\(.app_id) — \"\(.title)\""]
-          | @tsv]
-        | .[]
-      ')
-
-      [ -n "$rows_output" ] || exit 0
-      mapfile -t rows <<<"$rows_output"
-      ids=()
-      labels=()
-      for row in "''${rows[@]}"; do
-        ids+=("''${row%%$'\t'*}")
-        labels+=("''${row#*$'\t'}")
-      done
-
-      if ! selected_index=$(printf '%s\n' "''${labels[@]}" \
-        | fuzzel --dmenu --index --prompt="Window: " --lines=20 --minimal-lines); then
-        exit 0
-      fi
-      if [[ ! "$selected_index" =~ ^[0-9]+$ ]] \
-        || [ "$selected_index" -ge "''${#ids[@]}" ]; then
-        echo "niri-window-menu: fuzzel returned an invalid index: $selected_index" >&2
-        exit 1
-      fi
-
-      niri msg action focus-window --id "''${ids[$selected_index]}"
-    '';
+    text = builtins.readFile ../../scripts/niri-window-menu.sh;
   };
 
   desktopPowerMenu = pkgs.writeShellApplication {
@@ -58,31 +26,7 @@ let
       systemd
       waylock
     ];
-    text = ''
-      set -euo pipefail
-
-      # The theme entry names the theme it switches *to*, so the label has to
-      # be computed rather than listed, and matched back the same way.
-      if [ "$(desktop-theme)" = dark ]; then
-        theme_entry='Switch to light theme'
-      else
-        theme_entry='Switch to dark theme'
-      fi
-
-      choice=$(printf '%s\n' Lock Network "$theme_entry" Suspend Hibernate \
-        'Exit session' Reboot 'Power off' \
-        | fuzzel --dmenu --prompt='Power: ' --lines=8 --minimal-lines) || exit 0
-      case "$choice" in
-        Lock) exec waylock -fork-on-lock ;;
-        Network) exec desktop-network ;;
-        "$theme_entry") exec desktop-theme toggle ;;
-        Suspend) exec systemctl suspend ;;
-        Hibernate) exec systemctl hibernate ;;
-        'Exit session') exec niri msg action quit --skip-confirmation ;;
-        Reboot) exec systemctl reboot ;;
-        'Power off') exec systemctl poweroff ;;
-      esac
-    '';
+    text = builtins.readFile ../../scripts/desktop-power-menu.sh;
   };
 
   desktopNetwork = pkgs.writeShellApplication {
@@ -105,16 +49,7 @@ let
     # the one slot that stays mid-tone in either filter and so carries every
     # selection, and `yellow` is the palette's accent, marking the focused
     # widget and the window furniture.
-    text = ''
-      set -euo pipefail
-      exec kitty \
-        --class=com.mitchellh.kitty.NetworkConnections \
-        --title="Network Connections" \
-        env \
-          NEWT_COLORS="root=white,default:border=yellow,default:window=white,default:shadow=default,default:title=yellow,default:button=white,gray:actbutton=yellow,gray:compactbutton=white,default:checkbox=white,default:actcheckbox=yellow,gray:entry=white,gray:actentry=yellow,gray:label=white,default:listbox=white,default:actlistbox=yellow,gray:sellistbox=white,gray:actsellistbox=yellow,gray:textbox=white,default:acttextbox=yellow,gray:helpline=gray,default:roottext=gray,default" \
-          NMT_NEWT_COLORS="plainLabel=white,default:badLabel=red,default:disabledButton=gray,default:textboxWithBackground=white,gray" \
-          nmtui
-    '';
+    text = builtins.readFile ../../scripts/desktop-network.sh;
   };
 
   # Each readout below carries its own `x-canonical-private-synchronous` tag,
@@ -130,39 +65,7 @@ let
       libnotify
       wireplumber
     ];
-    text = ''
-      set -euo pipefail
-      action="''${1:-}"
-      target="@DEFAULT_AUDIO_SINK@"
-      notification_id="volume"
-      label="Volume"
-      case "$action" in
-        up) wpctl set-mute "$target" 0; wpctl set-volume --limit 1.0 "$target" 10%+ ;;
-        down) wpctl set-mute "$target" 0; wpctl set-volume "$target" 10%- ;;
-        mute) wpctl set-mute "$target" toggle ;;
-        mic-mute)
-          target="@DEFAULT_AUDIO_SOURCE@"
-          notification_id="microphone"
-          label="Microphone"
-          wpctl set-mute "$target" toggle
-          ;;
-        *) echo 'usage: desktop-volume {up|down|mute|mic-mute}' >&2; exit 2 ;;
-      esac
-      state=$(wpctl get-volume "$target")
-      percent=$(awk '{ printf "%d", $2 * 100 }' <<<"$state")
-      notification_args=(
-        --app-name=volume
-        --hint="string:x-canonical-private-synchronous:$notification_id"
-        --expire-time=400
-      )
-      if grep -q '\[MUTED\]' <<<"$state"; then
-        summary="$label muted"
-      else
-        summary="$label $percent%"
-        notification_args+=(--hint="int:value:$percent")
-      fi
-      notify-send "''${notification_args[@]}" "$summary"
-    '';
+    text = builtins.readFile ../../scripts/desktop-volume.sh;
   };
 
   desktopBrightness = pkgs.writeShellApplication {
@@ -172,22 +75,7 @@ let
       gawk
       libnotify
     ];
-    text = ''
-      set -euo pipefail
-      case "''${1:-}" in
-        up) brightnessctl --class=backlight set 10%+ >/dev/null ;;
-        down) brightnessctl --class=backlight set 10%- >/dev/null ;;
-        *) echo 'usage: desktop-brightness {up|down}' >&2; exit 2 ;;
-      esac
-      percent=$(brightnessctl --machine-readable --class=backlight info \
-        | awk -F, 'NR == 1 { gsub(/%/, "", $4); print $4 }')
-      notify-send \
-        --app-name=brightness \
-        --hint=string:x-canonical-private-synchronous:brightness \
-        --hint="int:value:$percent" \
-        --expire-time=400 \
-        "Brightness $percent%"
-    '';
+    text = builtins.readFile ../../scripts/desktop-brightness.sh;
   };
 
   # playerctl acts on whichever player is currently active, so the notification
@@ -198,27 +86,7 @@ let
       libnotify
       playerctl
     ];
-    text = ''
-      set -euo pipefail
-      case "''${1:-}" in
-        play-pause | next | previous | stop) playerctl "$1" ;;
-        *) echo 'usage: desktop-media {play-pause|next|previous|stop}' >&2; exit 2 ;;
-      esac
-
-      # Give the player a moment to settle before asking what it is doing.
-      sleep 0.2
-      status=$(playerctl status 2>/dev/null || echo Stopped)
-      case "$status" in
-        Playing) summary=$(playerctl metadata --format 'Playing {{artist}} — {{title}}' 2>/dev/null || echo Playing) ;;
-        Paused) summary="Paused" ;;
-        *) summary="Stopped" ;;
-      esac
-      notify-send \
-        --app-name=media \
-        --hint=string:x-canonical-private-synchronous:media \
-        --expire-time=2000 \
-        "$summary"
-    '';
+    text = builtins.readFile ../../scripts/desktop-media.sh;
   };
 
   # There is no status bar, so this notification is the only clock and
@@ -229,23 +97,7 @@ let
       coreutils
       libnotify
     ];
-    text = ''
-      set -euo pipefail
-      message="It's $(date '+%I:%M %P')."
-      for power_supply in /sys/class/power_supply/*; do
-        [ -r "$power_supply/type" ] || continue
-        [ "$(<"$power_supply/type")" = "Battery" ] || continue
-        [ -r "$power_supply/capacity" ] || continue
-        capacity=$(<"$power_supply/capacity")
-        message="$message Battery is at $capacity%."
-        break
-      done
-      notify-send \
-        --app-name=systeminfo \
-        --hint=string:x-canonical-private-synchronous:systeminfo \
-        --expire-time=5000 \
-        "$message"
-    '';
+    text = builtins.readFile ../../scripts/systeminfo.sh;
   };
 in
 {
