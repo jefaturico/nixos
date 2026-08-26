@@ -143,16 +143,26 @@
         enable = true;
         package = pkgs.emacs-pgtk;
 
-        # The one package. Everything else here is a variable Emacs already has.
+        # Almost everything here is a variable Emacs already has; the packages
+        # are the modes it ships without.
         # markdown-mode, because Emacs ships no markdown mode and .md would
         # otherwise open in `fundamental-mode' -- unhighlighted, and on the code
         # side of the wrapping rule below since it derives from nothing. It lives
         # here rather than in a workflow feature because markdown is not a
         # workflow: it is the format README.md, CLAUDE.md and everything Claude
         # Code writes already happen to be in.
+        # nix-ts-mode for the same reason, one language over: Nix is what this
+        # machine is configured in, not one workflow's format. Tree-sitter
+        # based, so it needs the grammar beside it -- the same arrangement
+        # typst.nix uses for its mode. Embedded configs inside Nix strings
+        # (the KDL in niri.nix, the elisp above) stay string-coloured on
+        # purpose: every route to highlighting them -- mmm-mode, hand-rolled
+        # treesit injections -- costs more jank than it pays back.
         extraPackages = epkgs: [
           epkgs.gcmh
           epkgs.markdown-mode
+          epkgs.nix-ts-mode
+          (epkgs.treesit-grammars.with-grammars (grammars: [ grammars.tree-sitter-nix ]))
         ];
 
         # Runtime settings. These are the ones from Doom that survived being
@@ -197,6 +207,12 @@
                 gcmh-auto-idle-delay-factor 10
                 gcmh-high-cons-threshold (* 64 1024 1024))
           (gcmh-mode 1)
+
+          ;;; Modes ---------------------------------------------------------------
+
+          ;; nix-ts-mode's autoloads claim nothing, unlike markdown-mode's, so
+          ;; the extension is wired up here.
+          (add-to-list 'auto-mode-alist '("\\.nix\\'" . nix-ts-mode))
 
           ;;; Redisplay ---------------------------------------------------------
 
