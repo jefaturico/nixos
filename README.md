@@ -20,49 +20,80 @@ nix build path:.#nixosConfigurations.tethys.config.system.build.toplevel --no-li
 
 ## Layout
 
-Configuration is organised by feature, not by layer. Each directory under
-`features/` is one thing the machine does and owns everything that thing
-needs: NixOS options, Home Manager options, helper scripts, and data files.
+Every module is named after the exact program or facility it configures, so
+the name answers "where does X's config live". Each is a single NixOS module
+that carries both halves: system options at the top level, user options
+under `home-manager.users.jefaturico`. A module gets a directory only when
+it needs a second file (`system/theme/`).
 
-- `default.nix` is always a NixOS module, and is what the host imports.
-- `system.nix` holds the NixOS half when a feature has both halves.
-- `home.nix` holds the Home Manager half, wired up by `default.nix`.
+- `programs/<name>.nix` — one program each: its options, config files,
+  helper commands, services.
+- `system/<name>.nix` — machine facilities that are not one program: boot,
+  locale, audio, fonts, the account itself.
+- `scripts/<name>.sh` — every helper script, as a real shell file. The
+  module that owns a script builds it with `writeShellApplication` and
+  `builtins.readFile`, so shellcheck runs at build time.
+- `lib/palette.nix` — the shared Monokai Pro palette (kitty, fuzzel, mako).
+- `hosts/tethys/` — the import list plus host-only hardware policy.
+  `hardware.nix` holds boot-critical disk, swap, and resume facts and
+  should not be hand-edited.
 
-Importing a feature is what enables it. There are no `enable` options to
-maintain; to turn something off, delete its line from the host's import list.
+Importing a module is what enables it. There are no `enable` options to
+maintain; to turn something off, delete its line from the host's import
+list.
 
-| Feature | Covers |
+### programs/
+
+| Module | Covers |
 | --- | --- |
-| `base` | Boot entries, locale, the Nix daemon, garbage collection, zram |
-| `users` | The single `jefaturico` account |
-| `network` | NetworkManager behind a closed firewall. Nothing listens |
-| `input` | keyd (caps as ctrl/esc), xkb layout, libinput quirks |
-| `login` | ly greeter, waylock screen locker, fingerprint auth |
-| `desktop` | PipeWire, Bluetooth, portals, fonts, GTK/Qt theming, XDG dirs |
-| `compositor` | Niri, fuzzel, mako, swayidle, and the keybinding helper scripts |
-| `terminal` | kitty, themed from the shared palette |
-| `shell` | Bash, fzf, zoxide |
-| `editor` | Neovim, no plugins. The tty and headless editor, and `$EDITOR` |
+| `niri` | The compositor: its KDL config inline, the keybinding helper scripts, session services |
+| `fuzzel` | The launcher, themed from the shared palette |
+| `mako` | Notifications, themed from the shared palette |
+| `swayidle` | Lock before sleep, suspend after idle |
+| `wbg` | The wallpaper |
+| `kitty` | The terminal, themed from the shared palette |
+| `bash` | Prompt, history, aliases |
+| `fzf`, `zoxide` | Fuzzy finding; frecency `cd` |
+| `neovim` | The editor, no plugins, plus the `notes-*` commands |
 | `emacs` | Emacs behind Mod+E. Font, padding, wrapping, GC tuning |
-| `browsing` | LibreWolf with declarative extensions; Brave as a fallback |
-| `documents` | Sioyek, and the PDF picker behind Mod+D |
-| `typesetting` | Typst, tinymist, and the live preview in a browser window |
-| `memory` | Spaced repetition: Anki, fed by plain-text card files |
-| `media` | mpv and imv, plus their MIME associations |
-| `development` | Git identity and the three coding agents |
-| `packages` | Applications with nothing to configure |
-| `laptop` | Low-battery warnings |
-| `gaming` | Steam |
+| `brave` | The browser, default handlers, the focus-after-open shim |
+| `librewolf` | The fallback browser with declarative extensions |
+| `sioyek` | The PDF reader |
+| `pdf-find` | The PDF picker behind Mod+D |
+| `typst` | Typst, tinymist, and the live preview in a browser window |
+| `calcurse` | Calendar, its reminder daemon |
+| `mpv`, `imv` | Video and images, plus their MIME associations |
+| `git` | Identity and defaults |
+| `claude-code`, `codex`, `antigravity` | The coding agents |
+| `steam` | Steam |
+| `keyd` | Caps as ctrl/esc, below every compositor and console |
+| `ly` | The console greeter |
+| `waylock` | The screen locker |
+| `fprintd` | Fingerprint auth, everywhere it is accepted |
 
-`hosts/tethys/default.nix` is the feature list plus host-only hardware
-policy. `hosts/tethys/hardware.nix` holds boot-critical disk, swap, and
-resume facts and should not be hand-edited.
+### system/
+
+| Module | Covers |
+| --- | --- |
+| `boot` | Boot entry policy, console noise |
+| `locale` | Timezone, language, console keymap |
+| `nix` | Flakes, garbage collection, deduplication |
+| `users` | The single `jefaturico` account and its groups |
+| `network` | NetworkManager behind a closed firewall. Nothing listens |
+| `keyboard` | The xkb layout, held once for everything that asks |
+| `audio` | PipeWire |
+| `bluetooth` | The radio, on at boot |
+| `removable-media` | udisks2 plus udiskie |
+| `fonts` | JetBrains Mono Nerd Font, corefonts |
+| `xdg` | Portals, user directories, default handlers, the HM account |
+| `theme` | The light/dark switch: `desktop-theme` and its session service |
+| `battery` | Low-battery warnings, hibernate at 7% |
+| `packages` | Applications with nothing to configure |
 
 ## Things worth knowing
 
-- `features/compositor/config.kdl` is symlinked out of the store into
-  `~/.config/niri/`, so edits apply through niri's live reload without a
-  rebuild.
+- The niri config is inline in `programs/niri.nix` and applied on rebuild;
+  niri reloads it when the store link changes.
 - There is no status bar. `Mod+I` shows the time and battery as a
   notification; `Mod+Escape` opens the power menu.
 - There is no secret management. The GitHub SSH key at `~/.ssh/` is placed

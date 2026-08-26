@@ -167,7 +167,7 @@
         # search, and it has to survive a picker that is dismissed a second from
         # now. kitty takes the command to run as trailing arguments, so --class
         # -- which is how the niri window rule finds this window -- has to
-        # precede it; see desktop-network in features/compositor/system.nix.
+        # precede it; see desktop-network in programs/niri.nix.
         text = builtins.readFile ../scripts/pdf-find.sh;
       };
     in

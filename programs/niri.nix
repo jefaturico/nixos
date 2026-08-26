@@ -546,7 +546,7 @@ in
             Mod+Shift+N repeat=false { spawn "systeminfo"; }
 
             // These wrappers apply the change and then shoot the notification that
-            // reports the resulting level; see features/compositor/system.nix.
+            // reports the resulting level; see desktop-volume in programs/niri.nix.
             XF86AudioRaiseVolume allow-when-locked=true { spawn "desktop-volume" "up"; }
             XF86AudioLowerVolume allow-when-locked=true { spawn "desktop-volume" "down"; }
             XF86AudioMute        allow-when-locked=true { spawn "desktop-volume" "mute"; }

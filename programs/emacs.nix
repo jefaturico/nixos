@@ -18,7 +18,7 @@
     # No daemon. Mod+E starts a whole Emacs, which is the slow way and also the
     # way that makes the cost of each thing added here visible.
     let
-      font = "JetBrainsMono Nerd Font-16"; # features/terminal's font, same size
+      font = "JetBrainsMono Nerd Font-16"; # the kitty font, same size
 
     in
     {
@@ -239,7 +239,7 @@
           ;;
           ;; Not compensated for here: niri's `scroll-factor 0.3', which Emacs
           ;; inherits like every other client, so this scrolls about a third as
-          ;; far as the touchpad suggests. features/terminal multiplies it back
+          ;; far as the touchpad suggests. programs/kitty.nix multiplies it back
           ;; out for kitty with `touch_scroll_multiplier'; Emacs has no
           ;; equivalent knob, so it would take advice on the scroll handler.
           (pixel-scroll-precision-mode 1)

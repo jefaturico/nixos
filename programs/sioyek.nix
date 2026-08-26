@@ -49,7 +49,7 @@
 
       # One fragment per theme, and desktop-theme points current-theme.config at
       # whichever is current -- the same arrangement kitty uses in
-      # features/terminal/home.nix, for the same reason: sioyek has an include
+      # programs/kitty.nix, for the same reason: sioyek has an include
       # directive, so the whole difference is a symlink and no file is rewritten.
       #
       # startup_commands is a whole line, not a list that can be appended to, so

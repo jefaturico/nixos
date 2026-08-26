@@ -174,7 +174,7 @@
       '';
 
       # The same three things for Emacs -- server, preview, compile -- contributed
-      # from here rather than from features/emacs for the same reason the Neovim
+      # from here rather than from programs/emacs.nix for the same reason the Neovim
       # block above lives here: the tool belongs to the documents it is for.
       #
       # Three packages, and the reasoning for each:
