@@ -35,6 +35,7 @@ in
     ../../programs/niri.nix
     ../../programs/pdf-find.nix
     ../../programs/sioyek.nix
+    ../../programs/ssh.nix
     ../../programs/steam.nix
     ../../programs/swayidle.nix
     ../../programs/typst.nix
