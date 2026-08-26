@@ -13,27 +13,48 @@ in
 {
   imports = [
     ./hardware.nix
-    ../../features/base
-    ../../features/users
-    ../../features/network
-    ../../features/input
-    ../../features/login
-    ../../features/desktop
-    ../../features/theme
-    ../../features/compositor
-    ../../features/terminal
-    ../../features/shell
-    ../../features/editor
-    ../../features/emacs
-    ../../features/browsing
-    ../../features/documents
-    ../../features/typesetting
-    ../../features/calendar
-    ../../features/media
-    ../../features/development
-    ../../features/packages
-    ../../features/laptop
-    ../../features/gaming
+    ../../programs/antigravity.nix
+    ../../programs/bash.nix
+    ../../programs/brave.nix
+    ../../programs/calcurse.nix
+    ../../programs/claude-code.nix
+    ../../programs/codex.nix
+    ../../programs/emacs.nix
+    ../../programs/fprintd.nix
+    ../../programs/fuzzel.nix
+    ../../programs/fzf.nix
+    ../../programs/git.nix
+    ../../programs/imv.nix
+    ../../programs/keyd.nix
+    ../../programs/kitty.nix
+    ../../programs/librewolf.nix
+    ../../programs/ly.nix
+    ../../programs/mako.nix
+    ../../programs/mpv.nix
+    ../../programs/neovim.nix
+    ../../programs/niri.nix
+    ../../programs/pdf-find.nix
+    ../../programs/sioyek.nix
+    ../../programs/steam.nix
+    ../../programs/swayidle.nix
+    ../../programs/typst.nix
+    ../../programs/waylock.nix
+    ../../programs/wbg.nix
+    ../../programs/zoxide.nix
+    ../../system/audio.nix
+    ../../system/battery.nix
+    ../../system/bluetooth.nix
+    ../../system/boot.nix
+    ../../system/fonts.nix
+    ../../system/keyboard.nix
+    ../../system/locale.nix
+    ../../system/network.nix
+    ../../system/nix.nix
+    ../../system/packages.nix
+    ../../system/removable-media.nix
+    ../../system/users.nix
+    ../../system/xdg.nix
+    ../../system/theme
     inputs.nixos-hardware.nixosModules.framework-amd-ai-300-series
   ];
 
@@ -71,10 +92,19 @@ in
     HandleLidSwitchExternalPower = "suspend";
   };
 
+  # zram absorbs the working set in compressed RAM; a high swappiness is the
+  # documented pairing because reclaim to zram is far cheaper than to disk.
   zramSwap = {
+    enable = true;
     memoryPercent = 100;
     priority = 100;
   };
+  boot.kernel.sysctl = {
+    "vm.swappiness" = 100;
+    "vm.page-cluster" = 0;
+  };
+
+  services.fstrim.enable = true;
 
   # memfd_secret disables kernel hibernation (secretmem_active). Disable it at
   # boot so hibernation to the disk-backed swap remains functional.
@@ -93,4 +123,6 @@ in
   # wakeup event during sleep state transition. Use shutdown mode so the kernel
   # writes the snapshot to disk and powers off cleanly.
   systemd.sleep.settings.Sleep.HibernateMode = "shutdown";
+
+  system.stateVersion = "26.05";
 }

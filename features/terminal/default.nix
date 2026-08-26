@@ -1,6 +1,0 @@
-{ ... }:
-
-# kitty, one window per process.
-{
-  home-manager.users.jefaturico.imports = [ ./home.nix ];
-}
