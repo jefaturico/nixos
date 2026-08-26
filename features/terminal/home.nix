@@ -15,7 +15,7 @@
 # `kitty.conf`, and `desktop-theme` flips the symlink and sends SIGUSR1 to
 # reload it live.
 let
-  palette = import ../theme/palette.nix;
+  palette = import ../../lib/palette.nix;
 
   # kitty wants `colorN #rrggbb`, one setting per line; palette.nix stores
   # bare hex so each consumer can spell it its own way. Selection and cursor

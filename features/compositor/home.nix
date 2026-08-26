@@ -3,7 +3,7 @@
 # The session's own user-level pieces: the live-reloaded niri configuration,
 # the launcher, the notification daemon, the wallpaper, and idle handling.
 let
-  palette = import ../theme/palette.nix;
+  palette = import ../../lib/palette.nix;
 
   desktopWallpaper = pkgs.writeShellApplication {
     name = "desktop-wallpaper";
