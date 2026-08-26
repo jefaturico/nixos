@@ -29,7 +29,6 @@ in
     ../../features/documents
     ../../features/typesetting
     ../../features/calendar
-    ../../features/memory
     ../../features/media
     ../../features/development
     ../../features/packages

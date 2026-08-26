@@ -178,20 +178,6 @@ in
         group = group,
         callback = function() (vim.hl or vim.highlight).on_yank() end,
       })
-
-      -- Anki cards are plain files under ~/documents/notes/cards, and yanki
-      -- pushes that directory into Anki. Doing it here means saving the file
-      -- is the whole sync step; there is nothing else to run and nothing to
-      -- remember to run. Detached, with the output dropped, because the push
-      -- only lands while Anki is up and an editor is the wrong place to find
-      -- out that it is not -- `cards-study` re-syncs when review starts.
-      vim.api.nvim_create_autocmd("BufWritePost", {
-        group = group,
-        pattern = vim.fn.expand("~/documents/notes/cards") .. "/*.md",
-        callback = function()
-          vim.system({ "cards-sync" }, { stdout = false, stderr = false })
-        end,
-      })
     '';
   };
 
