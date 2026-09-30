@@ -366,7 +366,8 @@ a question asked from inside it would lock every later Super+C out."
 ;; entry's SOURCE property, out of the way of the card. Nothing playing, or
 ;; anything failing, and the card simply has no source.
 (defvar my-srs-source-lead 5
-  "Seconds before the moment of capture at which the source link starts.")
+  "Seconds before the moment of capture at which o starts the video.
+The link itself keeps the exact moment.")
 
 (defun my-srs-playing ()
   "The player making sound, or any player, as (name . title), or nil."
@@ -399,14 +400,13 @@ a question asked from inside it would lock every later Super+C out."
 
 (defun my-srs-source ()
   "What is playing right now: (PLAYER TITLE ARTIST POSITION), or nil.
-POSITION is in seconds, already `my-srs-source-lead' before now."
+POSITION is the moment, in whole seconds."
   (ignore-errors
     (pcase-let ((`(,player . ,title) (my-srs-playing)))
       (when player
         (list player title
               (car (process-lines "playerctl" "-p" player "metadata" "xesam:artist"))
-              (max 0 (- (floor (string-to-number (car (process-lines "playerctl" "-p" player "position"))))
-                        my-srs-source-lead)))))))
+              (floor (string-to-number (car (process-lines "playerctl" "-p" player "position")))))))))
 
 (defun my-srs-source-link (source)
   "An org link for SOURCE, from `my-srs-source', or nil.
@@ -459,6 +459,7 @@ still missing, the link is a YouTube search for the title."
   ;; entry explicitly.
   (goto-char (org-capture-get :begin-marker 'local))
   (org-id-get-create)
+  (org-entry-put nil "CREATED" (format-time-string "[%Y-%m-%d %a %H:%M]"))
   (when-let* ((link (and my-srs-capture-source
                          (my-srs-source-link my-srs-capture-source))))
     (org-entry-put nil "SOURCE" link))
@@ -487,10 +488,16 @@ still missing, the link is a YouTube search for the title."
   (save-buffer))
 
 (defun my-srs-open-source ()
-  "Open the video the card being shown came from, at that moment."
+  "Open the video the card being shown came from, just before that moment."
   (interactive)
   (if-let* ((source (org-entry-get nil "SOURCE")))
-      (org-link-open-from-string source)
+      (org-link-open-from-string
+       (replace-regexp-in-string
+        "&t=\\([0-9]+\\)s"
+        (lambda (at)
+          (format "&t=%ds" (max 0 (- (string-to-number (match-string 1 at))
+                                     my-srs-source-lead))))
+        source))
     (message "This card has no source.")))
 
 (defun my-srs-edit ()
