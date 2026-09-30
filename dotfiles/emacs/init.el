@@ -56,6 +56,64 @@
 ;; Super+K closes a frame.
 (keymap-unset global-map "C-x C-c")
 
+;; Super+K is how frames get closed, so closing one must leave nothing
+;; behind, whatever the frame was in the middle of:
+;;   a question in the minibuffer   cancelled, as by C-g
+;;   one of org's key menus         left, as by C-g
+;;   a capture being written        abandoned, as by C-c C-k
+;;   a flashcard review             ended and saved, as by q
+;; A buffer still shown in another frame is left alone.
+;; The first two are done once the frame is gone: interrupting a question
+;; while the frame is being deleted leaves the frame behind.
+(defvar my-frame-orphan nil
+  "What the frame just closed left waiting: `prompt', `menu' or nil.")
+
+(defvar my-menu-frame nil
+  "The frame showing one of org's key menus while it waits for the key.")
+
+(define-advice org-mks (:around (menu &rest args) my-menu-frame)
+  (let ((my-menu-frame (selected-frame)))
+    (apply menu args)))
+
+(defun my-buffer-shown-elsewhere-p (buffer frame)
+  (seq-some (lambda (window) (not (eq (window-frame window) frame)))
+            (get-buffer-window-list buffer nil t)))
+
+(defun my-frame-closed (frame)
+  "Wind up what FRAME was doing, before it is deleted."
+  ;; A frame that would delete itself when its capture ends: not any more.
+  (set-frame-parameter frame 'my-capture nil)
+  (setq my-frame-orphan
+        (cond ((and (active-minibuffer-window)
+                    (eq (window-frame (active-minibuffer-window)) frame))
+               'prompt)
+              ((eq my-menu-frame frame) 'menu)))
+  (dolist (window (window-list frame))
+    (let ((buffer (window-buffer window)))
+      (unless (my-buffer-shown-elsewhere-p buffer frame)
+        (with-current-buffer buffer
+          (cond ((bound-and-true-p org-capture-mode)
+                 ;; Done while the frame still exists: afterwards org would
+                 ;; put back the windows of a frame that is gone, which
+                 ;; crashes Emacs.
+                 (with-selected-window window (org-capture-kill)))
+                ((and (derived-mode-p 'org-mode)
+                      (fboundp 'org-srs-reviewing-p)
+                      (org-srs-reviewing-p))
+                 (my-srs-quit))))))))
+
+(defun my-frame-gone (_frame)
+  "Cancel the question the frame just closed left waiting."
+  (pcase (prog1 my-frame-orphan (setq my-frame-orphan nil))
+    ('prompt (run-at-time 0 nil (lambda ()
+                                  (when (> (minibuffer-depth) 0)
+                                    (abort-recursive-edit)))))
+    ;; The menu reads single keys; C-g is its way out.
+    ('menu (push ?\C-g unread-command-events))))
+
+(add-hook 'delete-frame-functions #'my-frame-closed)
+(add-hook 'after-delete-frame-functions #'my-frame-gone)
+
 ;; ---- Completion ------------------------------------------------------------
 ;; Prompts (M-x, files, buffers, flashcard subjects) list their candidates
 ;; as you type, fuzzy matched. RET takes the highlighted one, C-n / C-p move,
@@ -219,8 +277,8 @@ current frame instead: that is how Hyprland opens it, in a frame made for it."
   (advice-add 'org-agenda-todo :around #'my-org-agenda-archive-after-todo))
 
 ;; Super+Shift+C: the same capture as C-c c, from anywhere, in a frame that
-;; lasts as long as the capture does. Filing it, abandoning it, C-g and
-;; closing the frame from Hyprland all end it cleanly.
+;; lasts as long as the capture does. Filing it, abandoning it and C-g end
+;; it (closing the frame does too, see Windows).
 ;; Super+C: another of whatever was captured last (the same template, and
 ;; for a flashcard the same subject), with no question asked. The menu when
 ;; nothing has been captured yet.
@@ -246,18 +304,11 @@ a question asked from inside it would lock every later Super+C out."
 (defun my-capture-remember-key ()
   (setq my-capture-last-key (org-capture-get :key)))
 
-;; The frame whose capture is at a question (org's template menu, or a
-;; prompt of the template), and what kind of question a closed frame left
-;; unanswered.
-(defvar my-capture-asking nil)
-(defvar my-capture-orphan nil)
-
 (defun my-capture-frame-run (frame keys repeat)
   (when (frame-live-p frame)
     (select-frame-set-input-focus frame)
     (condition-case err
-        (let ((my-capture-asking frame)
-              (my-capture-repeating (and keys repeat)))
+        (let ((my-capture-repeating (and keys repeat)))
           (org-capture nil keys))
       (quit (my-capture-frame-close frame))
       (error (my-capture-frame-close frame)
@@ -275,37 +326,9 @@ a question asked from inside it would lock every later Super+C out."
   (when (frame-parameter nil 'my-capture)
     (delete-other-windows)))
 
-(defun my-capture-frame-closed (frame)
-  "Abandon the capture of FRAME when the frame is closed from outside."
-  (when (frame-parameter frame 'my-capture)
-    (set-frame-parameter frame 'my-capture nil)
-    ;; A question of its that is still waiting would now wait for ever. It
-    ;; is cancelled once the frame is gone (`my-capture-frame-gone'):
-    ;; cancelling it here would interrupt the deletion and leave the frame.
-    (when (eq my-capture-asking frame)
-      (setq my-capture-orphan (if (active-minibuffer-window) 'prompt 'menu)))
-    ;; A capture buffer that is open in it: the same as C-c C-k. Done here,
-    ;; while the frame still exists. Afterwards org would put back the
-    ;; windows of a frame that is gone, which crashes Emacs.
-    (dolist (window (window-list frame))
-      (when (buffer-local-value 'org-capture-mode (window-buffer window))
-        (with-selected-window window
-          (org-capture-kill))))))
-
-(defun my-capture-frame-gone (_frame)
-  "Cancel the question a closed capture frame left waiting."
-  (pcase (prog1 my-capture-orphan (setq my-capture-orphan nil))
-    ('prompt (run-at-time 0 nil (lambda ()
-                                  (when (> (minibuffer-depth) 0)
-                                    (abort-recursive-edit)))))
-    ;; org's menu reads single keys; C-g is its way out.
-    ('menu (push ?\C-g unread-command-events))))
-
 (add-hook 'org-capture-mode-hook #'my-capture-frame-fill)
 (add-hook 'org-capture-mode-hook #'my-capture-remember-key)
 (add-hook 'org-capture-after-finalize-hook #'my-capture-frame-close)
-(add-hook 'delete-frame-functions #'my-capture-frame-closed)
-(add-hook 'after-delete-frame-functions #'my-capture-frame-gone)
 
 ;; ---- Flashcards -----------------------------------------------------------
 ;; One org file per subject, one entry per card: the heading is the front,
