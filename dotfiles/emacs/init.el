@@ -6,7 +6,7 @@
  ;; If there is more than one, they won't work right.
  '(initial-buffer-choice t)
  '(menu-bar-mode nil)
- '(package-selected-packages '(gruvbox-theme org-timeblock popper))
+ '(package-selected-packages '(gruvbox-theme org-timeblock))
  '(scroll-bar-mode nil)
  '(tool-bar-mode nil))
 
@@ -23,7 +23,9 @@
   :bind ("C-c e" . mu4e)
 
   :custom
-  (mu4e-get-mail-command "mbsync -a")
+  ;; mbsync -a, plus a sign-in window when the university login has expired.
+  ;; Defined in home/mail.nix.
+  (mu4e-get-mail-command "mail-sync")
   (mu4e-update-interval 300)
 
   (message-send-mail-function #'message-send-mail-with-sendmail)
@@ -61,6 +63,50 @@
         (list (my-mu4e-context "personal" "emilio@hurtadosanchez.com" 'sent)
               (my-mu4e-context "university" "emiliohurtado@mail.ucv.es" 'delete)
               (my-mu4e-context "google" "emiliohurtadosr@gmail.com" 'delete))))
+
+;; ---- Programming: Typst and Python ----------------------------------------
+;; A language server per file type (tinymist, pylsp), both installed by
+;; home/editors.nix and home/packages.nix. It gives:
+;;   errors      underlined as you type. M-n / M-p jump between them,
+;;               C-h . shows the full message, M-x flymake-show-buffer-diagnostics lists them.
+;;   lookup      M-. go to definition, M-, back, M-? find uses.
+;;               Documentation for the thing at point shows in the echo area.
+;;   completion  TAB, only when you press it. Nothing pops up by itself.
+;; Emacs 31 only shows a language server's errors for files it trusts,
+;; because checking a file can mean running code from it. These are the
+;; folders with your own work. Add a line for any other place you write
+;; code; files elsewhere still get lookup and completion, just no errors.
+(setq trusted-content '("~/projects/"
+                        "~/documents/"
+                        "~/nixos/"))
+
+(use-package typst-ts-mode
+  :ensure nil
+  :mode "\\.typ\\'")
+
+(use-package eglot
+  :ensure nil
+  :hook ((python-mode python-ts-mode typst-ts-mode) . eglot-ensure)
+  :custom
+  ;; Stop the server when its last file is closed.
+  (eglot-autoshutdown t)
+  ;; No type hints drawn into the code, no reformatting while typing.
+  (eglot-ignored-server-capabilities
+   '(:inlayHintProvider :documentOnTypeFormattingProvider))
+  :config
+  (add-to-list 'eglot-server-programs '(typst-ts-mode . ("tinymist"))))
+
+(use-package flymake
+  :ensure nil
+  :bind (:map flymake-mode-map
+              ("M-n" . flymake-goto-next-error)
+              ("M-p" . flymake-goto-prev-error)))
+
+;; TAB indents first; if the line is already indented it completes.
+(setq tab-always-indent 'complete)
+;; File names complete too, in any buffer, after what the language offers.
+(autoload 'comint-filename-completion "comint")
+(add-hook 'completion-at-point-functions #'comint-filename-completion t)
 
 (set-face-attribute 'default nil
                     :font "JetBrains Mono Nerd Font"

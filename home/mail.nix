@@ -1,14 +1,14 @@
-# mu4e + mbsync + msmtp, three accounts. Was ~/.mbsyncrc,
-# ~/.config/msmtp/config and ~/.config/oama/config.yaml. The mu4e side is in dotfiles/emacs/init.el.
+# mu4e + mbsync + msmtp, three accounts. The mu4e side is in
+# dotfiles/emacs/init.el.
 #
-# No secret is stored here. Passwords come from `pass`, the university
-# token from `oama`. After the install both have to be set up again:
-#   pass init <key id>; pass insert mail/personal; pass insert mail/google
+# No secret is stored here. The two mail passwords come from sops
+# (home/secrets.nix). The university account logs in through `oama`, whose
+# token is set up once per install:
 #   oama authorize microsoft emiliohurtado@mail.ucv.es --device
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
-  # The GPG key that pass and oama encrypt to. This is the key of the Arch
-  # install. After generating a new one, put its ID here.
+  # The GPG key oama encrypts its token with. The key itself comes from sops
+  # (home/secrets.nix), so this ID is the same on every install.
   gpgKey = "2382089EE3BE9149";
 
   # Every channel syncs the same way.
@@ -29,6 +29,43 @@ let
     patterns = [ "INBOX" ];
     extraConfig = sync;
   };
+
+  universityAddress = "emiliohurtado@mail.ucv.es";
+  mbsyncPackage = pkgs.isync.override { withCyrusSaslXoauth2 = true; };
+
+  # What mu4e runs to fetch mail (dotfiles/emacs/init.el). Same as
+  # `mbsync -a`, except that when Microsoft has dropped the university
+  # login it opens a terminal with the sign-in link and code. Signing in
+  # there is all it takes, the mail arrives when the window closes.
+  mailSync = pkgs.writeShellApplication {
+    name = "mail-sync";
+    runtimeInputs = [
+      mbsyncPackage
+      pkgs.unstable.oama
+      pkgs.curl
+      pkgs.systemd
+      pkgs.libnotify
+    ];
+    text = ''
+      address=${universityAddress}
+
+      # No token, and Microsoft is reachable: the login is gone, not the network.
+      if ! oama access "$address" >/dev/null 2>&1 &&
+        curl -s --max-time 5 -o /dev/null https://login.microsoftonline.com; then
+        # The unit name keeps a second window from opening while one is up.
+        if systemd-run --user --quiet --collect --unit=university-mail-login \
+          --setenv=PATH="$PATH" \
+          ${pkgs.foot}/bin/foot --title "University mail login" sh -c "
+            oama authorize microsoft $address --device && mbsync university \\
+              || { echo; echo 'That did not work. Press Enter to close.'; read -r _; }
+          " 2>/dev/null; then
+          notify-send "University mail" "Microsoft wants you to sign in again. The link and the code are in the window that just opened."
+        fi
+      fi
+
+      exec mbsync -a
+    '';
+  };
 in
 {
   accounts.email = {
@@ -41,7 +78,7 @@ in
         address = "emilio@hurtadosanchez.com";
         userName = "emilio@hurtadosanchez.com";
         realName = "Emilio Hurtado";
-        passwordCommand = "pass show mail/personal";
+        passwordCommand = "cat ${config.sops.secrets.mail_personal.path}";
         folders.inbox = "INBOX";
 
         imap = {
@@ -118,7 +155,7 @@ in
         address = "emiliohurtadosr@gmail.com";
         userName = "emiliohurtadosr@gmail.com";
         realName = "Emilio Hurtado";
-        passwordCommand = "pass show mail/google";
+        passwordCommand = "cat ${config.sops.secrets.mail_google.path}";
         folders.inbox = "INBOX";
 
         imap = {
@@ -154,7 +191,7 @@ in
   programs.mbsync = {
     enable = true;
     # XOAUTH2 is a SASL plugin. Arch got it by accident from libkgapi.
-    package = pkgs.isync.override { withCyrusSaslXoauth2 = true; };
+    package = mbsyncPackage;
   };
 
   programs.msmtp.enable = true;
@@ -166,8 +203,8 @@ in
   };
 
   home.packages = [
-    pkgs.pass
-    # 0.22 like on Arch, stable has 0.20.
+    mailSync
+    # 0.22, stable has 0.20.
     pkgs.unstable.oama
   ];
 
@@ -191,11 +228,9 @@ in
   # ---- GnuPG ---------------------------------------------------------------
   programs.gpg.enable = true;
 
-  # The key is meant to have no passphrase. It only encrypts the two mail
-  # passwords and the university token, all of which sit on the encrypted
-  # disk, and on Arch the agent kept it unlocked for the whole session
-  # anyway. So nothing here caches or presets a passphrase, and mail sync
-  # never prompts.
+  # The key is meant to have no passphrase. It only encrypts the university
+  # token, which sits on the encrypted disk. So nothing here caches or
+  # presets a passphrase, and mail sync never prompts.
   services.gpg-agent = {
     enable = true;
     pinentry.package = pkgs.pinentry-qt;

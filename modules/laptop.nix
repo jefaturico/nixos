@@ -78,6 +78,10 @@ in
   # nixos-hardware turns it on by default.
   services.fprintd.enable = false;
 
+  # ---- Ambient light sensor --------------------------------------------------
+  # Off: niri has nothing that would use it. nixos-hardware turns it on.
+  hardware.sensor.iio.enable = false;
+
   # ---- Speakers ------------------------------------------------------------
   # The speakers fire downwards and sound thin. This is Framework's
   # equaliser preset, as a pipewire filter on the built-in speakers only.

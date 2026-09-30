@@ -19,10 +19,11 @@
 
   networking.hostName = "coriolis";
 
-  # Both off for the install. Turn them on in this order, following the
-  # README: secureBoot first, tpmUnlock once Secure Boot is enforced.
-  coriolis.secureBoot = false;
-  coriolis.tpmUnlock = false;
+  # Secure Boot and TPM disk unlock. A fresh install uses the
+  # `coriolis-install` variant in flake.nix, which forces both off; setup.sh
+  # then brings the machine up to this.
+  coriolis.secureBoot = true;
+  coriolis.tpmUnlock = true;
 
   # Never change this after the install, it is not the "current version".
   system.stateVersion = "26.05";

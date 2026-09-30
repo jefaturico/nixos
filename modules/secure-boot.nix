@@ -1,6 +1,6 @@
-# Secure Boot (lanzaboote) and unlocking the disk from the TPM. Both are
-# switched off for the install and turned on afterwards, in
-# hosts/coriolis/default.nix. The README has the steps, in order.
+# Secure Boot (lanzaboote) and unlocking the disk from the TPM. Both are on
+# in hosts/coriolis/default.nix. A fresh install starts with both off (the
+# `coriolis-install` variant in flake.nix) and setup.sh turns them on.
 #
 # The login follows from the two switches (modules/login.nix):
 #

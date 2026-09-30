@@ -1,4 +1,0 @@
-#!/usr/bin/env dash
-
-# kitty --directory "$HOME/documents/notes" sh -c ' nvim ./inbox.md'
-foot -D "$HOME/documents/notes" sh -c ' nvim ./.inbox.md'

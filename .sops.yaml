@@ -1,0 +1,9 @@
+# Who can decrypt secrets/secrets.yaml. This is the public half of the key
+# in ~/.config/sops/age/keys.txt. To edit the secrets: sops secrets/secrets.yaml
+keys:
+  - &coriolis age10x2pzzyhng5aazkgsjjcrlqf2sumpdee8f6zmd9n4hkpamlm953s0dzcur
+creation_rules:
+  - path_regex: secrets/secrets\.yaml$
+    key_groups:
+      - age:
+          - *coriolis

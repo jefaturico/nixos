@@ -7,15 +7,11 @@
   # ---- Raw files (symlinks into ~/nixos/dotfiles) ---------------------------
   xdg.configFile = {
     "niri/config.kdl".source = dotfiles "niri/config.kdl";
-    "calcurse/conf".source = dotfiles "calcurse/conf";
-    "calcurse/keys".source = dotfiles "calcurse/keys";
-    # Taskwarrior's config was an empty file, data stays in ~/.task
-    "task/taskrc".text = "";
   };
 
   home.file = {
-    # bookmarks, capture-note, find-document, find-note, fzf-rg,
-    # idle-behavior (swayidle + swaylock), systeminfo, volume
+    # bookmarks, find-document, idle-behavior (swayidle + swaylock),
+    # systeminfo, volume
     ".scripts".source = dotfiles "scripts";
     ".bookmarks.txt".source = dotfiles "bookmarks.txt";
 

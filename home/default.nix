@@ -9,6 +9,7 @@
     ./desktop.nix
     ./editors.nix
     ./mail.nix
+    ./secrets.nix
     ./packages.nix
   ];
 
@@ -21,8 +22,8 @@
 
   # `dotfiles "niri/config.kdl"` gives a symlink straight into this repo
   # instead of a read-only copy in the nix store. Two reasons: programs that
-  # write to their own config keep working (emacs Custom, lazy.nvim's lock
-  # file, calcurse), and edits apply without a rebuild.
+  # write to their own config keep working (emacs Custom), and edits apply
+  # without a rebuild.
   #
   # The price: the repo has to live at ~/nixos.
   _module.args.dotfiles =

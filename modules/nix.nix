@@ -37,11 +37,6 @@
           config.allowUnfree = true;
         };
       })
-
-      # Packages that nixpkgs does not have.
-      (final: prev: {
-        libtexprintf = final.callPackage ../pkgs/libtexprintf.nix { };
-      })
     ];
   };
 }

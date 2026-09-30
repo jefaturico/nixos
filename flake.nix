@@ -38,6 +38,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Secrets, encrypted in secrets/secrets.yaml and decrypted at login. See
+    # home/secrets.nix.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # ---- Backburner -------------------------------------------------------
     # Not wired in yet. Each one has a stub in modules/backburner.nix that
     # explains what enabling it involves.
@@ -54,6 +61,7 @@
 
   outputs =
     inputs@{
+      self,
       nixpkgs,
       home-manager,
       disko,
@@ -91,6 +99,18 @@
               extraSpecialArgs = { inherit inputs username; };
               users.${username} = import ./home;
             };
+          }
+        ];
+      };
+
+      # The same system with Secure Boot and TPM unlock off. A fresh install
+      # has no Secure Boot keys yet, so install.sh installs this one, and
+      # setup.sh switches to the real one once the keys exist.
+      nixosConfigurations.coriolis-install = self.nixosConfigurations.coriolis.extendModules {
+        modules = [
+          {
+            coriolis.secureBoot = nixpkgs.lib.mkForce false;
+            coriolis.tpmUnlock = nixpkgs.lib.mkForce false;
           }
         ];
       };

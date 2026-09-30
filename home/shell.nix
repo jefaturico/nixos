@@ -6,8 +6,6 @@
     shellAliases = {
       ls = "ls --color=auto";
       grep = "grep --color=auto";
-      vi = "nvim";
-      vim = "nvim";
     };
     initExtra = ''
       PS1='\[\e[36m\]\w\[\e[0m\] \[\e[32m\]λ\[\e[0m\] '
@@ -16,15 +14,15 @@
 
   home.sessionPath = [ "$HOME/.scripts" ];
 
-  # Was ~/.config/environment.d/10-editor.conf. Set for the shell and for
-  # everything systemd starts in the session.
+  # The editor is the running Emacs daemon, opened in the terminal. Set for
+  # the shell and for everything systemd starts in the session.
   home.sessionVariables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
+    EDITOR = "emacsclient -t -a emacs";
+    VISUAL = "emacsclient -t -a emacs";
   };
   systemd.user.sessionVariables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
+    EDITOR = "emacsclient -t -a emacs";
+    VISUAL = "emacsclient -t -a emacs";
   };
 
   # Was ~/.gitconfig

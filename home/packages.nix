@@ -17,7 +17,6 @@
       brightnessctl
       playerctl
       pavucontrol
-      alsa-utils
       bluetui
       dash # the scripts in ~/.scripts run under it
 
@@ -38,18 +37,7 @@
       fzf
       ripgrep
       htop
-      nnn
       tealdeer
-      calcurse
-      taskwarrior3 # came in as a dependency of taskwarrior-tui
-      taskwarrior-tui
-
-      # ---- Development (base-devel) ------------------------------------------
-      gcc # also compiles nvim-treesitter's parsers
-      gnumake
-      tree-sitter # tree-sitter-cli
-      marksman
-      libtexprintf # AUR, packaged in pkgs/libtexprintf.nix
     ])
     # ---- From unstable ---------------------------------------------------------
     ++ (with pkgs.unstable; [

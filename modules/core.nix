@@ -31,12 +31,11 @@
     #   nixos-enter --root /mnt -c 'passwd jefaturico'
   };
 
-  # The few things wanted system-wide (root shell, rescue). Everything else
+  # The few things wanted system-wide. Everything else
   # is in home/packages.nix.
   environment.systemPackages = with pkgs; [
     git
     iw
-    neovim
     htop
     unzip
     curl
@@ -52,4 +51,23 @@
   # nix-index provides the "command not found" hook instead, see
   # modules/nix.nix. The stock one does not work with flakes.
   programs.command-not-found.enable = false;
+
+  # ---- NixOS defaults that are not wanted ----------------------------------
+  # perl, rsync and strace, installed on every NixOS unless told otherwise.
+  environment.defaultPackages = [ ];
+  programs.nano.enable = false;
+  # The fallback editor, and what a root shell gets as $EDITOR. Your own
+  # session uses Emacs (home/shell.nix).
+  programs.vim = {
+    enable = true;
+    defaultEditor = true;
+  };
+  # For cellular modems. There is none.
+  networking.modemmanager.enable = false;
+  # Speech synthesis for screen readers.
+  services.speechd.enable = false;
+  # The HTML manual and the info reader. `man` stays.
+  documentation.nixos.enable = false;
+  documentation.info.enable = false;
+  documentation.doc.enable = false;
 }
