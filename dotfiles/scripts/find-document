@@ -1,0 +1,6 @@
+#! /usr/bin/env dash
+
+DOCUMENT_FILES=$(fd . $HOME --extension pdf --extension PDF --no-ignore)
+TARGET_FILE=$(echo "$DOCUMENT_FILES" | fuzzel -w 100 -p "Find document: " --dmenu)
+
+[ -n "$TARGET_FILE" ] && sioyek --new-window "$TARGET_FILE"

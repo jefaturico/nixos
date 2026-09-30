@@ -1,0 +1,40 @@
+#!/usr/bin/env dash
+
+if [ "$1" = "up" ]; then
+  wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0
+  CURRENT_VOLUME_INT=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f\n", $2 * 100}')
+  notify-send \
+    -a osd -t 500 \
+    -h int:value:"$CURRENT_VOLUME_INT" \
+    -h string:x-canonical-private-synchronous:volume \
+    "Volume: "$CURRENT_VOLUME_INT"%"
+
+elif [ "$1" = "down" ]; then
+  wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-
+  CURRENT_VOLUME_INT=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f\n", $2 * 100}')
+  notify-send \
+    -a osd -t 500 \
+    -h int:value:"$CURRENT_VOLUME_INT" \
+    -h string:x-canonical-private-synchronous:volume \
+    "Volume: "$CURRENT_VOLUME_INT"%"
+
+elif [ "$1" = "mute" ]; then
+  wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+
+  VOLUME_INFO=$(wpctl get-volume @DEFAULT_AUDIO_SINK@)
+  CURRENT_VOLUME_INT=$(printf '%s\n' "$VOLUME_INFO" |
+    awk '{printf "%.0f", $2 * 100}')
+  CURRENT_VOLUME_TEXT=$(printf '%s\n' "$VOLUME_INFO" |
+    awk '{
+      printf "%.0f%%", $2 * 100
+      if ($3 == "[MUTED]") printf " [MUTED]"
+    }')
+  notify-send \
+    -a osd -t 500 \
+    -h int:value:"$CURRENT_VOLUME_INT" \
+    -h string:x-canonical-private-synchronous:volume \
+    "Volume: $CURRENT_VOLUME_TEXT"
+
+  else
+    printf "Usage:\nvolume up\nvolume down\nvolume mute"; exit 1
+fi

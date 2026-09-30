@@ -1,0 +1,6 @@
+#!/usr/bin/env dash
+
+rg -n --color=never '.' . |
+fzf --delimiter ':' \
+    --preview 'bat --color=always --style=numbers --highlight-line {2} -- {1}' |
+cut -d: -f1

@@ -1,0 +1,6 @@
+#!/usr/bin/env dash
+
+BOOKMARKS_FILE="$HOME/.bookmarks.txt"
+TARGET_WEBSITE=$(fuzzel -d < "$BOOKMARKS_FILE")
+
+xdg-open "$TARGET_WEBSITE"	

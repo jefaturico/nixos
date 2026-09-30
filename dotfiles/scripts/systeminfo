@@ -1,0 +1,3 @@
+#! /usr/bin/env dash
+
+notify-send -h string:x-canonical-private-synchronous:volume -t 1000 "$(date +"It's %R%n%A, %B %d %Y%nBattery at $(cat /sys/class/power_supply/BAT1/capacity)%")"
