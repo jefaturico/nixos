@@ -487,6 +487,25 @@ still missing, the link is a YouTube search for the title."
   (org-srs-review-quit)
   (save-buffer))
 
+(defun my-srs-set-source-time (time)
+  "Set the moment of the card at point in its source link, as TIME (m:ss).
+For cards whose link was added by hand, without a moment."
+  (interactive "sMoment in the video (m:ss): ")
+  (pcase-let* ((`(,minutes ,seconds) (mapcar #'string-to-number (split-string time ":")))
+               (position (+ (* 60 minutes) (or seconds 0)))
+               (source (or (org-entry-get nil "SOURCE")
+                           (user-error "This card has no source"))))
+    (string-match org-link-bracket-re source)
+    (let ((url (replace-regexp-in-string "[&?]t=[0-9]+s?" "" (match-string 1 source)))
+          (description (replace-regexp-in-string " ([0-9]+:[0-9][0-9])\\'" ""
+                                                 (or (match-string 2 source) ""))))
+      (org-entry-put nil "SOURCE"
+                     (org-link-make-string
+                      (if (string-match-p "youtube\\.com/watch" url)
+                          (format "%s&t=%ds" url position)
+                        url)
+                      (format "%s (%d:%02d)" description (/ position 60) (% position 60)))))))
+
 (defun my-srs-open-source ()
   "Open the video the card being shown came from, just before that moment."
   (interactive)
