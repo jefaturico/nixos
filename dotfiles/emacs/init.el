@@ -451,6 +451,10 @@ still missing, the link is a YouTube search for the title."
   (require 'org-srs)
   (find-file (nth 1 (my-srs-read-deck)))
   (setq my-srs-editing nil)
+  ;; A review left behind (its frame closed with Super+K) would stop a new
+  ;; one from starting.
+  (when (org-srs-reviewing-p)
+    (org-srs-review-quit))
   (org-srs-review-start))
 
 (defun my-srs-quit ()
@@ -496,13 +500,15 @@ still missing, the link is a YouTube search for the title."
   (remove-hook 'org-srs-item-after-confirm-hook #'org-srs-ui-mouse-mode-update-panels))
 
 ;; The review keys only exist while a review is running. Otherwise they
-;; are ordinary keys.
+;; are ordinary keys. A capture buffer is a clone of its file's buffer,
+;; state included, so it would look like a review too; it never is one.
 (defun my-srs-key (command)
   `(menu-item "" ,command
               :filter ,(lambda (cmd)
                          (and (fboundp 'org-srs-reviewing-p)
                               (org-srs-reviewing-p)
                               (not my-srs-editing)
+                              (not (bound-and-true-p org-capture-mode))
                               cmd))))
 
 (with-eval-after-load 'org
