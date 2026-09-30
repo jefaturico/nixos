@@ -6,17 +6,15 @@
  ;; If there is more than one, they won't work right.
  '(initial-buffer-choice t)
  '(menu-bar-mode nil)
- '(package-selected-packages '(gruvbox-theme org-timeblock))
+ '(package-selected-packages '(org-timeblock))
  '(scroll-bar-mode nil)
  '(tool-bar-mode nil))
 
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 
-(use-package gruvbox-theme
-  :ensure t
-  :config
-  (load-theme 'gruvbox-dark-medium t))
+;; The colours and the font are not set here. They come from stylix, see
+;; ~/nixos/home/editors.nix and ~/nixos/home/theme-switch.nix.
 
 (use-package mu4e
   :ensure nil
@@ -107,10 +105,6 @@
 ;; File names complete too, in any buffer, after what the language offers.
 (autoload 'comint-filename-completion "comint")
 (add-hook 'completion-at-point-functions #'comint-filename-completion t)
-
-(set-face-attribute 'default nil
-                    :font "JetBrains Mono Nerd Font"
-                    :height 140)
 
 (keymap-unset global-map "C-x C-c")
 

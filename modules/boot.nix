@@ -23,7 +23,7 @@
 
     kernelParams = [
       # Console at 1920x1280 on the laptop panel, so ly also fits the 1080p
-      # external monitor. niri still uses the native modes.
+      # external monitor. Hyprland still uses the native modes.
       "video=eDP-1:1920x1280"
     ];
 

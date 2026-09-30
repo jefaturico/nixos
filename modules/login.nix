@@ -15,15 +15,13 @@
         hide_version_string = true;
       };
     };
-    defaultSession = "niri";
+    defaultSession = "hyprland";
     autoLogin = {
       enable = !config.coriolis.tpmUnlock;
       user = username;
     };
   };
 
-  # swaylock needs a PAM service to be able to check the password at all.
-  security.pam.services.swaylock = { };
 
   # Not carried over from Arch: pam_gnupg, which unlocked the GPG key with
   # the login password. The key has no passphrase now, see home/mail.nix.

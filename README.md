@@ -41,7 +41,7 @@ Steps:
 5. It shows the disk and asks you to type its name. Then it asks for the
    disk passphrase (twice) and the user password (twice), and reboots.
 6. Pull the USB stick. It asks for the disk passphrase and goes straight
-   into niri.
+   into Hyprland.
 
 ## 3. Set up
 
@@ -86,7 +86,7 @@ Then restore your backup, and sign in to whatever needs it.
 
 - **Never use "Erase all Secure Boot Settings"** in the firmware. It is
   broken on Framework. Delete the entries one by one.
-- **The repo has to be at `~/nixos`.** The niri, emacs and script configs
+- **The repo has to be at `~/nixos`.** The emacs config and the scripts
   are symlinks into it. `install.sh` puts it there.
 - **Keep the installer USB stick.** Root is locked, so there is no
   emergency shell. If the machine will not boot, the stick is the way in.

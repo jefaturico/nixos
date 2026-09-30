@@ -18,7 +18,7 @@
     registry.nixpkgs.flake = inputs.nixpkgs;
   };
 
-  # New, from the backburner list. `nix-locate bin/foo` finds the package
+  # `nix-locate bin/foo` finds the package
   # that has a file, typing a missing command suggests where to get it, and
   # `, foo` runs a program without installing it. The database is prebuilt
   # (nix-index-database input).

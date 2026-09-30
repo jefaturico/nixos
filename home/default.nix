@@ -7,6 +7,8 @@
   imports = [
     ./shell.nix
     ./desktop.nix
+    ./hyprland.nix
+    ./theme-switch.nix
     ./editors.nix
     ./mail.nix
     ./secrets.nix
@@ -20,7 +22,7 @@
     stateVersion = "26.05";
   };
 
-  # `dotfiles "niri/config.kdl"` gives a symlink straight into this repo
+  # `dotfiles "emacs/init.el"` gives a symlink straight into this repo
   # instead of a read-only copy in the nix store. Two reasons: programs that
   # write to their own config keep working (emacs Custom), and edits apply
   # without a rebuild.

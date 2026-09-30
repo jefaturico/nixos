@@ -47,13 +47,13 @@
     };
   };
 
-  # New, from the backburner list. With a `use flake` line in a project's
+  # With a `use flake` line in a project's
   # .envrc, cd'ing into it loads its dev shell, cached.
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
   };
 
-  # nix-index (also from the backburner list) is set up system-wide in
+  # nix-index is set up system-wide in
   # modules/nix.nix.
 }

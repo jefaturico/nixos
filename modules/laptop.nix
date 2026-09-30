@@ -53,7 +53,7 @@ in
   # before looking for the image. The first two come from
   # hosts/coriolis/disko.nix, the third from modules/boot.nix.
   #
-  # The power key hibernates. niri has `disable-power-key-handling`, so
+  # The power key hibernates. Hyprland leaves that key alone, so
   # logind is the one that reacts.
   services.logind.settings.Login.HandlePowerKey = "hibernate";
 
@@ -79,7 +79,7 @@ in
   services.fprintd.enable = false;
 
   # ---- Ambient light sensor --------------------------------------------------
-  # Off: niri has nothing that would use it. nixos-hardware turns it on.
+  # Off: nothing here would use it. nixos-hardware turns it on.
   hardware.sensor.iio.enable = false;
 
   # ---- Speakers ------------------------------------------------------------

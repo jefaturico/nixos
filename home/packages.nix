@@ -7,11 +7,8 @@
 {
   home.packages =
     (with pkgs; [
-      # ---- Desktop session (called from the niri config and ~/.scripts) ----
+      # ---- Desktop session (called from home/hyprland.nix and ~/.scripts) ----
       swaybg
-      swayidle
-      swaylock
-      xwayland-satellite
       wl-clipboard
       libnotify # notify-send
       brightnessctl
@@ -32,9 +29,7 @@
       stremio-linux-shell # was the flatpak com.stremio.Stremio
 
       # ---- Terminal --------------------------------------------------------
-      bat
       fd
-      fzf
       ripgrep
       htop
       tealdeer

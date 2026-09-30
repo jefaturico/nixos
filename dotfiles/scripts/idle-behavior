@@ -1,5 +1,0 @@
-#!/usr/bin/env dash
-
-exec swayidle -w \
-    timeout 600 'systemctl suspend' \
-    before-sleep "swaylock -fe -i /home/jefaturico/images/wallpapers/forest-fog-deer-3840x2160.jpg"

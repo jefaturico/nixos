@@ -14,7 +14,7 @@
     ../../modules/login.nix
     ../../modules/gaming.nix
     ../../modules/flatpak.nix
-    ../../modules/backburner.nix
+    ../../modules/theme.nix
   ];
 
   networking.hostName = "coriolis";

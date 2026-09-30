@@ -115,7 +115,7 @@ say "Installed"
 cat <<EOF
 Next:
   1. Reboot and pull the USB stick.
-  2. Type the disk passphrase. It goes straight into niri.
+  2. Type the disk passphrase. It goes straight into Hyprland.
   3. Open a terminal (Mod+Return) and run:  ~/nixos/setup.sh
 
 EOF

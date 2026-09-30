@@ -15,6 +15,11 @@
     options cfg80211 ieee80211_regdom=ES
   '';
 
+  # Show a * for every character typed at the sudo password prompt.
+  security.sudo.extraConfig = ''
+    Defaults pwfeedback
+  '';
+
   # Root cannot log in, sudo is the way in. The price: no emergency shell
   # when the boot fails. Recovery is an older generation from the boot
   # menu, or the installer USB stick.

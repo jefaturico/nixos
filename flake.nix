@@ -45,14 +45,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # ---- Backburner -------------------------------------------------------
-    # Not wired in yet. Each one has a stub in modules/backburner.nix that
-    # explains what enabling it involves.
-    #
-    # stylix = {
-    #   url = "github:nix-community/stylix/release-26.05";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    # One palette and one set of fonts for the whole system. See
+    # modules/theme.nix.
+    stylix = {
+      url = "github:nix-community/stylix/release-26.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -65,6 +63,7 @@
       nix-index-database,
       nix-flatpak,
       lanzaboote,
+      stylix,
       ...
     }:
     let
@@ -82,6 +81,7 @@
           nix-index-database.nixosModules.nix-index
           nix-flatpak.nixosModules.nix-flatpak
           lanzaboote.nixosModules.lanzaboote
+          stylix.nixosModules.stylix
 
           ./hosts/coriolis
 
