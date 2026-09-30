@@ -384,12 +384,15 @@ a question asked from inside it would lock every later Super+C out."
                         (my-srs-brave-url title)
                       (car (process-lines "playerctl" "-p" player "metadata" "xesam:url")))))
           (when (and url (not (string-empty-p url)))
-            (format "[[%s][%s%s (%d:%02d)]]"
-                    (if (string-match-p "youtube\\.com/watch" url)
-                        (format "%s&t=%ds" url position)
-                      url)
-                    (if (and artist (not (string-empty-p artist))) (concat artist ": ") "")
-                    title (/ position 60) (% position 60))))))))
+            ;; org's own link builder, so brackets in a title cannot break
+            ;; the link.
+            (org-link-make-string
+             (if (string-match-p "youtube\\.com/watch" url)
+                 (format "%s&t=%ds" url position)
+               url)
+             (format "%s%s (%d:%02d)"
+                     (if (and artist (not (string-empty-p artist))) (concat artist ": ") "")
+                     title (/ position 60) (% position 60)))))))))
 
 ;; Capture. The subject of the card being captured: org-capture asks for the
 ;; template first, so that is where the question is put. Super+C repeats the
