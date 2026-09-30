@@ -139,7 +139,9 @@
             status = "disable";
           }
           {
-            criteria = "DP-10";
+            # By name, not by port: the port number changes (DP-10 on Arch,
+            # DP-9 here). Same name as in the niri config.
+            criteria = "HP Inc. HP E223 3CQ9152Q27";
             status = "enable";
           }
         ];
@@ -159,6 +161,16 @@
       "-d"
       "10"
     ];
+  };
+
+  # ---- Cursor --------------------------------------------------------------
+  # Arch had the Adwaita cursors as a dependency of something else. Here
+  # nothing brings a cursor theme, and niri logs "no default icon".
+  home.pointerCursor = {
+    package = pkgs.adwaita-icon-theme;
+    name = "Adwaita";
+    size = 24;
+    gtk.enable = true;
   };
 
   # ---- GTK -----------------------------------------------------------------

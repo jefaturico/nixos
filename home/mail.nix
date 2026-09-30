@@ -9,7 +9,7 @@
 let
   # The GPG key that pass and oama encrypt to. This is the key of the Arch
   # install. After generating a new one, put its ID here.
-  gpgKey = "012D316E03535D39";
+  gpgKey = "2382089EE3BE9149";
 
   # Every channel syncs the same way.
   sync = {
