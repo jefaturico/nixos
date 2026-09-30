@@ -255,11 +255,13 @@ a question asked from inside it would lock every later Super+C out."
 (defun my-capture-frame-run (frame keys repeat)
   (when (frame-live-p frame)
     (select-frame-set-input-focus frame)
-    (condition-case nil
+    (condition-case err
         (let ((my-capture-asking frame)
               (my-capture-repeating (and keys repeat)))
           (org-capture nil keys))
-      ((quit error) (my-capture-frame-close frame)))))
+      (quit (my-capture-frame-close frame))
+      (error (my-capture-frame-close frame)
+             (message "Capture failed: %s" (error-message-string err))))))
 
 (defun my-capture-frame-close (&optional frame)
   "Delete FRAME, or the selected one, if it was made for a capture."
@@ -373,26 +375,43 @@ a question asked from inside it would lock every later Super+C out."
       (delete-file copy))))
 
 (defun my-srs-source ()
-  "An org link to what is playing right now, or nil."
+  "What is playing right now: (PLAYER TITLE ARTIST POSITION), or nil.
+POSITION is in seconds, already `my-srs-source-lead' before now."
   (ignore-errors
     (pcase-let ((`(,player . ,title) (my-srs-playing)))
       (when player
-        (let* ((artist (car (process-lines "playerctl" "-p" player "metadata" "xesam:artist")))
-               (position (max 0 (- (floor (string-to-number (car (process-lines "playerctl" "-p" player "position"))))
-                                   my-srs-source-lead)))
-               (url (if (string-prefix-p "brave" player)
-                        (my-srs-brave-url title)
-                      (car (process-lines "playerctl" "-p" player "metadata" "xesam:url")))))
-          (when (and url (not (string-empty-p url)))
-            ;; org's own link builder, so brackets in a title cannot break
-            ;; the link.
-            (org-link-make-string
-             (if (string-match-p "youtube\\.com/watch" url)
-                 (format "%s&t=%ds" url position)
-               url)
-             (format "%s%s (%d:%02d)"
-                     (if (and artist (not (string-empty-p artist))) (concat artist ": ") "")
-                     title (/ position 60) (% position 60)))))))))
+        (list player title
+              (car (process-lines "playerctl" "-p" player "metadata" "xesam:artist"))
+              (max 0 (- (floor (string-to-number (car (process-lines "playerctl" "-p" player "position"))))
+                        my-srs-source-lead)))))))
+
+(defun my-srs-source-link (source)
+  "An org link for SOURCE, from `my-srs-source', or nil.
+The address is looked up now and not when SOURCE was read: Brave writes its
+history with a delay of up to half a minute, so a video opened just before
+the capture is often only there by the time the card is filed. When it is
+still missing, the link is a YouTube search for the title."
+  (ignore-errors
+    (pcase-let* ((`(,player ,title ,artist ,position) source)
+                 (url (if (string-prefix-p "brave" player)
+                          (my-srs-brave-url title)
+                        (car (process-lines "playerctl" "-p" player "metadata" "xesam:url")))))
+      ;; org's own link builder, so brackets in a title cannot break the
+      ;; link.
+      (org-link-make-string
+       (cond
+        ((or (null url) (string-empty-p url))
+         (concat "https://www.youtube.com/results?search_query="
+                 (url-hexify-string (if (and artist (not (string-empty-p artist)))
+                                        (concat artist " " title)
+                                      title))))
+        ((string-match-p "youtube\\.com/watch" url)
+         ;; Any moment the address already carries is replaced.
+         (format "%s&t=%ds" (replace-regexp-in-string "[&?]t=[0-9]+s?" "" url) position))
+        (t url))
+       (format "%s%s (%d:%02d)"
+               (if (and artist (not (string-empty-p artist))) (concat artist ": ") "")
+               title (/ position 60) (% position 60))))))
 
 ;; Capture. The subject of the card being captured: org-capture asks for the
 ;; template first, so that is where the question is put. Super+C repeats the
@@ -417,8 +436,9 @@ a question asked from inside it would lock every later Super+C out."
   ;; entry explicitly.
   (goto-char (org-capture-get :begin-marker 'local))
   (org-id-get-create)
-  (when my-srs-capture-source
-    (org-entry-put nil "SOURCE" my-srs-capture-source))
+  (when-let* ((link (and my-srs-capture-source
+                         (my-srs-source-link my-srs-capture-source))))
+    (org-entry-put nil "SOURCE" link))
   (org-srs-item-new (nth 4 my-srs-capture-deck)))
 
 ;; Review. e turns the review keys back into ordinary keys so the card can
