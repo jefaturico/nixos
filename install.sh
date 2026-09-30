@@ -23,6 +23,24 @@ die() {
 
 # ---- Checks ------------------------------------------------------------------
 
+# First of all: refuse to run anywhere but the installer. This script erases
+# a disk, and on an installed system that disk is the one you are running
+# from. Three independent signs, any one stops it.
+#   - The installer's root is a RAM disk. An installed system's is not.
+#   - An installed system has this host's name.
+#   - An installed system has the encrypted volume mounted outside /mnt.
+#     (Mounted under /mnt is fine: that is a second attempt in the installer.)
+root_fs=$(findmnt -n -o FSTYPE /)
+if [ "$root_fs" != tmpfs ]; then
+  die "this is an installed system (root is $root_fs, the installer's is tmpfs). Boot the installer USB stick to reinstall."
+fi
+if [ "$(hostname)" = "$HOST" ]; then
+  die "this machine is already $HOST. Boot the installer USB stick to reinstall."
+fi
+if findmnt -rn -o TARGET,SOURCE | awk '$2 ~ /^\/dev\/mapper\/vg-/ && $1 !~ /^\/mnt(\/|$)/ { found = 1 } END { exit !found }'; then
+  die "the encrypted volume is mounted outside /mnt, so this system is running from it. Boot the installer USB stick to reinstall."
+fi
+
 [ "$(id -u)" -ne 0 ] || die "run this as the installer's normal user, it calls sudo itself"
 [ -d /sys/firmware/efi ] || die "not booted in UEFI mode"
 [ -f "$REPO/flake.nix" ] || die "flake.nix not found next to this script"

@@ -5,26 +5,10 @@
 # Already implemented, so not here:
 #   nix-direnv  -> home/shell.nix
 #   nix-index   -> modules/nix.nix (database from the nix-index-database input)
-#   lanzaboote  -> modules/secure-boot.nix, switched off in hosts/coriolis/default.nix
+#   lanzaboote  -> modules/secure-boot.nix
+#   secrets     -> sops-nix, home/secrets.nix (instead of agenix)
 { ... }:
 {
-  # ---- agenix (secrets in the repo) ----------------------------------------
-  # Why not now: you chose to redo authentication by hand, and there are
-  # only two mail passwords, which already live in `pass`. agenix pays off
-  # once something system-level needs a secret (Wi-Fi PSKs, a user password
-  # hash, a VPN key).
-  #
-  # To enable:
-  #   1. Uncomment the agenix input in flake.nix and add
-  #      `agenix.nixosModules.default` to the modules list.
-  #   2. Create secrets/secrets.nix listing the public keys allowed to
-  #      decrypt. The host key is /etc/ssh/ssh_host_ed25519_key.pub, which
-  #      needs `services.openssh.enable = true` to exist.
-  #   3. nix run github:ryantm/agenix -- -e secrets/<name>.age
-  #
-  # age.secrets.wifi-home.file = ../secrets/wifi-home.age;
-  # users.users.jefaturico.hashedPasswordFile = config.age.secrets.password.path;
-
   # ---- stylix (one theme for everything) -----------------------------------
   # Why not now: stylix takes over the colours and fonts of every program it
   # knows (foot, fuzzel, mako, GTK, the console, emacs, neovim). That would
