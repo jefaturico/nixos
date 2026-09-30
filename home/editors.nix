@@ -32,9 +32,11 @@ in
     enable = true;
     package = pkgs.unstable.emacs-pgtk;
     extraConfig = ''
-      (set-face-attribute 'default nil
-                          :font (font-spec :family "${config.stylix.fonts.monospace.name}"
-                                           :size ${toString config.stylix.fonts.sizes.terminal}.0))
+      ;; Set as a frame default and not on the face: the daemon starts with
+      ;; no graphical frame, where a face font is silently dropped, and the
+      ;; frames emacsclient opens later would get the fallback font.
+      (add-to-list 'default-frame-alist
+                   '(font . "${config.stylix.fonts.monospace.name}-${toString config.stylix.fonts.sizes.terminal}"))
       ;; The colours come from stylix, as a theme file the theme switch
       ;; replaces (home/theme-switch.nix). Reloaded whenever a switch is done,
       ;; so every open Emacs follows.
@@ -57,6 +59,9 @@ in
       unstableEmacsPackages.mu4e
       # Draws the stylix palette (home/theme-switch.nix).
       unstableEmacsPackages.base16-theme
+
+      # Flashcards in org files, scheduled with FSRS (the German phrases).
+      unstableEmacsPackages.org-srs
 
       # Typst: the mode, and the grammar it highlights with.
       unstableEmacsPackages.typst-ts-mode

@@ -98,6 +98,32 @@ in
     };
   };
 
+  # Nothing above fires while sound is playing: a film in Stremio, a video in
+  # the browser, music. It watches PipeWire and holds the idle timer back for
+  # as long as a stream is making sound, whichever program it comes from.
+  # Sounds shorter than ten seconds (notifications) do not count.
+  xdg.configFile."wayland-pipewire-idle-inhibit/config.toml".text = ''
+    media_minimum_duration = 10
+    idle_inhibitor = "wayland"
+  '';
+
+  systemd.user.services.wayland-pipewire-idle-inhibit = {
+    Unit = {
+      Description = "Hold the idle timer back while sound is playing";
+      PartOf = [ "graphical-session.target" ];
+      After = [
+        "graphical-session.target"
+        "pipewire.service"
+      ];
+    };
+    Service = {
+      ExecStart = lib.getExe pkgs.wayland-pipewire-idle-inhibit;
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   # ---- Hyprland ------------------------------------------------------------
   wayland.windowManager.hyprland = {
     enable = true;
@@ -215,7 +241,18 @@ in
         "$mod, X, exec, fuzzel"
         "$mod, W, exec, brave-origin"
         "$mod SHIFT, W, exec, ${scripts}/bookmarks"
-        "$mod, BackSpace, exec, emacs"
+        # A new frame of the running daemon (home/editors.nix), which opens
+        # at once. A full Emacs only if the daemon is down.
+        "$mod, BackSpace, exec, emacsclient -n -c -a emacs"
+        # Straight into one part of Emacs, each in a frame of its own
+        # (dotfiles/emacs/init.el). Super+C repeats the last kind of capture
+        # without asking; Super+Shift+C shows the menu. The capture frame
+        # closes itself when the capture is filed or abandoned, the agenda
+        # frame on q.
+        "$mod SHIFT, C, exec, emacsclient -n -c -e '(my-capture-frame)'"
+        "$mod, C, exec, emacsclient -n -c -e '(my-capture-frame-again)'"
+        "$mod, A, exec, emacsclient -n -c -e '(my-org-agenda t)'"
+        "$mod, E, exec, emacsclient -n -c -e '(mu4e)'"
         "$mod, D, exec, ${scripts}/find-document"
         "$mod, T, exec, ${scripts}/systeminfo"
 

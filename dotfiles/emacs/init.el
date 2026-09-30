@@ -6,16 +6,72 @@
  ;; If there is more than one, they won't work right.
  '(initial-buffer-choice t)
  '(menu-bar-mode nil)
- '(package-selected-packages '(org-timeblock))
  '(scroll-bar-mode nil)
  '(tool-bar-mode nil))
 
+;; Every package comes from nix (home/editors.nix); MELPA is there for
+;; trying one out by hand.
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 
 ;; The colours and the font are not set here. They come from stylix, see
 ;; ~/nixos/home/editors.nix and ~/nixos/home/theme-switch.nix.
 
+;; ---- Windows ---------------------------------------------------------------
+;; Emacs does not split its frame. A buffer that would pop up in a split
+;; (help, compile output, a list of errors, a mail) opens in a frame of its
+;; own, which Hyprland tiles like any other window: Super+O reaches it,
+;; and q or Super+K closes it. A buffer already shown in some frame is
+;; reused there.
+;; Left alone, inside the current frame: anything that asks for the current
+;; window, and the short-lived helpers named here.
+(defvar my-in-frame-buffers
+  (rx bos (or " "                       ; internal buffers
+              "*Completions*"
+              "*Calendar*"              ; the calendar of a date prompt
+              "CAPTURE-"                ; the capture buffer
+              "*Capture*"               ; shown while a template asks its prompts
+              ;; org's own menus and note buffers, gone after one key
+              (seq "*Org " (or "Select" "todo" "Note" "Links" "Attach"
+                               "Export Dispatcher")
+                   "*"))))
+
+(defun my-popup-frame-p (buffer action)
+  "Non-nil if BUFFER, displayed with ACTION, should get a frame of its own."
+  (not (or (string-match-p my-in-frame-buffers
+                           (if (stringp buffer) buffer (buffer-name buffer)))
+           (memq 'display-buffer-same-window (ensure-list (car-safe action))))))
+
+(setq display-buffer-alist
+      '((my-popup-frame-p
+         (display-buffer-reuse-window display-buffer-pop-up-frame)
+         (reusable-frames . t))))
+
+;; q closes a frame that was opened for the buffer instead of minimising it,
+;; and so does killing the buffer.
+(setq frame-auto-hide-function #'delete-frame)
+(setq kill-buffer-quit-windows t)
+
+;; Emacs runs as a daemon, so C-x C-c would take every frame down with it.
+;; Super+K closes a frame.
+(keymap-unset global-map "C-x C-c")
+
+;; ---- Completion ------------------------------------------------------------
+;; Prompts (M-x, files, buffers, flashcard subjects) list their candidates
+;; as you type, fuzzy matched. RET takes the highlighted one, C-n / C-p move,
+;; M-j takes exactly what was typed.
+(fido-vertical-mode 1)
+;; By default a long list (M-x) is held back 0.15 s before it is shown.
+(setq icomplete-compute-delay 0)
+
+;; In a buffer, TAB indents first; if the line is already indented it
+;; completes. Nothing pops up by itself.
+(setq tab-always-indent 'complete)
+;; File names complete too, in any buffer, after what the language offers.
+(autoload 'comint-filename-completion "comint")
+(add-hook 'completion-at-point-functions #'comint-filename-completion t)
+
+;; ---- Mail ------------------------------------------------------------------
 (use-package mu4e
   :ensure nil
   :bind ("C-c e" . mu4e)
@@ -62,6 +118,384 @@
               (my-mu4e-context "university" "emiliohurtado@mail.ucv.es" 'delete)
               (my-mu4e-context "google" "emiliohurtadosr@gmail.com" 'delete))))
 
+;; ---- Org: agenda and capture ----------------------------------------------
+;; Tasks and events are two files in ~/documents/org, both in the agenda:
+;;   tasks.org    TODO entries, with or without a scheduled date or deadline.
+;;   events.org   plain dated entries. Never TODO, never archived.
+;;   archive.org  where a task is moved the moment it is marked DONE.
+;; C-c c captures: t task, e event, f flashcard (see Flashcards below).
+;; C-c a opens the agenda: the week with everything, followed by the tasks
+;; without a date. C-c t lists all tasks. M-x org-agenda is the full menu.
+;; From Hyprland (home/hyprland.nix): Super+Shift+C capture, Super+C capture
+;; another of the last kind, Super+A agenda, Super+E mail.
+(defvar my-org-tasks-file "~/documents/org/tasks.org")
+(defvar my-org-events-file "~/documents/org/events.org")
+
+;; Declared, so that binding it below works before org is loaded.
+(defvar org-agenda-window-setup)
+
+(defun my-org-agenda (&optional here)
+  "Open the agenda view straight away, without the menu.
+It gets a frame of its own, which q closes. With HERE non-nil it takes the
+current frame instead: that is how Hyprland opens it, in a frame made for it."
+  (interactive)
+  (let ((org-agenda-window-setup (if here 'current-window 'other-frame)))
+    (org-agenda nil "a")))
+
+(use-package org
+  :ensure nil
+  :bind (("C-c a" . my-org-agenda)
+         ("C-c t" . org-todo-list)
+         ("C-c c" . org-capture))
+
+  :custom
+  ;; The agenda is a frame of its own, like every other popup (see Windows).
+  (org-agenda-window-setup 'other-frame)
+  (org-directory "~/documents/org")
+  (org-agenda-files (list my-org-tasks-file my-org-events-file))
+  ;; DONE records when, so the archive says when each task was finished.
+  (org-log-done 'time)
+  ;; One archive next to the files, filed under the date of archiving, and
+  ;; written to disk at once so an archived task is never only in memory.
+  (org-archive-location "archive.org::datetree/")
+  (org-archive-subtree-save-file-p t)
+
+  ;; The event date is asked first. A date alone makes an all-day event,
+  ;; "fri 14:00-15:30" a timed one.
+  (org-capture-templates
+   `(("t" "Task" entry (file ,my-org-tasks-file) "* TODO %?")
+     ("e" "Event" entry (file ,my-org-events-file) "* %?\n%^t")
+     ;; Asks for the subject first. Heading: the front. Body: the back.
+     ("f" "Flashcard" entry (file my-srs-capture-file)
+      (function my-srs-capture-template)
+      :before-finalize my-srs-make-card)))
+
+  (org-agenda-custom-commands
+   '(("a" "Agenda"
+      ((agenda "")
+       (todo "TODO" ((org-agenda-overriding-header "Tasks without a date")
+                     (org-agenda-todo-ignore-with-date t)))))))
+
+  :config
+  ;; A task is archived by the same command that marks it DONE, in the file
+  ;; or from the agenda. Nothing else ever moves entries: no timer, no hook on
+  ;; startup or save. A repeating task goes back to TODO and so stays.
+  ;; A subtask stays under its task when it is marked DONE, and is archived
+  ;; with it when the task itself is. A heading that is not a task (a plain
+  ;; grouping heading) does not count as a parent.
+  (defun my-org-subtask-p ()
+    "Non-nil if a heading above the entry at point is itself a task."
+    (save-excursion
+      (let (found)
+        (while (and (not found) (org-up-heading-safe))
+          (setq found (org-get-todo-state)))
+        found)))
+
+  (defun my-org-task-done-p ()
+    "Non-nil if the entry at point is a completed task in the tasks file."
+    (and (derived-mode-p 'org-mode)
+         buffer-file-name
+         (file-equal-p buffer-file-name my-org-tasks-file)
+         (not (org-before-first-heading-p))
+         (org-entry-is-done-p)
+         (not (my-org-subtask-p))))
+
+  ;; From the agenda the archiving is done by the agenda's own command, so
+  ;; the line is removed from the view as well.
+  (defvar my-org-in-agenda-todo nil)
+
+  (defun my-org-archive-after-todo (&rest _)
+    (when (and (not my-org-in-agenda-todo) (my-org-task-done-p))
+      (org-archive-subtree-default)))
+  (advice-add 'org-todo :after #'my-org-archive-after-todo)
+
+  (defun my-org-agenda-archive-after-todo (fn &rest args)
+    (let ((my-org-in-agenda-todo t))
+      (apply fn args))
+    (when-let* ((marker (org-get-at-bol 'org-hd-marker))
+                ((marker-buffer marker))
+                ((org-with-point-at marker (my-org-task-done-p))))
+      (org-agenda-archive-default)))
+  (advice-add 'org-agenda-todo :around #'my-org-agenda-archive-after-todo))
+
+;; Super+Shift+C: the same capture as C-c c, from anywhere, in a frame that
+;; lasts as long as the capture does. Filing it, abandoning it, C-g and
+;; closing the frame from Hyprland all end it cleanly.
+;; Super+C: another of whatever was captured last (the same template, and
+;; for a flashcard the same subject), with no question asked. The menu when
+;; nothing has been captured yet.
+(defun my-capture-frame (&optional keys repeat)
+  "Start a capture in the selected frame, which is deleted when it ends.
+KEYS picks the template without the menu; with REPEAT it is a repeat of the
+last capture (see `my-capture-frame-again').
+Called by emacsclient. The capture itself is started from a timer: while
+emacsclient's request is still being served Emacs answers no other one, so
+a question asked from inside it would lock every later Super+C out."
+  (let ((frame (selected-frame)))
+    (set-frame-parameter frame 'my-capture t)
+    (run-at-time 0 nil #'my-capture-frame-run frame keys repeat)
+    nil))
+
+(defvar my-capture-last-key nil)
+(defvar my-capture-repeating nil)
+
+(defun my-capture-frame-again ()
+  "Like `my-capture-frame', for the template used last."
+  (my-capture-frame my-capture-last-key t))
+
+(defun my-capture-remember-key ()
+  (setq my-capture-last-key (org-capture-get :key)))
+
+;; The frame whose capture is at a question (org's template menu, or a
+;; prompt of the template), and what kind of question a closed frame left
+;; unanswered.
+(defvar my-capture-asking nil)
+(defvar my-capture-orphan nil)
+
+(defun my-capture-frame-run (frame keys repeat)
+  (when (frame-live-p frame)
+    (select-frame-set-input-focus frame)
+    (condition-case nil
+        (let ((my-capture-asking frame)
+              (my-capture-repeating (and keys repeat)))
+          (org-capture nil keys))
+      ((quit error) (my-capture-frame-close frame)))))
+
+(defun my-capture-frame-close (&optional frame)
+  "Delete FRAME, or the selected one, if it was made for a capture."
+  (let ((frame (or frame (selected-frame))))
+    (when (and (frame-live-p frame) (frame-parameter frame 'my-capture))
+      (set-frame-parameter frame 'my-capture nil)
+      (delete-frame frame t))))
+
+(defun my-capture-frame-fill ()
+  "Give the capture buffer the whole frame."
+  (when (frame-parameter nil 'my-capture)
+    (delete-other-windows)))
+
+(defun my-capture-frame-closed (frame)
+  "Abandon the capture of FRAME when the frame is closed from outside."
+  (when (frame-parameter frame 'my-capture)
+    (set-frame-parameter frame 'my-capture nil)
+    ;; A question of its that is still waiting would now wait for ever. It
+    ;; is cancelled once the frame is gone (`my-capture-frame-gone'):
+    ;; cancelling it here would interrupt the deletion and leave the frame.
+    (when (eq my-capture-asking frame)
+      (setq my-capture-orphan (if (active-minibuffer-window) 'prompt 'menu)))
+    ;; A capture buffer that is open in it: the same as C-c C-k. Done here,
+    ;; while the frame still exists. Afterwards org would put back the
+    ;; windows of a frame that is gone, which crashes Emacs.
+    (dolist (window (window-list frame))
+      (when (buffer-local-value 'org-capture-mode (window-buffer window))
+        (with-selected-window window
+          (org-capture-kill))))))
+
+(defun my-capture-frame-gone (_frame)
+  "Cancel the question a closed capture frame left waiting."
+  (pcase (prog1 my-capture-orphan (setq my-capture-orphan nil))
+    ('prompt (run-at-time 0 nil (lambda ()
+                                  (when (> (minibuffer-depth) 0)
+                                    (abort-recursive-edit)))))
+    ;; org's menu reads single keys; C-g is its way out.
+    ('menu (push ?\C-g unread-command-events))))
+
+(add-hook 'org-capture-mode-hook #'my-capture-frame-fill)
+(add-hook 'org-capture-mode-hook #'my-capture-remember-key)
+(add-hook 'org-capture-after-finalize-hook #'my-capture-frame-close)
+(add-hook 'delete-frame-functions #'my-capture-frame-closed)
+(add-hook 'after-delete-frame-functions #'my-capture-frame-gone)
+
+;; ---- Flashcards -----------------------------------------------------------
+;; One org file per subject, one entry per card: the heading is the front,
+;; the body the back. org-srs schedules the reviews (FSRS, the algorithm Anki
+;; uses now) and keeps its data in a drawer inside each entry.
+;;   C-c c f   add a card: asks for the subject, then a buffer with the
+;;             heading started. Heading: the front. Below it: the back.
+;;   C-c f     review what is due in a subject. SPC shows the answer, then
+;;             rate it: 1 again, 2 hard, 3 good, 4 easy. q stops.
+;;             e edits the card shown, C-c C-c returns to the review.
+;;             o opens the video the card came from, at that moment.
+;; The file is saved when a review ends or is stopped.
+
+;; The subjects. Each is: name, file, what the front is called, what the back
+;; is called, and the kind of card: `card-reversible' is asked in both
+;; directions, `card' only front to back. A new subject is a new line here.
+;; What depends on the deck beyond that (new cards per day, holding back the
+;; other direction of a card, ...) goes at the top of its file, as
+;; phrases.org does:
+;;   #+PROPERTY: SRS_SCHEDULE_BURY_SIBLING_ITEMS_P t
+(defvar my-srs-decks
+  '(("German phrases" "~/documents/german/phrases.org"
+     "German" "English" card-reversible)))
+
+(defun my-srs-read-deck ()
+  "Ask for a subject and return its line of `my-srs-decks'."
+  (assoc (completing-read "Subject: " my-srs-decks nil t nil nil
+                          (caar my-srs-decks))
+         my-srs-decks))
+
+;; Where a card came from: the video playing at the moment of the capture,
+;; as a link that opens it a few seconds before that moment. Read over MPRIS
+;; (playerctl), which gives the title, the channel and the position but not
+;; the address; that is looked up by title in Brave's history. Kept in the
+;; entry's SOURCE property, out of the way of the card. Nothing playing, or
+;; anything failing, and the card simply has no source.
+(defvar my-srs-source-lead 5
+  "Seconds before the moment of capture at which the source link starts.")
+
+(defun my-srs-playing ()
+  "The player making sound, or any player, as (name . title), or nil."
+  (let* ((players (ignore-errors (process-lines "playerctl" "-l")))
+         (player (or (seq-find (lambda (p)
+                                 (equal (ignore-errors (car (process-lines "playerctl" "-p" p "status")))
+                                        "Playing"))
+                               players)
+                     (car players))))
+    (when player
+      (let ((title (ignore-errors (car (process-lines "playerctl" "-p" player "metadata" "xesam:title")))))
+        (when (and title (not (string-empty-p title)))
+          (cons player title))))))
+
+(defun my-srs-brave-url (title)
+  "The address last visited in Brave whose page title starts with TITLE."
+  (let ((history (expand-file-name "~/.config/BraveSoftware/Brave-Origin/Default/History"))
+        (copy (make-temp-file "brave-history")))
+    ;; Brave keeps the file locked; a copy can be read.
+    (unwind-protect
+        (progn
+          (copy-file history copy t)
+          (let ((db (sqlite-open copy)))
+            (unwind-protect
+                (caar (sqlite-select
+                       db "select url from urls where title like ? order by last_visit_time desc limit 1"
+                       (list (concat (string-replace "%" "" title) "%"))))
+              (sqlite-close db))))
+      (delete-file copy))))
+
+(defun my-srs-source ()
+  "An org link to what is playing right now, or nil."
+  (ignore-errors
+    (pcase-let ((`(,player . ,title) (my-srs-playing)))
+      (when player
+        (let* ((artist (car (process-lines "playerctl" "-p" player "metadata" "xesam:artist")))
+               (position (max 0 (- (floor (string-to-number (car (process-lines "playerctl" "-p" player "position"))))
+                                   my-srs-source-lead)))
+               (url (if (string-prefix-p "brave" player)
+                        (my-srs-brave-url title)
+                      (car (process-lines "playerctl" "-p" player "metadata" "xesam:url")))))
+          (when (and url (not (string-empty-p url)))
+            (format "[[%s][%s%s (%d:%02d)]]"
+                    (if (string-match-p "youtube\\.com/watch" url)
+                        (format "%s&t=%ds" url position)
+                      url)
+                    (if (and artist (not (string-empty-p artist))) (concat artist ": ") "")
+                    title (/ position 60) (% position 60))))))))
+
+;; Capture. The subject of the card being captured: org-capture asks for the
+;; template first, so that is where the question is put. Super+C repeats the
+;; last subject without asking (`my-capture-repeating'). The source is read
+;; at the same moment, which is the moment of the key press.
+(defvar my-srs-capture-deck nil)
+(defvar my-srs-capture-source nil)
+
+(defun my-srs-capture-template ()
+  (unless (and my-capture-repeating my-srs-capture-deck)
+    (setq my-srs-capture-deck (my-srs-read-deck)))
+  (setq my-srs-capture-source (my-srs-source))
+  "* %?\n")
+
+(defun my-srs-capture-file ()
+  (nth 1 my-srs-capture-deck))
+
+(defun my-srs-make-card ()
+  "Turn the entry being captured into a card of the kind its subject uses."
+  (require 'org-srs)
+  ;; The capture buffer shows the whole file at this point, so go to the new
+  ;; entry explicitly.
+  (goto-char (org-capture-get :begin-marker 'local))
+  (org-id-get-create)
+  (when my-srs-capture-source
+    (org-entry-put nil "SOURCE" my-srs-capture-source))
+  (org-srs-item-new (nth 4 my-srs-capture-deck)))
+
+;; Review. e turns the review keys back into ordinary keys so the card can
+;; be edited, C-c C-c returns to the review.
+(defvar-local my-srs-editing nil)
+
+(defun my-srs-review ()
+  "Ask for a subject and review its cards that are due."
+  (interactive)
+  (require 'org-srs)
+  (find-file (nth 1 (my-srs-read-deck)))
+  (setq my-srs-editing nil)
+  (org-srs-review-start))
+
+(defun my-srs-quit ()
+  "Stop the review and save the file."
+  (interactive)
+  (org-srs-review-quit)
+  (save-buffer))
+
+(defun my-srs-open-source ()
+  "Open the video the card being shown came from, at that moment."
+  (interactive)
+  (if-let* ((source (org-entry-get nil "SOURCE")))
+      (org-link-open-from-string source)
+    (message "This card has no source.")))
+
+(defun my-srs-edit ()
+  "Pause the review keys to edit the card being shown."
+  (interactive)
+  (setq my-srs-editing t)
+  (message "Editing the card. C-c C-c goes back to the review."))
+
+(defun my-srs-resume ()
+  "Go back to the review after editing a card."
+  (interactive)
+  (setq my-srs-editing nil)
+  (message "Back to the review."))
+
+(use-package org-srs
+  :ensure nil
+  :bind ("C-c f" . my-srs-review)
+  :custom
+  ;; The answer is shown by a key (SPC below) and not by a prompt that blocks
+  ;; Emacs until it is answered.
+  (org-srs-item-confirm #'org-srs-item-confirm-command)
+  :config
+  (add-hook 'org-srs-review-finish-hook #'save-buffer)
+  ;; A card shows the phrase only, not the drawers with the review data.
+  (add-hook 'org-srs-item-before-confirm-hook
+            (lambda (&rest _) (org-fold-hide-drawer-all)))
+  ;; org-srs makes a hidden frame for its mouse buttons on every card even
+  ;; with the buttons off. They are not used here, so it is never made.
+  (remove-hook 'org-srs-item-before-confirm-hook #'org-srs-ui-mouse-mode-update-panels)
+  (remove-hook 'org-srs-item-after-confirm-hook #'org-srs-ui-mouse-mode-update-panels))
+
+;; The review keys only exist while a review is running. Otherwise they
+;; are ordinary keys.
+(defun my-srs-key (command)
+  `(menu-item "" ,command
+              :filter ,(lambda (cmd)
+                         (and (fboundp 'org-srs-reviewing-p)
+                              (org-srs-reviewing-p)
+                              (not my-srs-editing)
+                              cmd))))
+
+(with-eval-after-load 'org
+  (keymap-set org-mode-map "SPC" (my-srs-key #'org-srs-item-confirm-command))
+  (keymap-set org-mode-map "1" (my-srs-key #'org-srs-review-rate-again))
+  (keymap-set org-mode-map "2" (my-srs-key #'org-srs-review-rate-hard))
+  (keymap-set org-mode-map "3" (my-srs-key #'org-srs-review-rate-good))
+  (keymap-set org-mode-map "4" (my-srs-key #'org-srs-review-rate-easy))
+  (keymap-set org-mode-map "q" (my-srs-key #'my-srs-quit))
+  (keymap-set org-mode-map "e" (my-srs-key #'my-srs-edit))
+  (keymap-set org-mode-map "o" (my-srs-key #'my-srs-open-source))
+  (keymap-set org-mode-map "C-c C-c"
+              `(menu-item "" org-ctrl-c-ctrl-c
+                          :filter ,(lambda (cmd)
+                                     (if my-srs-editing #'my-srs-resume cmd)))))
+
 ;; ---- Programming: Typst and Python ----------------------------------------
 ;; A language server per file type (tinymist, pylsp), both installed by
 ;; home/editors.nix and home/packages.nix. It gives:
@@ -69,7 +503,7 @@
 ;;               C-h . shows the full message, M-x flymake-show-buffer-diagnostics lists them.
 ;;   lookup      M-. go to definition, M-, back, M-? find uses.
 ;;               Documentation for the thing at point shows in the echo area.
-;;   completion  TAB, only when you press it. Nothing pops up by itself.
+;;   completion  TAB, only when you press it (see Completion).
 ;; Emacs 31 only shows a language server's errors for files it trusts,
 ;; because checking a file can mean running code from it. These are the
 ;; folders with your own work. Add a line for any other place you write
@@ -99,14 +533,6 @@
   :bind (:map flymake-mode-map
               ("M-n" . flymake-goto-next-error)
               ("M-p" . flymake-goto-prev-error)))
-
-;; TAB indents first; if the line is already indented it completes.
-(setq tab-always-indent 'complete)
-;; File names complete too, in any buffer, after what the language offers.
-(autoload 'comint-filename-completion "comint")
-(add-hook 'completion-at-point-functions #'comint-filename-completion t)
-
-(keymap-unset global-map "C-x C-c")
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
