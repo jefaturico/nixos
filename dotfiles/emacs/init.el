@@ -22,7 +22,7 @@
 ;; (help, compile output, a list of errors, a mail) opens in a frame of its
 ;; own, which Hyprland tiles like any other window: Super+O reaches it,
 ;; and q or Super+K closes it. A buffer already shown in some frame is
-;; reused there.
+;; reused there. Either way the keyboard moves to it.
 ;; Left alone, inside the current frame: anything that asks for the current
 ;; window or the whole frame (mu4e's main view does, when mu4e starts), and
 ;; the short-lived helpers named here.
@@ -45,10 +45,32 @@
            (seq-intersection '(display-buffer-same-window display-buffer-full-frame)
                              (ensure-list (car-safe action))))))
 
+;; Non-nil while a command is running, as opposed to a timer or the output
+;; of a process between two commands.
+(defvar my-in-command nil)
+(add-hook 'pre-command-hook (lambda () (setq my-in-command t)))
+(add-hook 'post-command-hook (lambda () (setq my-in-command nil)))
+
+(defun my-display-buffer-in-frame (buffer alist)
+  "Show BUFFER in a frame of its own, or where it is already shown.
+The keyboard goes there too when a command asked for the buffer (help, a
+list of matches), so there is no window to switch to by hand. Not when it
+turned up by itself (a warning, a compilation that finished): that must not
+take the keyboard away in the middle of typing."
+  (when-let* ((window (or (display-buffer-reuse-window buffer alist)
+                          (display-buffer-pop-up-frame buffer alist))))
+    (when (and my-in-command
+               (not (alist-get 'inhibit-switch-frame alist)))
+      (select-frame-set-input-focus (window-frame window)))
+    window))
+
 (setq display-buffer-alist
       '((my-popup-frame-p
-         (display-buffer-reuse-window display-buffer-pop-up-frame)
+         (my-display-buffer-in-frame)
          (reusable-frames . t))))
+
+;; Help puts the keyboard back where it came from unless told otherwise.
+(setq help-window-select t)
 
 ;; q closes a frame that was opened for the buffer instead of minimising it,
 ;; and so does killing the buffer.
