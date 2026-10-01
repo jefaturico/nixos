@@ -510,13 +510,19 @@ For cards whose link was added by hand, without a moment."
   "Open the video the card being shown came from, just before that moment."
   (interactive)
   (if-let* ((source (org-entry-get nil "SOURCE")))
-      (org-link-open-from-string
-       (replace-regexp-in-string
-        "&t=\\([0-9]+\\)s"
-        (lambda (at)
-          (format "&t=%ds" (max 0 (- (string-to-number (match-string 1 at))
-                                     my-srs-source-lead))))
-        source))
+      (let ((link (replace-regexp-in-string
+                   "&t=\\([0-9]+\\)s"
+                   (lambda (at)
+                     (format "&t=%ds" (max 0 (- (string-to-number (match-string 1 at))
+                                                my-srs-source-lead))))
+                   source)))
+        ;; A window of its own, which Hyprland puts next to the review, and
+        ;; not a tab in a browser window on some other workspace.
+        (if (and (string-match org-link-bracket-re link)
+                 (string-prefix-p "http" (match-string 1 link)))
+            (start-process "source" nil "brave-origin" "--new-window"
+                           (org-link-unescape (match-string 1 link)))
+          (org-link-open-from-string link)))
     (message "This card has no source.")))
 
 (defun my-srs-edit ()
