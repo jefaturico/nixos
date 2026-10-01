@@ -24,7 +24,8 @@
 ;; and q or Super+K closes it. A buffer already shown in some frame is
 ;; reused there.
 ;; Left alone, inside the current frame: anything that asks for the current
-;; window, and the short-lived helpers named here.
+;; window or the whole frame (mu4e's main view does, when mu4e starts), and
+;; the short-lived helpers named here.
 (defvar my-in-frame-buffers
   (rx bos (or " "                       ; internal buffers
               "*Completions*"
@@ -40,7 +41,9 @@
   "Non-nil if BUFFER, displayed with ACTION, should get a frame of its own."
   (not (or (string-match-p my-in-frame-buffers
                            (if (stringp buffer) buffer (buffer-name buffer)))
-           (memq 'display-buffer-same-window (ensure-list (car-safe action))))))
+           ;; It asks for the window or the frame it is called from.
+           (seq-intersection '(display-buffer-same-window display-buffer-full-frame)
+                             (ensure-list (car-safe action))))))
 
 (setq display-buffer-alist
       '((my-popup-frame-p
