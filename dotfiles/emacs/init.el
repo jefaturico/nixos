@@ -339,7 +339,8 @@ a question asked from inside it would lock every later Super+C out."
 ;;   C-c f     review what is due in a subject. SPC shows the answer, then
 ;;             rate it: 1 again, 2 hard, 3 good, 4 easy. q stops.
 ;;             e edits the card shown, C-c C-c returns to the review.
-;;             o plays the moment the card came from, O shows the video.
+;;             o plays the moment the card came from, O shows the video,
+;;             [ and ] move that moment earlier or later.
 ;; The file is saved when a review ends or is stopped.
 
 ;; The subjects. Each is: name, file, what the front is called, what the back
@@ -365,7 +366,7 @@ a question asked from inside it would lock every later Super+C out."
 ;; the address; that is looked up by title in Brave's history. Kept in the
 ;; entry's SOURCE property, out of the way of the card. Nothing playing, or
 ;; anything failing, and the card simply has no source.
-(defvar my-srs-source-lead 5
+(defvar my-srs-source-lead 3
   "Seconds before the moment of capture at which o starts the video.
 The link itself keeps the exact moment.")
 
@@ -491,10 +492,13 @@ still missing, the link is a YouTube search for the title."
   "Set the moment of the card at point in its source link, as TIME (m:ss).
 For cards whose link was added by hand, without a moment."
   (interactive "sMoment in the video (m:ss): ")
-  (pcase-let* ((`(,minutes ,seconds) (mapcar #'string-to-number (split-string time ":")))
-               (position (+ (* 60 minutes) (or seconds 0)))
-               (source (or (org-entry-get nil "SOURCE")
-                           (user-error "This card has no source"))))
+  (pcase-let ((`(,minutes ,seconds) (mapcar #'string-to-number (split-string time ":"))))
+    (my-srs-set-source-moment (+ (* 60 minutes) (or seconds 0)))))
+
+(defun my-srs-set-source-moment (position)
+  "Set the moment of the card at point in its source link to POSITION seconds."
+  (let ((source (or (org-entry-get nil "SOURCE")
+                    (user-error "This card has no source"))))
     (string-match org-link-bracket-re source)
     (let ((url (replace-regexp-in-string "[&?]t=[0-9]+s?" "" (match-string 1 source)))
           (description (replace-regexp-in-string " ([0-9]+:[0-9][0-9])\\'" ""
@@ -512,9 +516,17 @@ For cards whose link was added by hand, without a moment."
 ;;       over at once, as often as needed. It stops by itself and goes away
 ;;       with the card.
 ;;   O   watch it: the video in a browser window of its own, next to the
-;;       review. Does nothing while that window is still open.
+;;       review. Does nothing while that window is still open. The video
+;;       has priority: O stops the sound clip, and o does nothing while
+;;       the window is open.
+;;   [ ] the clip cuts into the sentence: move the card's moment
+;;       `my-srs-shift-step' seconds earlier or later and play it again.
+;;       The card keeps the new moment.
 (defvar my-srs-clip-length 10
   "Seconds of the source that o plays.")
+
+(defvar my-srs-shift-step 2
+  "Seconds by which [ and ] move a card's moment.")
 
 (defun my-srs-source-parts ()
   "The source of the card at point as (URL . MOMENT), MOMENT in seconds or nil.
@@ -542,11 +554,33 @@ Nil when the card has no source."
                                             :family 'local
                                             :service my-srs-audio-socket
                                             :noquery t)))
-      (dolist (command commands)
-        (process-send-string
-         connection
-         (concat (json-encode `((command . ,(vconcat command)))) "\n")))
-      (delete-process connection))))
+      (process-send-string
+       connection
+       (mapconcat (lambda (command)
+                    (concat (json-encode `((command . ,(vconcat command)))) "\n"))
+                  commands))
+      ;; Not closed at once: mpv drops what it has not read by then.
+      (run-at-time 0.5 nil #'delete-process connection))))
+
+(defun my-srs-audio-position ()
+  "Where the mpv that is playing is, in seconds. Nil while it is loading."
+  (ignore-errors
+    (let* ((answer "")
+           (connection (make-network-process
+                        :name "flashcard-mpv-question"
+                        :family 'local
+                        :service my-srs-audio-socket
+                        :noquery t
+                        :filter (lambda (_ text) (setq answer (concat answer text)))))
+           (asked (float-time)))
+      (process-send-string connection "{\"command\":[\"get_property\",\"time-pos\"]}\n")
+      ;; mpv answers within a few milliseconds.
+      (while (and (not (string-match-p "\"error\"" answer))
+                  (< (- (float-time) asked) 0.3))
+        (accept-process-output connection 0.02))
+      (delete-process connection)
+      (when (string-match "\"data\":\\([0-9.]+\\)" answer)
+        (string-to-number (match-string 1 answer))))))
 
 (defun my-srs-audio-stop (&rest _)
   "Stop the sound of the card that was shown."
@@ -560,6 +594,8 @@ Nil when the card has no source."
   (pcase-let ((`(,url . ,moment) (my-srs-source-parts)))
     (cond
      ((null url) (message "This card has no source."))
+     ;; The video has the floor while its window is open.
+     ((my-srs-video-window-p) nil)
      ;; Nothing to cut a clip from: watch it instead.
      ((not (and moment
                 (string-match-p "youtube\\.com/watch" url)
@@ -569,12 +605,15 @@ Nil when the card has no source."
       (let ((start (my-srs-source-start moment)))
         (if (and (process-live-p (car my-srs-audio))
                  (equal (cdr my-srs-audio) (list url start)))
-            ;; This card's sound is already there, playing, finished or
-            ;; still loading: from the top again. While it is loading
-            ;; there is nothing to send to, and it starts from the top
-            ;; anyway.
-            (progn
-              (my-srs-audio-send (list "seek" start "absolute"))
+            ;; This card's sound is already there. Playing or finished:
+            ;; from the top again. Still loading: left alone, it starts
+            ;; from the top anyway, and a seek now would only delay it.
+            (when (my-srs-audio-position)
+              (my-srs-audio-send
+               (list "seek" start "absolute")
+               ;; The end follows the start, which [ and ] may have moved.
+               (list "set_property" "end"
+                     (number-to-string (+ start my-srs-clip-length))))
               ;; mpv pauses itself at the end of the clip. Unpaused a
               ;; moment after the seek: at once, it would still be at the
               ;; end and pause again.
@@ -593,6 +632,30 @@ Nil when the card has no source."
                       (replace-regexp-in-string "[&?]t=[0-9]+s?" "" url))))
             (set-process-query-on-exit-flag mpv nil)
             (setq my-srs-audio (list mpv url start)))))))))
+
+(defun my-srs-shift-source (seconds)
+  "Move the moment of the card being shown by SECONDS and play it again."
+  (pcase-let ((`(,url . ,moment) (my-srs-source-parts)))
+    (unless moment
+      (user-error "This card's source has no moment"))
+    (let ((new (max 0 (+ moment seconds))))
+      (my-srs-set-source-moment new)
+      ;; A player that has this card goes on with it under its new moment.
+      (when (equal (nth 1 my-srs-audio) url)
+        (setcdr my-srs-audio (list (car (my-srs-source-parts))
+                                   (my-srs-source-start new))))
+      (my-srs-play-source)
+      (message "The card's moment is now %d:%02d." (/ new 60) (% new 60)))))
+
+(defun my-srs-source-earlier ()
+  "Move the card's moment earlier and play it again."
+  (interactive)
+  (my-srs-shift-source (- my-srs-shift-step)))
+
+(defun my-srs-source-later ()
+  "Move the card's moment later and play it again."
+  (interactive)
+  (my-srs-shift-source my-srs-shift-step))
 
 ;; When O last opened its window. The window takes a moment to appear, and
 ;; O pressed again in that moment must not open a second one.
@@ -617,6 +680,8 @@ Nil when the card has no source."
           (my-srs-video-window-p))
       nil)
      (t
+      ;; The video takes over from the sound clip.
+      (my-srs-audio-stop)
       (setq my-srs-video-opened (float-time))
       ;; --app: a window with the page only, of a class of its own, which
       ;; is how `my-srs-video-window-p' tells it from the browser.
@@ -683,6 +748,8 @@ Nil when the card has no source."
   (keymap-set org-mode-map "e" (my-srs-key #'my-srs-edit))
   (keymap-set org-mode-map "o" (my-srs-key #'my-srs-play-source))
   (keymap-set org-mode-map "O" (my-srs-key #'my-srs-watch-source))
+  (keymap-set org-mode-map "[" (my-srs-key #'my-srs-source-earlier))
+  (keymap-set org-mode-map "]" (my-srs-key #'my-srs-source-later))
   (keymap-set org-mode-map "C-c C-c"
               `(menu-item "" org-ctrl-c-ctrl-c
                           :filter ,(lambda (cmd)
