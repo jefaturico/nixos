@@ -525,7 +525,7 @@ For cards whose link was added by hand, without a moment."
 (defvar my-srs-clip-length 10
   "Seconds of the source that o plays.")
 
-(defvar my-srs-shift-step 2
+(defvar my-srs-shift-step 1
   "Seconds by which [ and ] move a card's moment.")
 
 (defun my-srs-source-parts ()
