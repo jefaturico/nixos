@@ -27,6 +27,7 @@
       tor-browser # torbrowser-launcher
       uget
       stremio-linux-shell # was the flatpak com.stremio.Stremio
+      mpv # plays a flashcard's source clip (dotfiles/emacs/init.el)
 
       # ---- Terminal --------------------------------------------------------
       fd
@@ -41,5 +42,6 @@
       sioyek # sioyek-dev. Development snapshot, unstable's is newer.
       typst # 0.15 like on Arch. Stable has 0.14, which can fail on
       tinymist # documents written for 0.15.
+      yt-dlp # mpv's way into YouTube. Old versions stop working.
     ]);
 }

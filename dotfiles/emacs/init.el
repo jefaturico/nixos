@@ -339,7 +339,7 @@ a question asked from inside it would lock every later Super+C out."
 ;;   C-c f     review what is due in a subject. SPC shows the answer, then
 ;;             rate it: 1 again, 2 hard, 3 good, 4 easy. q stops.
 ;;             e edits the card shown, C-c C-c returns to the review.
-;;             o opens the video the card came from, at that moment.
+;;             o plays the moment the card came from, O shows the video.
 ;; The file is saved when a review ends or is stopped.
 
 ;; The subjects. Each is: name, file, what the front is called, what the back
@@ -506,24 +506,129 @@ For cards whose link was added by hand, without a moment."
                         url)
                       (format "%s (%d:%02d)" description (/ position 60) (% position 60)))))))
 
-(defun my-srs-open-source ()
+;; Going back to the source during a review.
+;;   o   hear it: the sound only, from `my-srs-source-lead' seconds before
+;;       the moment, for `my-srs-clip-length' seconds. o again starts it
+;;       over at once, as often as needed. It stops by itself and goes away
+;;       with the card.
+;;   O   watch it: the video in a browser window of its own, next to the
+;;       review. Does nothing while that window is still open.
+(defvar my-srs-clip-length 10
+  "Seconds of the source that o plays.")
+
+(defun my-srs-source-parts ()
+  "The source of the card at point as (URL . MOMENT), MOMENT in seconds or nil.
+Nil when the card has no source."
+  (when-let* ((source (org-entry-get nil "SOURCE"))
+              ((string-match org-link-bracket-re source))
+              (url (org-link-unescape (match-string 1 source))))
+    (cons url (and (string-match "[&?]t=\\([0-9]+\\)s?" url)
+                   (string-to-number (match-string 1 url))))))
+
+(defun my-srs-source-start (moment)
+  (max 0 (- (or moment 0) my-srs-source-lead)))
+
+;; The mpv playing a card's source, as (PROCESS URL START), and the socket
+;; it takes commands on.
+(defvar my-srs-audio nil)
+(defvar my-srs-audio-socket
+  (expand-file-name "emacs-flashcard-mpv"
+                    (or (getenv "XDG_RUNTIME_DIR") temporary-file-directory)))
+
+(defun my-srs-audio-send (&rest commands)
+  "Send COMMANDS to the mpv that is playing. Nothing if it is not up yet."
+  (ignore-errors
+    (let ((connection (make-network-process :name "flashcard-mpv-command"
+                                            :family 'local
+                                            :service my-srs-audio-socket
+                                            :noquery t)))
+      (dolist (command commands)
+        (process-send-string
+         connection
+         (concat (json-encode `((command . ,(vconcat command)))) "\n")))
+      (delete-process connection))))
+
+(defun my-srs-audio-stop (&rest _)
+  "Stop the sound of the card that was shown."
+  (when (process-live-p (car my-srs-audio))
+    (delete-process (car my-srs-audio)))
+  (setq my-srs-audio nil))
+
+(defun my-srs-play-source ()
+  "Play the sound of the moment the card being shown came from."
+  (interactive)
+  (pcase-let ((`(,url . ,moment) (my-srs-source-parts)))
+    (cond
+     ((null url) (message "This card has no source."))
+     ;; Nothing to cut a clip from: watch it instead.
+     ((not (and moment
+                (string-match-p "youtube\\.com/watch" url)
+                (executable-find "mpv")))
+      (my-srs-watch-source))
+     (t
+      (let ((start (my-srs-source-start moment)))
+        (if (and (process-live-p (car my-srs-audio))
+                 (equal (cdr my-srs-audio) (list url start)))
+            ;; This card's sound is already there, playing, finished or
+            ;; still loading: from the top again. While it is loading
+            ;; there is nothing to send to, and it starts from the top
+            ;; anyway.
+            (progn
+              (my-srs-audio-send (list "seek" start "absolute"))
+              ;; mpv pauses itself at the end of the clip. Unpaused a
+              ;; moment after the seek: at once, it would still be at the
+              ;; end and pause again.
+              (run-at-time 0.1 nil #'my-srs-audio-send
+                           (list "set_property" "pause" :json-false)))
+          (my-srs-audio-stop)
+          (let ((mpv (start-process
+                      "flashcard-mpv" nil "mpv"
+                      "--no-video" "--no-terminal" "--ytdl-format=ba"
+                      ;; At the end of the clip it pauses and stays, so
+                      ;; that o only has to seek back and is instant.
+                      "--keep-open=yes"
+                      (format "--start=%d" start)
+                      (format "--end=%d" (+ start my-srs-clip-length))
+                      (concat "--input-ipc-server=" my-srs-audio-socket)
+                      (replace-regexp-in-string "[&?]t=[0-9]+s?" "" url))))
+            (set-process-query-on-exit-flag mpv nil)
+            (setq my-srs-audio (list mpv url start)))))))))
+
+;; When O last opened its window. The window takes a moment to appear, and
+;; O pressed again in that moment must not open a second one.
+(defvar my-srs-video-opened 0)
+
+(defun my-srs-video-window-p ()
+  "Non-nil if the window O opens is on screen."
+  (ignore-errors
+    (seq-some (lambda (window)
+                (string-match-p "\\`brave-.*youtube" (gethash "class" window)))
+              (json-parse-string
+               (with-output-to-string
+                 (call-process "hyprctl" nil standard-output nil "clients" "-j"))))))
+
+(defun my-srs-watch-source ()
   "Open the video the card being shown came from, just before that moment."
   (interactive)
-  (if-let* ((source (org-entry-get nil "SOURCE")))
-      (let ((link (replace-regexp-in-string
-                   "&t=\\([0-9]+\\)s"
-                   (lambda (at)
-                     (format "&t=%ds" (max 0 (- (string-to-number (match-string 1 at))
-                                                my-srs-source-lead))))
-                   source)))
-        ;; A window of its own, which Hyprland puts next to the review, and
-        ;; not a tab in a browser window on some other workspace.
-        (if (and (string-match org-link-bracket-re link)
-                 (string-prefix-p "http" (match-string 1 link)))
-            (start-process "source" nil "brave-origin" "--new-window"
-                           (org-link-unescape (match-string 1 link)))
-          (org-link-open-from-string link)))
-    (message "This card has no source.")))
+  (pcase-let ((`(,url . ,moment) (my-srs-source-parts)))
+    (cond
+     ((null url) (message "This card has no source."))
+     ((or (< (- (float-time) my-srs-video-opened) 3)
+          (my-srs-video-window-p))
+      nil)
+     (t
+      (setq my-srs-video-opened (float-time))
+      ;; --app: a window with the page only, of a class of its own, which
+      ;; is how `my-srs-video-window-p' tells it from the browser.
+      (start-process
+       "flashcard-video" nil "brave-origin"
+       (concat "--app="
+               (if moment
+                   (replace-regexp-in-string
+                    "\\([&?]t=\\)[0-9]+s?"
+                    (format "\\1%ds" (my-srs-source-start moment))
+                    url)
+                 url)))))))
 
 (defun my-srs-edit ()
   "Pause the review keys to edit the card being shown."
@@ -546,6 +651,8 @@ For cards whose link was added by hand, without a moment."
   (org-srs-item-confirm #'org-srs-item-confirm-command)
   :config
   (add-hook 'org-srs-review-finish-hook #'save-buffer)
+  ;; The sound of a card ends with the card: on a rating, and on q.
+  (add-hook 'org-srs-review-continue-hook #'my-srs-audio-stop)
   ;; A card shows the phrase only, not the drawers with the review data.
   (add-hook 'org-srs-item-before-confirm-hook
             (lambda (&rest _) (org-fold-hide-drawer-all)))
@@ -574,7 +681,8 @@ For cards whose link was added by hand, without a moment."
   (keymap-set org-mode-map "4" (my-srs-key #'org-srs-review-rate-easy))
   (keymap-set org-mode-map "q" (my-srs-key #'my-srs-quit))
   (keymap-set org-mode-map "e" (my-srs-key #'my-srs-edit))
-  (keymap-set org-mode-map "o" (my-srs-key #'my-srs-open-source))
+  (keymap-set org-mode-map "o" (my-srs-key #'my-srs-play-source))
+  (keymap-set org-mode-map "O" (my-srs-key #'my-srs-watch-source))
   (keymap-set org-mode-map "C-c C-c"
               `(menu-item "" org-ctrl-c-ctrl-c
                           :filter ,(lambda (cmd)
