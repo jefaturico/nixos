@@ -154,6 +154,20 @@ take the keyboard away in the middle of typing."
 (autoload 'comint-filename-completion "comint")
 (add-hook 'completion-at-point-functions #'comint-filename-completion t)
 
+;; ---- Prose ------------------------------------------------------------------
+;; Text wraps at the window edge, between words, without line breaks being
+;; put into the file: org, mail being read, mail being written, any text
+;; file. Code is left alone.
+(add-hook 'text-mode-hook #'visual-line-mode)
+(add-hook 'mu4e-view-mode-hook #'visual-line-mode)
+;; org would cut long lines off at the window edge instead.
+(setq org-startup-truncated nil)
+;; A mail is written the same way, one line per paragraph, and sent like
+;; that: the reader's program wraps it to their window, phone included.
+;; (Breaking lines at 72 columns as you type, the old default, gives ragged
+;; text on anything narrower than that.)
+(setq message-fill-column nil)
+
 ;; ---- Mail ------------------------------------------------------------------
 (use-package mu4e
   :ensure nil
